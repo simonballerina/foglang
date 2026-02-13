@@ -713,6 +713,14 @@ int main(int argc, char *argv[]){
             instructions[i][63] = '\0';
         }
     }
+
+    // krascha om man skriver för långa ahh rader
+    for (int i = 0; i < instr_amount; i++){
+        if (strlen(instructions[i]) > 128){
+            printf("fog:~$ ERR: För många tecken i rad %d\n", i);
+            exit(-1);
+        }
+    }
     
 
 
