@@ -676,6 +676,7 @@ int main(int argc, char *argv[]){
         if (!strcmp(argv[i], "-t")){
             time = 1;
         }
+        
 
     }
     
@@ -856,14 +857,14 @@ int main(int argc, char *argv[]){
         }
 
     }
-    if (debug == 3){
+    if (debug >= 3){
         printf("----------------------\n");
         int q = 0;
         for (q = 0; q < VAR_AMOUNT; q++){
-            printf("STR_MEM %d: '%s'\n", q, str_variables_values[q]);
+            printf("STR_MEM %d: %c = '%s'\n", q, str_variables_names[q], str_variables_values[q]);
         }
         for (q = 0; q < VAR_AMOUNT; q++){
-            printf("NUM_MEM %d: %lf\n", q, variables_values[q]);
+            printf("NUM_MEM %d: %c = %lf\n", q, variables_names[q], variables_values[q]);
         }
     }
 
