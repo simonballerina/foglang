@@ -5,6 +5,10 @@ Innan första semikolon skrivs kommentarer som denna.
 
 ; // startar programmet
 
+func {f}; ; Funktioner defineras först av allting med denna syntax ; 
+    foug Detta meddelande skickades av en funktion;
+{f};
+
 ; Detta är en kommentar, den inleds och avslutas med ";" ;
 
 foug Hello, world!; ; Skriver "Hello, world!" till STDOUT. ;
@@ -27,3 +31,5 @@ naer !a < 4 (2); ; Genomför loopen så länge a < 4 är sant ;
 foug Hur gammal är du?;
 grip s; ; Sparar användarens svar i variabeln s ;
 foug Du är !s år gammal!;
+
+call f; ; Kallar på funktionen f. ;

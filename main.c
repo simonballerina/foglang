@@ -6,7 +6,7 @@
 #include <ctype.h>
 
 #define VAR_AMOUNT 64
-#define KEYWORD_COUNT 9
+#define KEYWORD_COUNT 10
 
 double get_var_value(char *variables_names, double *variables_values, char var_name)
 {
@@ -28,6 +28,8 @@ char loop_id_stack[32];
 int loop_stack_top = 0;
 
 char break_id;
+
+int call_start_index;
 
 char *read_file(const char *filename)
 {
@@ -68,7 +70,7 @@ void get_str_var_value(char *str_variables_names, char str_variables_values[][12
 
 
 void foug(char* variables_names, double* variables_values, char* current_instruction, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index, int debug, int* program_counter){
-    if (debug == 2) printf("%d      FOUG\n", *program_counter);
+    if (debug >= 2) printf("%d      FOUG\n", *program_counter);
 
     int len = strlen(current_instruction);
     int i;
@@ -146,7 +148,7 @@ void foug(char* variables_names, double* variables_values, char* current_instruc
 void boul(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index){
     if (current_instruction[7] != '"'){
 
-        if (debug == 2) printf("%d      BOUL NUM\n", *program_counter);
+        if (debug >= 2) printf("%d      BOUL NUM\n", *program_counter);
 
         for (int i = 0; i < VAR_AMOUNT; i++){
             if (current_instruction[5] == str_variables_names[i]){
@@ -236,7 +238,7 @@ void boul(char* variables_names, double* variables_values, int* global_var_index
 }
 
 void saxx(char* str_variables_names, char str_variables_values[][128], int* str_global_var_index, char* current_instruction, int debug, int* program_counter){
-    if (debug == 2) printf("%d      SAXX\n", *program_counter);
+    if (debug >= 2) printf("%d      SAXX\n", *program_counter);
     // hitta argumenten till saxx 
     char args[128];
     int instr_len = strlen(current_instruction);
@@ -346,7 +348,7 @@ void saxx(char* str_variables_names, char str_variables_values[][128], int* str_
 }
 
 void band(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter){
-    if (debug == 2) printf("%d      BAND\n", *program_counter);
+    if (debug >= 2) printf("%d      BAND\n", *program_counter);
     // band num x = !a + 2;
     char end_var = current_instruction[9];
     //printf("END_VAR: %c\n", end_var);
@@ -378,8 +380,9 @@ void band(char* variables_names, double* variables_values, int* global_var_index
 }
 
 
+
 void giv1(char* variables_names, double* variables_values, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
-    if (debug == 2) printf("%d      GIV1\n", *program_counter);
+    if (debug >= 2) printf("%d      GIV1\n", *program_counter);
     int len = strlen(current_instruction);
     // giv1 2+1 > !a+1 (1);
 
@@ -406,19 +409,20 @@ void giv1(char* variables_names, double* variables_values, char* current_instruc
     args1[q-5] = '\0';
     q++;
     int k;
-    for (k = q; k < len; k++){
-        args2[k-q] = current_instruction[q];
+    for (k = q; k < len-3; k++){
+        args2[k-(q)] = current_instruction[k];
     }
-    args2[k-q] = '\0';
+    args2[k-(q)] = '\0';
 
     
 
     char giv1_id = current_instruction[len-2];
     // printf("GIV1_ID: %c\n", giv1_id);
+    //printf("ARGS1: %s\n", args1);
+    //printf("ARGS2: %s\n", args2);
 
     double first_value = evaluate_expression(args1, variables_names, variables_values);
     double second_value = evaluate_expression(args2, variables_names, variables_values);
-
 
     if (!compare(first_value, second_value, operation)){
         for (int i = 0; i < instr_amount; i++){
@@ -440,104 +444,54 @@ void giv1(char* variables_names, double* variables_values, char* current_instruc
 
 void naer(char* variables_names, double* variables_values, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
     // hitta argumenten till naer 
-    if (debug == 2) printf("%d      NAER\n", *program_counter);
-    char args[128];
-    int instr_len = strlen(current_instruction);
-    for (int i = 5; i < instr_len+1; i++){
-        args[i-5] = current_instruction[i];
-    }
-
-    int len = strlen(args);
-    char first;
-    char second;
-
-    if (len > 0 && args[0] == '!') first = args[1]; else first = '\0';
-
-    second = '\0';
-    for (int i = 1; i < len; i++){
-        if (args[i] == '!' && i + 1 < len){
-            second = args[i+1];
-            break;
-        }
-    }
+    if (debug >= 2) printf("%d      NAER\n", *program_counter);
     
-    double first_value;
-    if (first == '\0'){
-        char first_value_str[128];
-        int i;
-        for (i = 0; i < len; i++){
-            if (args[i] == ' ') break;
-            first_value_str[i] = args[i];
-        }
-        first_value_str[i] = '\0';
+    int len = strlen(current_instruction);
 
-        first_value = str_to_double(first_value_str);
-
-    } else {
-        first_value = get_var_value(variables_names, variables_values, first);
-    }
-
-    double second_value;
-    int start_index = -1;
-    if (second == '\0'){
-        for (int i = 0; i + 2 < len; i++){
-            if (args[i] == ' ' && args[i+2] == ' '){
-                start_index = i+3;
-                break;
-            }
-        }
-        if (start_index == -1){
-            for (int i = len - 1; i >= 0; i--){
-                if (args[i] == ' '){
-                    start_index = i + 1;
-                    break;
-                }
-            }
-            if (start_index == -1) start_index = 0;
-        }
-
-        char second_value_str[128];
-        int pos = 0;
-        int i;
-        for (i = start_index; i < len; i++){
-            if (args[i] == ' ') break;
-            second_value_str[pos++] = args[i];
-        }
-        second_value_str[pos] = '\0';
-        second_value = str_to_double(second_value_str);
-        
-    } else {
-        second_value = get_var_value(variables_names, variables_values, second);
-    }
-
-    printf("NAER FIRST: %f\n", first_value);
-    printf("NAER SECOND: %f\n", second_value);
-
+    char args1[128];
+    char args2[128];
+    int q;
+    int stop = 0;
     char operation;
-    char end_var = args[len-1];
-
-    for (int i = 0; i + 2 < len; i++){
-        if (args[i] == ' ' && args[i+2] == ' '){
-            operation = args[i+1];
-            break;
+    for (q = 5; q < len; q++){
+        if (current_instruction[q] == '!' && current_instruction[q-1] == ' ' && current_instruction[q+1] == ' ') {
+            stop = 1;
+            operation = current_instruction[q];
+        } 
+        if (current_instruction[q] == '=' || current_instruction[q] == '<' || current_instruction[q] == '>') {
+            stop = 1;
+            operation = current_instruction[q];
         }
-    } 
-
-    char naer_id;
-    for (int i = 0; i < len+3; i++){
-        //printf("%c%c%c\n", current_instruction[i], current_instruction[i+1], current_instruction[i+2]);
-        if (current_instruction[i] == '(' && current_instruction[i+2] == ')'){
-
-            naer_id = current_instruction[i+1];
-            
-            break;
-        }
+        
+        
+        
+        if(stop) break;
+        args1[q-5] = current_instruction[q];
     }
-    break_id = naer_id;
+    args1[q-5] = '\0';
+    q++;
+    int k;
+    for (k = q; k < len-3; k++){
+        args2[k-(q)] = current_instruction[k];
+    }
+    args2[k-(q)] = '\0';
+
     
-    //printf("NAER_ID: %c\n", naer_id);
-    //printf("FIRST: %f SECOND: %f OPERATION: %c", first_value, second_value, operation);
+
+    char naer_id = current_instruction[len-2];
+    // printf("NAER_ID: %c\n", naer_id);
+    //printf("        ARGS1: %s\n", args1);
+    //printf("        ARGS2: %s\n", args2);
+
+    double first_value = evaluate_expression(args1, variables_names, variables_values);
+    double second_value = evaluate_expression(args2, variables_names, variables_values);
+
+    //printf("            FIRST_VALUE: %lf\n", first_value);
+    //printf("            SECOND_VALUE: %lf\n", second_value);
+
     if (operation == '<') second_value -= 1; // annars kör den en extra gång (lite mongo)
+
+
 
     if (compare(first_value, second_value, operation)){
         // kör loop
@@ -586,7 +540,7 @@ void naer(char* variables_names, double* variables_values, char* current_instruc
 
 
 void grip(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter){
-    if (debug == 2) printf("%d      GRIP\n", *program_counter);
+    if (debug >= 2) printf("%d      GRIP\n", *program_counter);
     printf("> ");
     double result;
     int len = strlen(current_instruction);
@@ -619,7 +573,7 @@ void grip(char* variables_names, double* variables_values, int* global_var_index
 
 
 void tpos(char* current_instruction, int debug, int* program_counter) {
-    if (debug == 2) printf("%d      TPOS\n", *program_counter);
+    if (debug >= 2) printf("%d      TPOS\n", *program_counter);
     char args[128];
     int len = strlen(current_instruction);
     int i;
@@ -632,8 +586,8 @@ void tpos(char* current_instruction, int debug, int* program_counter) {
 }
 
 
-void slut(int debug, int* program_counter, char instructions[][128], int instr_amount){
-    if (debug == 2) printf("%d      SLUT\n", *program_counter);
+void stop(int debug, int* program_counter, char instructions[][128], int instr_amount){
+    if (debug >= 2) printf("%d      SLUT\n", *program_counter);
     
 
     for (int i = *program_counter+1; i < instr_amount-1; i++){
@@ -646,6 +600,18 @@ void slut(int debug, int* program_counter, char instructions[][128], int instr_a
     }
 }
 
+void call(int debug, int* program_counter, char instructions[][128], int instr_amount, char* current_instruction){
+    if (debug >= 2) printf("%d      CALL\n", *program_counter);
+    char func_id = current_instruction[5];
+    call_start_index = (*program_counter)+1;
+    for (int i = 0; i < instr_amount; i++){
+        if (instructions[i][5] == '{' && instructions[i][6] == func_id && instructions[i][7] == '}'){
+            (*program_counter) = i;
+            break;
+        }
+    }
+
+}
 
 int main(int argc, char *argv[]){
 
@@ -721,6 +687,8 @@ int main(int argc, char *argv[]){
             exit(-1);
         }
     }
+
+    
     
 
 
@@ -734,7 +702,7 @@ int main(int argc, char *argv[]){
     
 
 
-    char keywords[KEYWORD_COUNT][5] = {"foug", "boul", "band", "giv1", "naer", "grip", "tpos", "slut", "saxx"};
+    char keywords[KEYWORD_COUNT][5] = {"foug", "boul", "band", "giv1", "naer", "grip", "tpos", "stop", "saxx", "call"};
 
     char variables_names[VAR_AMOUNT];
     double variables_values[VAR_AMOUNT];
@@ -761,8 +729,16 @@ int main(int argc, char *argv[]){
 
 
     int program_counter;
-    for (program_counter = 0; program_counter < instr_amount; program_counter++){
-        
+
+    for (int i = instr_amount; i > 0; i--){
+        if (instructions[i][0] == '{' && instructions[i][2] == '}'){
+            program_counter = i+1;
+            break;
+        }
+    }
+
+    for (program_counter; program_counter < instr_amount; program_counter++){
+        if (instructions[program_counter][0] == '{' && instructions[program_counter][2] == '}') program_counter = call_start_index;
 
         for (int i = 0; i < KEYWORD_COUNT; i++){
             if (instructions[program_counter][i] == '(' && instructions[program_counter][i+2] == ')'){
@@ -828,11 +804,14 @@ int main(int argc, char *argv[]){
             case 6: // tpos
                 tpos(current_instruction, debug, &program_counter);
                 break;
-            case 7: // slut
-                slut(debug, &program_counter, instructions, instr_amount);
+            case 7: // stop
+                stop(debug, &program_counter, instructions, instr_amount);
                 break;
             case 8: // saxx
                 saxx(str_variables_names, str_variables_values, &str_global_var_index, current_instruction, debug, &program_counter);
+                break;
+            case 9: // call
+                call(debug, &program_counter, instructions, instr_amount, current_instruction);
                 break;
             
         }

@@ -162,7 +162,6 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
         } else {
             i++;
         }
-        //printf("TOK: %c\n", tok.type);
 
         /*for (int k = 0; k < token_list_index; k++){
             printf("TOKEN: \n   type: %c\n  value: %lf\n    var: %c\n", token_list[k].type, token_list[k].value, token_list[k].var);
@@ -170,35 +169,46 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
     }
 
     //printf("//////////////////////////\n");
+    int a = 0;
     while (1)
     {
-        for (int q = 0; q < token_list_index; q++){
-            if (token_list[q].type == '\0') continue;
-            //printf("tok.type: %c\ntok.val: %lf\ntok.var: %c\n", token_list[q].type, token_list[q].value, token_list[q].var);
+        /*for (int k = 0; k < token_list_index; k++){
+            printf("TOKEN: \n   type: %c\n  value: %lf\n    var: %c\n", token_list[k].type, token_list[k].value, token_list[k].var);
+        }*/
+
+
+
+        //ta bort paranteserna ifall man har något som (+) eller (v)
+        for (int i = 0; i < token_list_index; i++){
+            if (token_list[i].type == '('){
+                int valid_token_count = 0;
+                int j = i + 1;
+                for (j; j < token_list_index; j++){
+                    if (token_list[j].type == ')') break;
+                    if (token_list[j].type != '\0' && token_list[j].type != ')') {
+                        valid_token_count++;
+                    }
+                }
+                if (valid_token_count == 1){
+                    token_list[i].type = '\0';
+                    token_list[j].type = '\0';
+                }
+            }
         }
 
-        int valid_token_count = 0;
+        int operational_token_count = 0;
 
         for (int j = 0; j < token_list_index; j++)
         {
             if (token_list[j].type != '\0')
-                valid_token_count++;
-        }
-        //printf("VALID_COUNT: %d\n", valid_token_count);
-        if (valid_token_count <= 1) {
-            for (int a = 0; a < token_list_index; a++){
-                if (token_list[a].type == 'n') {
-                    //printf("SLUTRESULTAT: %lf\n", token_list[a].value);
-                    return token_list[a].value;
-                }
-            }
-            break;
+                operational_token_count++;
         }
 
 
-        int start_index = 0;
-        int end_index = 0;
-        for (int j = token_list_index; j > 0; j--)
+
+        int start_index = -1;
+        int end_index = -1;
+        for (int j = token_list_index - 1; j >= 0; j--)
         {
             if (token_list[j].type == '(')
             {
@@ -206,7 +216,7 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 break;
             }
         }
-        for (int j = 0; j < token_list_index + 1; j++)
+        for (int j = 0; j < token_list_index; j++)
         {
             if (token_list[j].type == ')')
             {
@@ -214,12 +224,12 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 break;
             }
         }
-        if (!start_index && !end_index)
+        if (start_index == -1)
+            start_index = 0;
+        if (end_index == -1)
             end_index = token_list_index;
-
         token args[128];
         
-        // Initialize args array
         for (int c = 0; c < 128; c++) {
             args[c].type = '\0';
             args[c].value = 0;
@@ -230,7 +240,6 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
         {
             args[j - start_index] = token_list[j];
         }
-
         for (int j = 0; j < end_index - start_index; j++)
         {
             if (!args[j].type)
@@ -241,6 +250,19 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 args[j].type = 'n';
             }
         }
+
+
+
+        //printf("VALID_COUNT: %d\n", operational_token_count);
+        if (operational_token_count <= 1) {
+            for (int a = 0; a < token_list_index; a++){
+                if (token_list[a].type == 'n') {
+                    //printf("SLUTRESULTAT: %lf\n", token_list[a].value);
+                    return token_list[a].value;
+                }
+            }
+            break;
+        }
         //printf("--------------------\n");
 
 
@@ -249,7 +271,7 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
             if (args[j].type == '\0')
                 continue;
 
-            if (args[j].type == '*' || args[j].type == '/' || args[j].type == '+' || args[j].type == '-')
+            if (args[j].type == '*' || args[j].type == '/' || args[j].type == '+' || args[j].type == '-' || args[j].type == '%' || args[j].type == '^')
             {
                 double first_arg;
                 double second_arg;
@@ -282,29 +304,29 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 args[j + k].type = '\0';
                 args[j + l].type = '\0';
 
-                /*printf("FIRST_ARG: %lf\n", first_arg);
-                printf("SECOND_ARG: %lf\n", second_arg);*/
+                //printf("FIRST_ARG: %lf\n", first_arg);
+                //printf("SECOND_ARG: %lf\n", second_arg);
 
                 double result;
-                switch (op_type)
+                switch (op_type) // av någon jävla anledning så funkar bara second_arg <icke-kommutativ aritmetisk operation> first_arg istället för tvärtom
                 {
                 case '*':
                     result = (first_arg) * (second_arg);
                     break;
                 case '^':
-                    result = pow(first_arg, second_arg);
+                    result = pow(second_arg, first_arg);
                     break;
                 case '/':
-                    result = (first_arg) / (second_arg);
+                    result = (second_arg) / (first_arg);
                     break;
                 case '%':
-                    result = ((int)first_arg)/((int)second_arg);
+                    result = ((int)second_arg)/((int)first_arg);
                     break;
                 case '+':
                     result = (first_arg) + (second_arg);
                     break;
                 case '-':
-                    result = (first_arg) - (second_arg);
+                    result = (second_arg) - (first_arg);
                     break;
                 }
                 //printf("RESULT: %lf\n", result);
@@ -317,9 +339,11 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 // spara resultatet i tokenlistan
                 token_list[start_index].type = 'n';
                 token_list[start_index].value = result;
+                token_list[end_index].type = '\0';
 
             }
 
         }
     }
 }
+
