@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <math.h>
 
-double get_var_value(char *variables_names, double *variables_values, char var_name);
+double get_var_value(char *variables_names, double *variables_values, int* global_var_index, char var_name);
 
 double str_to_double(char* num){
     int len = strlen(num);
@@ -83,7 +83,7 @@ typedef struct
     char var;     // for variables
 } token;
 
-double evaluate_expression(char* buff, char* variables_names, double* variables_values)
+double evaluate_expression(char* buff, char* variables_names, double* variables_values, int* global_var_index)
 {
     token token_list[128];
     int token_list_index = 0;
@@ -246,7 +246,7 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 continue;
             if (args[j].type == 'v')
             {
-                args[j].value = get_var_value(variables_names, variables_values, args[j].var);
+                args[j].value = get_var_value(variables_names, variables_values, global_var_index, args[j].var);
                 args[j].type = 'n';
             }
         }

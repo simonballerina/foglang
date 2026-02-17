@@ -5,12 +5,12 @@
 #include <time.h>
 #include <ctype.h>
 
-#define VAR_AMOUNT 64
+int VAR_AMOUNT = 64;
 #define KEYWORD_COUNT 10
 
-double get_var_value(char *variables_names, double *variables_values, char var_name)
+double get_var_value(char *variables_names, double *variables_values, int* global_var_index, char var_name)
 {
-    for (int i = 0; i < VAR_AMOUNT; i++)
+    for (int i = 0; i < *global_var_index; i++)
     {
         if (variables_names[i] == var_name)
             return variables_values[i];
@@ -20,6 +20,26 @@ double get_var_value(char *variables_names, double *variables_values, char var_n
 }
 
 #include "math_ops.c"
+
+void create_var(char* variables_names, double *variables_values, int* global_var_index, char var_name, double var_value){
+
+    for (int i = 0; i < *global_var_index; i++){
+        if (variables_names[i] == var_name){
+            variables_values[i] = var_value;
+            return;
+        }
+    }
+
+
+
+    variables_names[*global_var_index] = var_name;
+    variables_values[*global_var_index] = var_value;
+    (*global_var_index)++;
+
+
+}
+
+
 
 
 
@@ -54,8 +74,8 @@ char *read_file(const char *filename)
 
 
 
-void get_str_var_value(char *str_variables_names, char str_variables_values[][128], char var_name, char* dest_str, size_t dest_size){
-    for (int i = 0; i < VAR_AMOUNT; i++)
+void get_str_var_value(char *str_variables_names, char str_variables_values[][128], int* str_global_var_index, char var_name, char* dest_str, size_t dest_size){
+    for (int i = 0; i < *str_global_var_index; i++)
     {
         if (str_variables_names[i] == var_name){
             strncpy(dest_str, str_variables_values[i], dest_size - 1);
@@ -69,7 +89,7 @@ void get_str_var_value(char *str_variables_names, char str_variables_values[][12
 }
 
 
-void foug(char* variables_names, double* variables_values, char* current_instruction, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index, int debug, int* program_counter){
+void foug(char* variables_names, double* variables_values, char* current_instruction, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index, int* global_var_index, int debug, int* program_counter){
     if (debug >= 2) printf("%d      FOUG\n", *program_counter);
 
     int len = strlen(current_instruction);
@@ -115,7 +135,7 @@ void foug(char* variables_names, double* variables_values, char* current_instruc
 
 
         if (print_var_num){
-            double var_value = get_var_value(variables_names, variables_values, current_instruction[i+1]);
+            double var_value = get_var_value(variables_names, variables_values, global_var_index, current_instruction[i+1]);
             
             if (var_value == (int)var_value) var_value = (int)var_value;
             
@@ -128,7 +148,7 @@ void foug(char* variables_names, double* variables_values, char* current_instruc
 
         if (print_var_str){
             char str[128];
-            get_str_var_value(str_variables_names, str_variables_values, current_instruction[i+1], str, sizeof(str));
+            get_str_var_value(str_variables_names, str_variables_values, str_global_var_index, current_instruction[i+1], str, sizeof(str));
 
             printf("%s", args1);
             printf("%s", str);
@@ -145,17 +165,18 @@ void foug(char* variables_names, double* variables_values, char* current_instruc
 }
 
 
-void boul(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index){
+void boul(char** variables_names, double** variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter, char* str_variables_names, char str_variables_values[][128], int* str_global_var_index){
     if (current_instruction[7] != '"'){
 
         if (debug >= 2) printf("%d      BOUL NUM\n", *program_counter);
 
-        for (int i = 0; i < VAR_AMOUNT; i++){
+        for (int i = 0; i < *global_var_index; i++){
             if (current_instruction[5] == str_variables_names[i]){
                 printf("fog:~$ ERR: Kunde inte skapa en numerisk variabel med samma namn som sträng\n");
                 exit(-1);
             }
         }
+
 
 
         char var_value_str[64];
@@ -167,31 +188,39 @@ void boul(char* variables_names, double* variables_values, int* global_var_index
 
         double var_value = str_to_double(var_value_str);
 
-        if (*global_var_index > VAR_AMOUNT-1){
-            printf("fog:~$ ERR: Kunde inte skapa en ny variabel; Variabelminnet fullt\n");
-            exit(-1);
-        }
 
         int create_new_var = 1;
-        for (int i = 0; i < VAR_AMOUNT; i++){
-            if (variables_names[i] == current_instruction[5]){
-                variables_values[i] = var_value;
+        for (int i = 0; i < *global_var_index; i++){
+            if ((*variables_names)[i] == current_instruction[5]){
+                (*variables_values)[i] = var_value;
                 create_new_var = 0;
                 break;
             }
         }
 
         if (create_new_var){
-            variables_names[*global_var_index] = current_instruction[5];
-            variables_values[*global_var_index] = var_value;
+            if (*global_var_index > VAR_AMOUNT-1){
+                char *new_names = realloc((*variables_names), (VAR_AMOUNT+64)*sizeof(char));
+                double *new_vals = realloc((*variables_values), (VAR_AMOUNT+64)*sizeof(double));
 
-            (*global_var_index)++;
+                if (!new_names || !new_vals){
+                    printf("fog:~$ ERR: realloc fail\n");
+                    exit(1);
+                }
+
+                (*variables_names) = new_names;
+                (*variables_values) = new_vals;
+                VAR_AMOUNT += 64;
+            }
+
+            create_var((*variables_names), (*variables_values), global_var_index, current_instruction[5], var_value);
         }
+
     } else { // skapa / uppdatera sträng
         if (debug == 2) printf("%d      BOUL STR\n", *program_counter);
 
-        for (int i = 0; i < VAR_AMOUNT; i++){
-            if (current_instruction[5] == variables_names[i]){
+        for (int i = 0; i < *global_var_index; i++){
+            if (current_instruction[5] == (*variables_names)[i]){
                 printf("fog:~$ ERR: Kunde inte skapa en sträng-variabel med samma namn som en numerisk variabel\n");
                 exit(-1);
             }
@@ -212,7 +241,7 @@ void boul(char* variables_names, double* variables_values, int* global_var_index
 
 
         int create_new_var = 1;
-        for (int i = 0; i < VAR_AMOUNT; i++){
+        for (int i = 0; i < *global_var_index; i++){
             if (str_variables_names[i] == current_instruction[5]){
 
                 strncpy(str_variables_values[*str_global_var_index], str, sizeof(str_variables_values[*str_global_var_index])-1);
@@ -271,7 +300,7 @@ void saxx(char* str_variables_names, char str_variables_values[][128], int* str_
         first_value_str[i] = '\0';
 
     } else {
-        get_str_var_value(str_variables_names, str_variables_values, first, first_value_str, sizeof(first_value_str));
+        get_str_var_value(str_variables_names, str_variables_values, str_global_var_index, first, first_value_str, sizeof(first_value_str));
     }
 
     double second_value;
@@ -303,7 +332,7 @@ void saxx(char* str_variables_names, char str_variables_values[][128], int* str_
         second_value_str[pos] = '\0';
         
     } else {
-        get_str_var_value(str_variables_names, str_variables_values, first, second_value_str, sizeof(second_value_str));
+        get_str_var_value(str_variables_names, str_variables_values, str_global_var_index, first, second_value_str, sizeof(second_value_str));
     }
 
     printf("SAXX FIRST: %s\n", first_value_str);
@@ -347,7 +376,7 @@ void saxx(char* str_variables_names, char str_variables_values[][128], int* str_
     //printf("RESULT: %f\n", result);
 }
 
-void band(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter){
+void band(char** variables_names, double** variables_values, int* global_var_index, char* current_instruction, int debug, int* program_counter){
     if (debug >= 2) printf("%d      BAND\n", *program_counter);
     // band num x = !a + 2;
     char end_var = current_instruction[9];
@@ -361,19 +390,30 @@ void band(char* variables_names, double* variables_values, int* global_var_index
             args[i-12] = current_instruction[i];
         }
         args[i] = '\0';
-        double result = evaluate_expression(args, variables_names, variables_values); // to do: problem här
+        double result = evaluate_expression(args, (*variables_names), (*variables_values), global_var_index); 
         int create_new_var = 1;
         for (int j = 0; j < *global_var_index; j++){
-            if (variables_names[j] == end_var){
+            if ((*variables_names)[j] == end_var){
                 create_new_var = 0;
-                variables_values[j] = result;
+                (*variables_values)[j] = result;
                 break;
             }
         }
         if (create_new_var){
-            variables_names[*global_var_index] = end_var;
-            variables_values[*global_var_index] = result;
-            (*global_var_index)++;
+            if (*global_var_index > VAR_AMOUNT-1){
+                char *new_names = realloc((*variables_names), (VAR_AMOUNT+64)*sizeof(char));
+                double *new_vals = realloc((*variables_values), (VAR_AMOUNT+64)*sizeof(double));
+
+                if (!new_names || !new_vals){
+                    printf("fog:~$ ERR: realloc fail\n");
+                    exit(1);
+                }
+
+                (*variables_names) = new_names;
+                (*variables_values) = new_vals;
+                VAR_AMOUNT += 64;
+            }
+            create_var((*variables_names), (*variables_values), global_var_index, end_var, result);
         }
     }
 
@@ -381,7 +421,7 @@ void band(char* variables_names, double* variables_values, int* global_var_index
 
 
 
-void giv1(char* variables_names, double* variables_values, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
+void giv1(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
     if (debug >= 2) printf("%d      GIV1\n", *program_counter);
     int len = strlen(current_instruction);
     // giv1 2+1 > !a+1 (1);
@@ -421,8 +461,8 @@ void giv1(char* variables_names, double* variables_values, char* current_instruc
     //printf("ARGS1: %s\n", args1);
     //printf("ARGS2: %s\n", args2);
 
-    double first_value = evaluate_expression(args1, variables_names, variables_values);
-    double second_value = evaluate_expression(args2, variables_names, variables_values);
+    double first_value = evaluate_expression(args1, variables_names, variables_values, global_var_index);
+    double second_value = evaluate_expression(args2, variables_names, variables_values, global_var_index);
 
     if (!compare(first_value, second_value, operation)){
         for (int i = 0; i < instr_amount; i++){
@@ -442,7 +482,7 @@ void giv1(char* variables_names, double* variables_values, char* current_instruc
 }
 
 
-void naer(char* variables_names, double* variables_values, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
+void naer(char* variables_names, double* variables_values, int* global_var_index, char* current_instruction, int* program_counter, char instructions[][128], int instr_amount, int debug){
     // hitta argumenten till naer 
     if (debug >= 2) printf("%d      NAER\n", *program_counter);
     
@@ -483,8 +523,8 @@ void naer(char* variables_names, double* variables_values, char* current_instruc
     //printf("        ARGS1: %s\n", args1);
     //printf("        ARGS2: %s\n", args2);
 
-    double first_value = evaluate_expression(args1, variables_names, variables_values);
-    double second_value = evaluate_expression(args2, variables_names, variables_values);
+    double first_value = evaluate_expression(args1, variables_names, variables_values, global_var_index);
+    double second_value = evaluate_expression(args2, variables_names, variables_values, global_var_index);
 
     //printf("            FIRST_VALUE: %lf\n", first_value);
     //printf("            SECOND_VALUE: %lf\n", second_value);
@@ -549,7 +589,7 @@ void grip(char* variables_names, double* variables_values, int* global_var_index
 
 
     int create_new_var = 1;
-    for (int i = 0; i < VAR_AMOUNT; i++){
+    for (int i = 0; i < *global_var_index; i++){
         if (variables_names[i] == end_var){
             variables_values[i] = result;
             create_new_var = 0;
@@ -704,18 +744,17 @@ int main(int argc, char *argv[]){
 
     char keywords[KEYWORD_COUNT][5] = {"foug", "boul", "band", "giv1", "naer", "grip", "tpos", "stop", "saxx", "call"};
 
-    char variables_names[VAR_AMOUNT];
-    double variables_values[VAR_AMOUNT];
+    char *variables_names = calloc(VAR_AMOUNT, sizeof(char));
+    double *variables_values = calloc(VAR_AMOUNT, sizeof(double));
     int global_var_index = 0;
-    memset(variables_names, 0, sizeof(variables_names));
-    memset(variables_values, 0, sizeof(variables_values));
 
+    // <wip strängar>
     char str_variables_names[VAR_AMOUNT];
     char str_variables_values[VAR_AMOUNT][128];
     int str_global_var_index = 0;
     memset(str_variables_names, '\0', sizeof(str_variables_names));
     memset(str_variables_values, '\0', sizeof(str_variables_values));
-
+    // </wip strängar>
 
 
 
@@ -784,19 +823,19 @@ int main(int argc, char *argv[]){
         switch(action_index){
 
             case 0: // foug;
-                foug(variables_names, variables_values, current_instruction, str_variables_names, str_variables_values, &str_global_var_index, debug, &program_counter);
+                foug(variables_names, variables_values, current_instruction, str_variables_names, str_variables_values, &str_global_var_index, &global_var_index, debug, &program_counter);
                 break;
             case 1: // boul
-                boul(variables_names, variables_values, &global_var_index, current_instruction, debug, &program_counter, str_variables_names, str_variables_values, &str_global_var_index);
+                boul(&variables_names, &variables_values, &global_var_index, current_instruction, debug, &program_counter, str_variables_names, str_variables_values, &str_global_var_index);
                 break;
             case 2: // band
-                band(variables_names, variables_values, &global_var_index, current_instruction, debug, &program_counter);
+                band(&variables_names, &variables_values, &global_var_index, current_instruction, debug, &program_counter);
                 break;
             case 3: // giv1
-                giv1(variables_names, variables_values, current_instruction, &program_counter, instructions, instr_amount, debug);
+                giv1(variables_names, variables_values, &global_var_index, current_instruction, &program_counter, instructions, instr_amount, debug);
                 break;
             case 4: // naer
-                naer(variables_names, variables_values, current_instruction, &program_counter, instructions, instr_amount, debug);
+                naer(variables_names, variables_values, &global_var_index, current_instruction, &program_counter, instructions, instr_amount, debug);
                 break;
             case 5: // grip
                 grip(variables_names, variables_values, &global_var_index, current_instruction, debug, &program_counter);
