@@ -250,10 +250,20 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
                 args[j].type = 'n';
             }
         }
+        for (int j = 0; j < end_index - start_index; j++)
+        {
+            if (!token_list[j].type)
+                continue;
+            if (token_list[j].type == 'v')
+            {
+                token_list[j].value = get_var_value(variables_names, variables_values, global_var_index, token_list[j].var);
+                token_list[j].type = 'n';
+            }
+        }
 
 
 
-        //printf("VALID_COUNT: %d\n", operational_token_count);
+        
         if (operational_token_count <= 1) {
             for (int a = 0; a < token_list_index; a++){
                 if (token_list[a].type == 'n') {
@@ -345,5 +355,6 @@ double evaluate_expression(char* buff, char* variables_names, double* variables_
 
         }
     }
+    return 0;
 }
 

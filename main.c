@@ -8,6 +8,23 @@
 int VAR_AMOUNT = 64;
 #define KEYWORD_COUNT 10
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
+void print_red(const char* str) {
+
+    #ifdef _WIN32
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        printf("%s", str);
+        SetConsoleTextAttribute(hConsole, 7);  // reset
+    #else
+        printf("\033[31m%s\033[0m", str);
+    #endif
+
+}
+
 double get_var_value(char *variables_names, double *variables_values, int* global_var_index, char var_name)
 {
     for (int i = 0; i < *global_var_index; i++)
@@ -15,7 +32,8 @@ double get_var_value(char *variables_names, double *variables_values, int* globa
         if (variables_names[i] == var_name)
             return variables_values[i];
     }
-    printf("fog:~$ ERR: Kunde inte ta fram ett numeriskt variabelvärde: %c\n", var_name);
+    print_red("ERR: Kunde inte ta fram ett numeriskt variabelvärde: ");
+    printf("%c\n", var_name);
     exit(-1);
 }
 
@@ -30,21 +48,17 @@ void create_var(char* variables_names, double *variables_values, int* global_var
         }
     }
 
-
-
     variables_names[*global_var_index] = var_name;
     variables_values[*global_var_index] = var_value;
     (*global_var_index)++;
-
-
 }
 
 
 
 
 
-int loop_start_stack[32];
-char loop_id_stack[32];
+int loop_start_stack[64];
+char loop_id_stack[64];
 int loop_stack_top = 0;
 
 char break_id;
@@ -84,7 +98,8 @@ void get_str_var_value(char *str_variables_names, char str_variables_values[][12
         }
             
     }
-    printf("fog:~$ ERR: Kunde inte ta fram en sträng-variabel\n");
+    print_red("ERR: Kunde inte ta fram en sträng-variabel");
+    printf("\n");
     exit(-1);
 }
 
@@ -172,7 +187,8 @@ void boul(char** variables_names, double** variables_values, int* global_var_ind
 
         for (int i = 0; i < *global_var_index; i++){
             if (current_instruction[5] == str_variables_names[i]){
-                printf("fog:~$ ERR: Kunde inte skapa en numerisk variabel med samma namn som sträng\n");
+                print_red("ERR: Kunde inte skapa en numerisk variabel med samma namn som sträng");
+                printf("\n");
                 exit(-1);
             }
         }
@@ -204,7 +220,8 @@ void boul(char** variables_names, double** variables_values, int* global_var_ind
                 double *new_vals = realloc((*variables_values), (VAR_AMOUNT+64)*sizeof(double));
 
                 if (!new_names || !new_vals){
-                    printf("fog:~$ ERR: realloc fail\n");
+                    print_red("ERR: realloc fail");
+                    printf("\n");
                     exit(1);
                 }
 
@@ -221,7 +238,8 @@ void boul(char** variables_names, double** variables_values, int* global_var_ind
 
         for (int i = 0; i < *global_var_index; i++){
             if (current_instruction[5] == (*variables_names)[i]){
-                printf("fog:~$ ERR: Kunde inte skapa en sträng-variabel med samma namn som en numerisk variabel\n");
+                print_red("ERR: Kunde inte skapa en sträng-variabel med samma namn som en numerisk variabel");
+                printf("\n");
                 exit(-1);
             }
         }
@@ -241,12 +259,12 @@ void boul(char** variables_names, double** variables_values, int* global_var_ind
 
 
         int create_new_var = 1;
-        for (int i = 0; i < *global_var_index; i++){
+        for (int i = 0; i < *str_global_var_index; i++){
             if (str_variables_names[i] == current_instruction[5]){
 
-                strncpy(str_variables_values[*str_global_var_index], str, sizeof(str_variables_values[*str_global_var_index])-1);
-                str_variables_values[*str_global_var_index][sizeof(str_variables_values[*str_global_var_index])-1] = '\0'; 
-                str_variables_names[*str_global_var_index] = current_instruction[5];
+                strncpy(str_variables_values[i], str, sizeof(str_variables_values[i])-1);
+                str_variables_values[i][sizeof(str_variables_values[i])-1] = '\0'; 
+                str_variables_names[i] = current_instruction[5];
 
                 create_new_var = 0;
                 break;
@@ -363,7 +381,8 @@ void saxx(char* str_variables_names, char str_variables_values[][128], int* str_
 
     if (create_new_var){
         if (*str_global_var_index > VAR_AMOUNT-1){
-            printf("fog:~$ ERR: Kunde inte skapa en ny variabel; Variabelminnet fullt\n");
+            print_red("ERR: Kunde inte skapa en ny variabel; Variabelminnet fullt");
+            printf("\n");
             exit(-1);
         }
         str_variables_names[*str_global_var_index] = end_var;
@@ -405,7 +424,8 @@ void band(char** variables_names, double** variables_values, int* global_var_ind
                 double *new_vals = realloc((*variables_values), (VAR_AMOUNT+64)*sizeof(double));
 
                 if (!new_names || !new_vals){
-                    printf("fog:~$ ERR: realloc fail\n");
+                    print_red("ERR: realloc fail");
+                    printf("\n");
                     exit(1);
                 }
 
@@ -532,7 +552,6 @@ void naer(char* variables_names, double* variables_values, int* global_var_index
     if (operation == '<') second_value -= 1; // annars kör den en extra gång (lite mongo)
 
 
-
     if (compare(first_value, second_value, operation)){
         // kör loop
         int loop_exists = 0;
@@ -599,7 +618,8 @@ void grip(char* variables_names, double* variables_values, int* global_var_index
 
     if (create_new_var){
         if (*global_var_index > VAR_AMOUNT-1){
-            printf("fog:~$ ERR: Kunde inte skapa en ny variabel; Variabelminnet fullt\n");
+            print_red("ERR: Kunde inte skapa en ny variabel; Variabelminnet fullt");
+            printf("\n");
             exit(-1);
         }
         variables_names[*global_var_index] = end_var;
@@ -682,6 +702,10 @@ int main(int argc, char *argv[]){
     
 
     char *buff = read_file(argv[1]);
+    if (!buff) {
+        print_red("ERR: Kunde inte läsa fil\n");
+        return -1;
+    }
     int buff_len = strlen(buff);
     
 
@@ -694,8 +718,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    char instructions[instr_amount][128];
-
+    char (*instructions)[128] = malloc(instr_amount * sizeof(*instructions));
 
     // lägg alla instr i arrayen
     int instr_count = 0;
@@ -724,7 +747,8 @@ int main(int argc, char *argv[]){
     // krascha om man skriver för långa ahh rader
     for (int i = 0; i < instr_amount; i++){
         if (strlen(instructions[i]) > 128){
-            printf("fog:~$ ERR: För många tecken i rad %d\n", i);
+            print_red("ERR: För många tecken i rad ");
+            printf("%d\n", i);
             exit(-1);
         }
     }
@@ -745,9 +769,15 @@ int main(int argc, char *argv[]){
 
     char keywords[KEYWORD_COUNT][5] = {"foug", "boul", "band", "giv1", "naer", "grip", "tpos", "stop", "saxx", "call"};
 
-    char *variables_names = calloc(VAR_AMOUNT, sizeof(char));
-    double *variables_values = calloc(VAR_AMOUNT, sizeof(double));
+    char *variables_names = malloc(VAR_AMOUNT*sizeof(char));
+    double *variables_values = malloc(VAR_AMOUNT*sizeof(double));
     int global_var_index = 0;
+
+    if (!variables_names || !variables_values){
+        print_red("ERR: Kunde inte allokera ursprungligt variabelminne");
+        printf("\n");
+        exit(-1);
+    }
 
     // <wip strängar>
     char str_variables_names[VAR_AMOUNT];
@@ -770,7 +800,7 @@ int main(int argc, char *argv[]){
 
     int program_counter;
 
-    for (int i = instr_amount; i > 0; i--){
+    for (int i = instr_amount - 1; i >= 0; i--){
         if (instructions[i][0] == '{' && instructions[i][2] == '}'){
             program_counter = i+1;
             break;
@@ -868,6 +898,9 @@ int main(int argc, char *argv[]){
         }
     }
 
+    free(variables_names);
+    free(variables_values);
+    free(buff);
 
     if (time){
         end = clock();
