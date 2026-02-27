@@ -25,6 +25,8 @@ int function_origin_program_counter_stack[128];
 double function_return_stack[128];
 int function_stack_top = 0;
 
+
+
 void create_variable(char *name, double value)
 {   
     strncpy(variables_names[global_var_index], name, sizeof(variables_names[global_var_index]));
@@ -413,6 +415,8 @@ Program tokenize(char *file_name)
     return program;
 }
 
+void interpret_instruction(Token* current, Token(*instructions)[128], int instruction_amount);
+
 double call_function(char* name, int name_len, int origin_program_counter, Token(*instructions)[128], int instruction_amount);
 
 double evaluate_expression(Token *args_old, int args_amount, Token(*instructions)[128], int instruction_amount)
@@ -447,13 +451,9 @@ double evaluate_expression(Token *args_old, int args_amount, Token(*instructions
     // byt ut funktioner mot värden
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == VARIABLE && args[i].var.is_function){
-            int origin_program_counter = program_counter;
-            int call_stack_level = function_stack_top;
-            double value = call_function(args[i].var.name, args[i].var.name_len, origin_program_counter, instructions, instruction_amount);
-            value = function_return_stack[function_stack_top];
+            double value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
             args[i].type = NUMBER;
             args[i].value = value;
-            
         }
     }
 
@@ -667,7 +667,9 @@ void band(Token* instruction, Token(*instructions)[128], int instruction_amount)
 }
 
 void foug(Token* instruction){
+    //printf("FOUG KALLAD PÅ\n");
     if (instruction[1].type == STRING){
+        //printf("STRING I FOUG\n");
         for (int i = 0; i < instruction[1].var.name_len; i++){
             if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i+1] == 'n') {
                 printf("\n");
@@ -677,6 +679,7 @@ void foug(Token* instruction){
             printf("%c", instruction[1].var.name[i]);
         }
     } else if (instruction[1].type == VARIABLE){
+        //printf("VARIABLE I FOUG\n");
         double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len);
         if ((int)value == value)
             printf("%d", (int)value);
@@ -829,51 +832,106 @@ void naer(Token* instruction, Token(*instructions)[128], int instruction_amount)
     }
 }
 
-double call_function(char* name, int name_len, int origin_program_counter, Token(*instructions)[128], int instruction_amount)
-{
+
+double call_function(char* name, int name_len, int origin_program_counter, Token(*instructions)[128], int instruction_amount){
+    int func_index = -1;
     for (int i = 0; i < instruction_amount; i++){
-        if (instructions[i][0].type == FUNCTION) {
-
-            function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
-            function_stack_top++;
-
-            program_counter = i;
-
-            // Kör funktionen tills stacken minskar
-            while (function_stack_top > 0) {
-
-                Token* current = instructions[program_counter];
-
-                switch (current[0].type)
-                {
-                    case FOUG: foug(current); break;
-                    case BAND: band(current, instructions, instruction_amount); break;
-                    case RETURN:
-                    {
-                        double return_value = 0;
-
-                        if (current[1].type == NUMBER)
-                            return_value = current[1].value;
-                        else if (current[1].type == VARIABLE)
-                            return_value = get_var_value(current[1].var.name, current[1].var.name_len);
-
-                        function_return_stack[function_stack_top - 1] = return_value;
-
-                        program_counter = function_origin_program_counter_stack[function_stack_top - 1];
-
-                        function_stack_top--;
-
-                        return return_value;  // RETURNERA DIREKT
-                    }
-                }
-
-                program_counter++;
+        if (instructions[i][0].type == FUNCTION){
+            size_t size = (instructions[i][1].var.name_len >= name_len) ? instructions[i][1].var.name_len : name_len;
+            if (!strncmp(instructions[i][1].var.name, name, size)){
+                func_index = i;
+                break;
             }
         }
     }
+    if (func_index == -1){
+        printf("ERR: Ofärdig funktion\n");
+        exit(-1);
+    }
 
-    printf("ERR: Funktion hittades inte\n");
-    exit(-1);
+    int call_stack_level = function_stack_top;
+    function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
+    function_return_stack[function_stack_top] = 0;
+    function_stack_top++;
+
+    program_counter = func_index + 1; // börja precis efter "func"
+
+    
+    while (function_stack_top > call_stack_level) {
+        if (program_counter >= instruction_amount) {
+            printf("ERR: Funktion nådde filslut utan return\n");
+            exit(-1);
+        }
+        Token* current = instructions[program_counter];
+        interpret_instruction(current, instructions, instruction_amount);
+        program_counter++;
+    }
+    program_counter--; // program_counter inkrementeras 2 ggr annars
+
+    double ret = function_return_stack[call_stack_level];
+    return ret;
+}
+
+// spara längden av funktionen (antal rader)
+// interpreta den mängden instruktioner
+// hoppa tillbaka till origin
+
+void interpret_instruction(Token* current, Token(*instructions)[128], int instruction_amount)
+{
+    switch (current[0].type)
+    {
+        case FOUG:
+            foug(current);
+            break;
+
+        case BAND:
+            band(current, instructions, instruction_amount);
+            break;
+
+        case GIVET:
+            givet(current, (Program){instructions, instruction_amount});
+            break;
+
+        case NAER:
+            naer(current, instructions, instruction_amount);
+            break;
+
+        case LOOP_MARKER:
+            for (int i = 0; i < loop_stack_top_id; i++) {
+                if (loop_id_stack[i] == current[0].loop_id) {
+                    program_counter = loop_program_counter_stack[i]-1;
+                    break;
+                }
+            }
+            break;
+
+        case RETURN:
+        {
+            double return_value = 0;
+
+            if (current[1].type == NUMBER)
+                return_value = current[1].value;
+            else if (current[1].type == VARIABLE)
+                return_value = get_var_value(current[1].var.name, current[1].var.name_len);
+            
+                //printf("RETURN: %lf\n", return_value);
+
+            function_return_stack[function_stack_top - 1] = return_value;
+
+            program_counter = function_origin_program_counter_stack[function_stack_top - 1];
+
+            function_stack_top--;
+
+            break;
+        }
+
+        case FUNCTION:
+            // gör inget när man bara passerar definitionen
+            break;
+
+        case MAIN:
+            break;
+    }
 }
 
 int main(int argc, char** argv)
@@ -902,60 +960,11 @@ int main(int argc, char** argv)
 
     while (program_counter < instruction_amount)
     {
-        //printf("PROGRAM_COUNTER: %d\n", program_counter);
         Token* current = instructions[program_counter];
 
-        switch (current[0].type)
-        {
-            case FOUG:
-                foug(current);
-                break;
+        interpret_instruction(current, instructions, instruction_amount);
 
-            case BAND:
-                band(current, instructions, instruction_amount);
-                break;
-
-            case GIVET:
-                givet(current, program);
-                break;
-
-            case NAER:
-                naer(current, instructions, instruction_amount);
-                break;
-            
-            case LOOP_MARKER:
-                // kolla om loop finns i stacken
-                for (int i = 0; i < loop_stack_top_id; i++) {
-                    if (loop_id_stack[i] == current[0].loop_id) {
-                        // hoppa tillbaka till start av loopen
-                        program_counter = loop_program_counter_stack[i]-1;
-                        break;
-                    }
-                }
-                break;
-            case RETURN:
-            {
-                double return_value = 0;
-
-                if (current[1].type == NUMBER)
-                    return_value = current[1].value;
-                else if (current[1].type == VARIABLE)
-                    return_value = get_var_value(current[1].var.name, current[1].var.name_len);
-                printf("RETURN_VALUE: %lf\n", return_value);
-                // spara returnvärdet på stack
-                function_return_stack[function_stack_top - 1] = return_value;
-
-                // hoppa till origin
-                program_counter = function_origin_program_counter_stack[function_stack_top - 1];
-
-                function_stack_top--;  // pop
-
-                break;
-            }
-        }
-    if (program_counter >= program.instruction_amount)
-        return -1;
         program_counter++;
-    }
+    }    
     return 0;
 }
