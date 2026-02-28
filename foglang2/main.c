@@ -129,20 +129,20 @@ enum tok_type     // (num+(num*num)\0
     SVETS         // 27
 };
 
-typedef struct
+typedef struct // 12 bytes?
 {
+    char *name;
     int is_variable;
     int is_function;
-    char *name;
     int name_len;
 
 } Variable;
 
 typedef struct
 {
+    char loop_id;
     double value;
     int type;
-    char loop_id;
     Variable var;
 } Token;
 
@@ -483,10 +483,12 @@ Program tokenize(char *file_name)
                 int start = i;
                 while (i < buff_len && ((buff[i] >= 'a' && buff[i] <= 'z') || (buff[i] >= 'A' && buff[i] <= 'Z') || (buff[i] >= '0' && buff[i] <= '9') || buff[i] == '_'))
                     i++;
-                Variable variable_info = {1, 0, &buff[start], i - start};
+                Variable variable_info = {&buff[start], 1, 0, i-start};
                 tok.var = variable_info;
             }
         }
+
+
 
         if (tok.type != TERMINATOR)
         {
@@ -1080,9 +1082,6 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
     return ret;
 }
 
-// spara längden av funktionen (antal rader)
-// interpreta den mängden instruktioner
-// hoppa tillbaka till origin
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount)
 {
@@ -1135,11 +1134,9 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
     }
 
-    case FUNCTION:
-        // gör inget när man bara passerar definitionen
-        break;
-
-    case MAIN:
+    case VARIABLE: // anta att det är en funktion
+        if (current[0].var.is_function)
+        call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
         break;
     }
 }
