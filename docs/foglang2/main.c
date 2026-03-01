@@ -807,6 +807,15 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     }
 }
 
+void debug_print_var(char* name, int len){
+    printf("§");
+    for (int i = 0; i < len; i++)
+    {
+        printf("%c", name[i]);
+    }
+    printf("§\n");
+}
+
 void foug(Token *instruction)
 {
     // printf("FOUG KALLAD PÅ\n");
@@ -841,31 +850,36 @@ void foug(Token *instruction)
             exit(-1);
         }
     } else { // svets-string
-
-            for (int i = 0; i < instruction[2].var.name_len; i++)
+        for (int i = 0; i < instruction[2].var.name_len; i++){
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
             {
-                if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n')
-                {
-                    printf("\n");
-                    i += 2;
+                printf("\n");
+                i += 2;
+            }
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            {
+                printf("%%");
+                i += 2;
+            }
+
+            if (instruction[2].var.name[i] == '%'){
+                // kolla längden på den
+                int len = 0;
+                for (int j = i+1; j < instruction[2].var.name_len; j++){
+                    if (instruction[2].var.name[j] == '%') break;
+                    len++;
                 }
-                if (instruction[2].var.name[i] == '%'){
-                    int len;
-                    int j = i+1;
-                    while (instruction[2].var.name[j] != '%' && j < instruction[2].var.name_len) j++;
-                    len = j-i-1;
-
-                    char* var = &(instruction[2].var.name[i])+1;
-
-                    double value = get_var_value(var, len);
-                    if ((int)value == value) printf("%d", (int)value);
-                    else printf("%lf", value);
-                    i += len+2;
-                }
-
+                double value = get_var_value(instruction[2].var.name+i+1, len);
+                if ((int)value == value)
+                    printf("%d", (int)value);
+                else 
+                    printf("%lf", value);
+                i+=len+1;
+            } else {
                 if (i < instruction[2].var.name_len)
                     printf("%c", instruction[2].var.name[i]);
             }
+        }
         
     }
 }
