@@ -6,27 +6,39 @@
 
 // konstanter och globala variabler
 
-// program counter
-int program_counter = -1;
+    // program counter
+    int program_counter = -1;
 
-// foglangvariabler
-char variables_names[128][128];
-int global_var_index = 0;
-double variables_values[128];
+    // foglangvariabler
+    char (*variables_names)[128];
+    double* variables_values;
+    int global_var_index = 0;
+    int variables_capacity = 4;
 
-// loop stack
-char loop_id_stack[128]; // hard-coded till 128 pga antalet utf-8-chars som är en byte är 128 st
-int loop_program_counter_stack[128];
-int loop_stack_top_id = 0;
+    // loop stack
+    char* loop_id_stack;
+    int* loop_program_counter_stack;
+    int loop_stack_top_id = 0;
+    int loop_stack_capacity = 128;
 
-// function stack
-char function_id_stack[128]; // hard-coded till 128 pga antalet utf-8-chars som är en byte är 128 st
-int function_origin_program_counter_stack[128];
-double function_return_stack[128];
-int function_stack_top = 0;
+    // function stack
+    int* function_origin_program_counter_stack;
+    double* function_return_stack;
+    int function_stack_top = 0;
+    int function_stack_capacity = 128;
+
 
 void create_variable(char *name, double value)
 {
+    if (program_counter >= variables_capacity) {
+        variables_values = realloc(variables_values, variables_capacity+64);
+        variables_names = realloc(variables_names, (128+64)*sizeof*variables_names);
+        variables_capacity += 64;
+        if (variables_values == NULL || variables_names == NULL){
+            printf("ERR: Minnesallokering misslyckades\n");
+            exit(1);
+        }
+    }
     strncpy(variables_names[global_var_index], name, sizeof(variables_names[global_var_index]));
     variables_values[global_var_index] = value;
     global_var_index++;
@@ -840,7 +852,7 @@ void foug(Token *instruction)
                 if (instruction[2].var.name[i] == '%'){
                     int len;
                     int j = i+1;
-                    while (instruction[2].var.name[j] != '%') j++;
+                    while (instruction[2].var.name[j] != '%' && j < instruction[2].var.name_len) j++;
                     len = j-i-1;
 
                     char* var = &(instruction[2].var.name[i])+1;
@@ -1031,6 +1043,15 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
                 loop_already_exists = 1;
         if (!loop_already_exists)
         {
+            if (loop_stack_top_id >= loop_stack_capacity){
+                loop_id_stack = realloc(loop_id_stack, loop_stack_capacity+64);
+                loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity+64);
+                loop_stack_capacity += 64;
+                if (loop_id_stack == NULL || loop_program_counter_stack == NULL){
+                    printf("ERR: Minnesallokering misslyckades\n");
+                    exit(1);
+                }
+            }
             loop_id_stack[loop_stack_top_id] = loop_id;
             loop_program_counter_stack[loop_stack_top_id++] = program_counter;
         }
@@ -1059,6 +1080,15 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
     }
 
     int call_stack_level = function_stack_top;
+    if (function_stack_top >= function_stack_capacity){
+        function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, function_stack_capacity+64);
+        function_return_stack = realloc(function_return_stack, function_stack_capacity+64);
+        function_stack_capacity += 64;
+        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL){
+            printf("ERR: Minnesallokering misslyckades\n");
+            exit(1);
+        }
+    }
     function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
     function_return_stack[function_stack_top] = 0;
     function_stack_top++;
@@ -1143,12 +1173,33 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
 int main(int argc, char **argv)
 {
-
     if (argc < 2)
     {
         printf("fog:~$ För få argument!\n");
         printf("fog:~$ SYNTAX: <./fog fil.fg>\n");
         return -1;
+    }
+
+    // skapa konstantarrays
+        // variabler
+    variables_values = malloc(128*sizeof(double));
+    variables_names = malloc(128*sizeof(*variables_names));
+        // loopstack
+    loop_id_stack = malloc(128*sizeof(char));
+    loop_program_counter_stack = malloc(128*sizeof(int));
+        // function stack
+    function_origin_program_counter_stack = malloc(128*sizeof(int));
+    function_return_stack = malloc(128*sizeof(double));
+
+
+    if (variables_values == NULL || 
+        variables_names == NULL || 
+        loop_id_stack == NULL || 
+        loop_program_counter_stack == NULL || 
+        function_origin_program_counter_stack == NULL || 
+        function_return_stack == NULL){
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
     }
 
     Program program = tokenize(argv[1]);
