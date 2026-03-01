@@ -1,2 +1,3 @@
 # Foglang
-Överlag ganska fogligt.
+Överlag ganska fogligt,
+men inte lika fogligt som fogen själv.
