@@ -1,0 +1,14 @@
+fg
+;
+boul a 1;
+boul b 1;
+boul c 100;
+boul i 0;
+
+naer *i < *c (1);
+    band *a + *b s;
+    band *b + 0 a;
+    band *s + 0 b;
+    foug *a;
+    band *i + 1 i;
+(1);

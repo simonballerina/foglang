@@ -1,0 +1,6 @@
+main;
+
+band a = 14;
+band b = 12;
+
+foug svets "värdena är %a%%b%\n";

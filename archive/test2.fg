@@ -1,0 +1,58 @@
+;
+boul a "Cantaloupe";
+boul b "Tamarind";
+boul c "Nektarin";
+boul d "Ackee";
+boul e "Breadfruit";
+boul f "Medlar";
+boul g "Tung Sahur";
+boul h "Honungsmelon";
+boul i "Melon";
+boul j "Giraff";
+
+boul x 0;
+
+naer *x < 10 (0);
+
+    giv1 *x = 0 (a);
+        foug Du gillar *a!;
+    (a);
+
+    giv1 *x = 0 (b);
+        foug Du gillar *b!;
+    (b);
+
+    giv1 *x = 0 (c);
+        foug Du gillar *c!;
+    (c);
+
+    giv1 *x = 0 (d);
+        foug Du gillar *d!;
+    (d);
+
+    giv1 *x = 0 (e);
+        foug Du gillar *e!;
+    (e);
+
+    giv1 *x = 0 (f);
+        foug Du gillar *f!;
+    (f);
+
+    giv1 *x = 0 (g);
+        foug Du gillar *g!;
+    (g);
+
+    giv1 *x = 0 (h);
+        foug Du gillar *h!;
+    (h);
+
+    giv1 *x = 0 (i);
+        foug Du gillar *i!;
+    (i);
+    
+    giv1 *x = 0 (j);
+        foug Du gillar *j!;
+    (j);
+
+    band *x + 1 x;
+(0);

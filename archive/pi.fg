@@ -1,0 +1,19 @@
+;
+boul p 0;
+boul i 1;
+
+naer *i < 100000 (1);
+    foug *p;
+    band *i ^ 2 e;
+    band 1 / *e s;
+
+    band *p + *s p;
+
+    band *i + 1 i;
+(1);
+
+band *p x 6 p;
+
+band *p ^ 0.5 p;
+
+foug pi: *p;

@@ -1,0 +1,10 @@
+Test
+;
+
+band num i = 0;
+
+naer !i < 25 (1);
+    foug !i;
+    band num i = !i + 1;
+(1);
+
