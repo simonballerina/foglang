@@ -358,7 +358,7 @@ Program tokenize(char *file_name)
             tok.type = BAND;
             i += 4;
         }
-        else if (strncmp(&buff[i], "givet", 5) == 0)
+        else if (strncmp(&buff[i], "givet", 5) == 0 || strncmp(&buff[i], "giv1", 4) == 0)
         {
             tok.type = GIVET;
             i += 5;
