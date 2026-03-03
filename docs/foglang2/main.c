@@ -888,17 +888,23 @@ void foug(Token *instruction)
 
 void givet(Token *instruction, Program program){
     // hitta ptr till argumenten
+
+    //offset om "att" finns med
+    int att_offset = 0;
+    if (instruction[1].type == ATT) {
+        att_offset = 1;
+    }
     
-    int i = 2;
+    int i = 1+att_offset;
     Token* left_args = &instruction[i];
     while (instruction[i].type != EQUALS && instruction[i].type != GREATER_THAN && instruction[i].type != LESS_THAN && instruction[i].type != NOT_EQUAL_TO)
         i++;
     int operation = instruction[i].type;
-    int left_len = i-2;
+    int left_len = i-1-att_offset;
     i++;
     Token* right_args = &instruction[i];
     while (instruction[i].type != TERMINATOR) i++;
-    int right_len = i-left_len-4;
+    int right_len = i-left_len-3-att_offset;
  
 
     double left_value = evaluate_expression(left_args, left_len, program.data, program.instruction_amount);
