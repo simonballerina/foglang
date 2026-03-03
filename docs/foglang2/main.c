@@ -181,10 +181,12 @@ char *read_file(const char *filename)
 
 void print_tokens(Token instructions[][128], int instruction_amount)
 {
+    printf("Printing tokens...\n");
+    printf("Instruction amount: %d\n", instruction_amount);
     for (int i = 0; i < instruction_amount; i++)
     {
         printf("%d:     ", i);
-        for (int j = 0; instructions[i][j - 1].type != TERMINATOR; j++)
+        for (int j = 0; instructions[i][j].type != TERMINATOR; j++)
         {
             printf("%d  ", instructions[i][j].type);
         }
@@ -194,7 +196,7 @@ void print_tokens(Token instructions[][128], int instruction_amount)
     for (int i = 0; i < instruction_amount; i++)
     {
         printf("%d:     ", i);
-        for (int j = 0; instructions[i][j - 1].type != TERMINATOR; j++)
+        for (int j = 0; instructions[i][j].type != TERMINATOR; j++)
         {
             switch (instructions[i][j].type)
             {
@@ -884,38 +886,25 @@ void foug(Token *instruction)
     }
 }
 
-void givet(Token *instruction, Program program)
-{
-
-    // hitta argumenten
+void givet(Token *instruction, Program program){
+    // hitta ptr till argumenten
+    
     int i = 2;
+    Token* left_args = &instruction[i];
     while (instruction[i].type != EQUALS && instruction[i].type != GREATER_THAN && instruction[i].type != LESS_THAN && instruction[i].type != NOT_EQUAL_TO)
         i++;
     int operation = instruction[i].type;
+    int left_len = i-2;
+    i++;
+    Token* right_args = &instruction[i];
+    while (instruction[i].type != TERMINATOR) i++;
+    int right_len = i-left_len-4;
+ 
 
-    Token left_args[i - 2];
-    int left_args_length = i - 2;
-    int j = i + 1;
-    while (instruction[i].type != LOOP_MARKER)
-        i++;
+    double left_value = evaluate_expression(left_args, left_len, program.data, program.instruction_amount);
+    double right_value = evaluate_expression(right_args, right_len, program.data, program.instruction_amount);
 
-    Token right_args[i - j - 1];
-    int right_args_length = i - j - 1;
 
-    // kopiera argumenten
-    // vänster
-    for (int k = 2; k < left_args_length + 2; k++)
-    {
-        left_args[k - 2] = instruction[k];
-    }
-    // höger
-    for (int k = j; k < right_args_length + j; k++)
-    {
-        right_args[k - j] = instruction[k];
-    }
-
-    double left_value = evaluate_expression(left_args, left_args_length, program.data, program.instruction_amount);
-    double right_value = evaluate_expression(right_args, right_args_length + 1, program.data, program.instruction_amount);
     int do_statement = 0;
 
     switch (operation)
@@ -940,6 +929,7 @@ void givet(Token *instruction, Program program)
             do_statement = 1;
         break;
     }
+
     if (!do_statement)
     {
         int k = 0;
@@ -960,6 +950,8 @@ void givet(Token *instruction, Program program)
         }
     }
 }
+
+    
 
 void naer(Token *instruction, Token (*instructions)[128], int instruction_amount)
 {
