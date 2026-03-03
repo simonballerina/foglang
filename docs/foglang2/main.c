@@ -279,7 +279,7 @@ void print_tokens(Token instructions[][128], int instruction_amount)
                 printf("'\\0'    ");
                 break;
             case FUNCTION:
-                printf("'FUNC'    ");
+                printf("'BOUL'    ");
                 break;
             case RETURN:
                 printf("'RETURN'    ");
@@ -373,7 +373,7 @@ Program tokenize(char *file_name)
             tok.type = NAER;
             i += 4;
         }
-        else if (strncmp(&buff[i], "func", 4) == 0)
+        else if (strncmp(&buff[i], "boul", 4) == 0)
         {
             tok.type = FUNCTION;
             i += 4;
@@ -1099,7 +1099,7 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
     function_return_stack[function_stack_top] = 0;
     function_stack_top++;
 
-    program_counter = func_index + 1; // börja precis efter "func"
+    program_counter = func_index + 1; // börja precis efter "boul"
 
     while (function_stack_top > call_stack_level)
     {
