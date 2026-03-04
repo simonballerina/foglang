@@ -138,7 +138,8 @@ enum tok_type     // (num+(num*num)\0
     FUNCTION,     // 24
     RETURN,       // 25
     MAIN,         // 26
-    SVETS         // 27
+    SVETS,        // 27
+    TPOS          // 28
 };
 
 typedef struct // 12 bytes?
@@ -290,6 +291,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case SVETS:
                 printf("'SVETS'    ");
                 break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
             }
         }
         printf("\n");
@@ -376,6 +380,11 @@ Program tokenize(char *file_name)
         else if (strncmp(&buff[i], "boul", 4) == 0)
         {
             tok.type = FUNCTION;
+            i += 4;
+        }
+        else if (strncmp(&buff[i], "tpos", 4) == 0)
+        {
+            tok.type = TPOS;
             i += 4;
         }
         else if (strncmp(&buff[i], "return", 6) == 0)
@@ -1064,6 +1073,91 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     }
 }
 
+void tpos(Token *instruction)
+{
+    char call[128] = "";
+    if (instruction[1].type != SVETS)
+    {
+        if (instruction[1].type == STRING)
+        {
+            for (int i = 0; i < instruction[1].var.name_len; i++)
+            {
+                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
+                {
+                    i += 2;
+                }
+                if (i < instruction[1].var.name_len) {
+                    char buffer[128];
+                    sprintf(buffer, "%c", instruction[1].var.name[i]);
+                    strcat(call, buffer);
+                }  
+            }
+        }
+        else if (instruction[1].type == VARIABLE)
+        {
+            // printf("VARIABLE I TPOS\n");
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len);
+            if ((int)value == value){
+                char buffer[128];
+                sprintf(buffer, "%d", (int)value);
+                strcat(call, buffer);
+            } else {
+                char buffer[128];
+                sprintf(buffer, "%lf", value);
+                strcat(call, buffer);
+            }
+                
+        }
+        else
+        {
+            printf("ERR: Tpos: Syntax error\n");
+            exit(-1);
+        }
+    } else { // svets-string
+        for (int i = 0; i < instruction[2].var.name_len; i++){
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
+            {
+                strcat(call, "\n");
+                i += 2;
+            }
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            {
+                strcat(call, "%%");
+                i += 2;
+            }
+
+            if (instruction[2].var.name[i] == '%'){
+                // kolla längden på den
+                int len = 0;
+                for (int j = i+1; j < instruction[2].var.name_len; j++){
+                    if (instruction[2].var.name[j] == '%') break;
+                    len++;
+                }
+                double value = get_var_value(instruction[2].var.name+i+1, len);
+                if ((int)value == value) {
+                    char buffer[128];
+                    sprintf(buffer, "%d", (int)value);
+                    strcat(call, buffer);
+                } else {
+                    char buffer[128];
+                    sprintf(buffer, "%lf", value);
+                    strcat(call, buffer);
+                }
+                i+=len+1;    
+            } else if (i < instruction[2].var.name_len) {
+                char buffer[128];
+                sprintf(buffer, "%c", instruction[2].var.name[i]);
+                strcat(call, buffer);
+                
+            }
+        }
+        
+    }
+    //printf("found tp is <%s>\n", call);
+    system(call);
+    
+}
+
 double call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
     int func_index = -1;
@@ -1139,6 +1233,9 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         naer(current, instructions, instruction_amount);
         break;
 
+    case TPOS:
+        tpos(current);
+        break;
     case LOOP_MARKER:
         for (int i = 0; i < loop_stack_top_id; i++)
         {
