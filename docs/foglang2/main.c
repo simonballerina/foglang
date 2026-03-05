@@ -6,51 +6,51 @@
 
 // konstanter och globala variabler
 
-    // program counter
-    int program_counter = -1;
+// program counter
+int program_counter = -1;
 
-    
+// foglangvariabler
+enum var_type
+{
+    VAR_NONE,
+    VAR_NUMBER,
+    VAR_STRING,
+    VAR_LIST,
+    VAR_FUNCTION,
+    VAR_LIST_NUMBER,
+    VAR_LIST_STRING
+};
 
-    // foglangvariabler
-    enum var_type {
-        VAR_NONE,
-        VAR_NUMBER,
-        VAR_STRING,
-        VAR_LIST,
-        VAR_FUNCTION,
-        VAR_LIST_NUMBER,
-        VAR_LIST_STRING
-    };
+typedef struct
+{
+    int type;
+    char *name;
+    int name_len;
+    double value;
+    int mem_ptr; // adress i variables arr
+    int len;     // längden på listan / strängen
+    char *str_ptr;
+} Variable;
 
-    typedef struct {
-        int type;
-        char* name;
-        int name_len;
-        double value;
-        int mem_ptr;  // adress i variables arr
-        int len;  // längden på listan / strängen
-        char* str_ptr;
-    } Variable;
+Variable *variables;
+int var_index = 0;
 
-    Variable* variables;
-    int var_index = 0;
+char (*variables_names)[128];
+double *variables_values;
+int global_var_index = 0;
+int variables_capacity = 128;
 
-    char (*variables_names)[128];
-    double* variables_values;
-    int global_var_index = 0;
-    int variables_capacity = 128;
+// loop stack
+char *loop_id_stack;
+int *loop_program_counter_stack;
+int loop_stack_top_id = 0;
+int loop_stack_capacity = 128;
 
-    // loop stack
-    char* loop_id_stack;
-    int* loop_program_counter_stack;
-    int loop_stack_top_id = 0;
-    int loop_stack_capacity = 128;
-
-    // function stack
-    int* function_origin_program_counter_stack;
-    double* function_return_stack;
-    int function_stack_top = 0;
-    int function_stack_capacity = 128;
+// function stack
+int *function_origin_program_counter_stack;
+double *function_return_stack;
+int function_stack_top = 0;
+int function_stack_capacity = 128;
 
 typedef struct // 12 bytes?
 {
@@ -68,173 +68,298 @@ typedef struct
     Tok_Variable var;
 } Token;
 
-enum tok_type     
-{                 
-    NONE,         // 0
-    TERMINATOR,   // 1
-    FOUG,         // 2
-    BAND,         // 3
-    GIVET,        // 4
-    ATT,          // 5
-    NAER,         // 6
-    NUM,          // 7
-    STRING,       // 8
-    RIGHT_PAR,    // 9
-    LEFT_PAR,     // 10
-    VARIABLE,     // 11
-    EQUALS,       // 12
-    NUMBER,       // 13
-    LOOP_MARKER,  // 14
-    PLUS,         // 15
-    MINUS,        // 16
-    MULTIPLIED,   // 17
-    DIVIDED,      // 18
-    EXPONENT,     // 19
-    MODULO,       // 20
-    GREATER_THAN, // 21
-    LESS_THAN,    // 22
-    NOT_EQUAL_TO, // 23
-    FUNCTION,     // 24
-    RETURN,       // 25
-    MAIN,         // 26
-    SVETS,        // 27
-    LEFT_BRACKET, // 28
-    RIGHT_BRACKET,// 29
-    COMMA         // 30
+typedef struct
+{
+    char* string;
+    int len;
+} String;
+
+typedef struct 
+{
+    char* string;
+    int str_len;
+    double value;
+} Get_var_return;
+
+enum tok_type
+{
+    NONE,          // 0
+    TERMINATOR,    // 1
+    FOUG,          // 2
+    BAND,          // 3
+    GIVET,         // 4
+    ATT,           // 5
+    NAER,          // 6
+    NUM,           // 7
+    STRING,        // 8
+    RIGHT_PAR,     // 9
+    LEFT_PAR,      // 10
+    VARIABLE,      // 11
+    EQUALS,        // 12
+    NUMBER,        // 13
+    LOOP_MARKER,   // 14
+    PLUS,          // 15
+    MINUS,         // 16
+    MULTIPLIED,    // 17
+    DIVIDED,       // 18
+    EXPONENT,      // 19
+    MODULO,        // 20
+    GREATER_THAN,  // 21
+    LESS_THAN,     // 22
+    NOT_EQUAL_TO,  // 23
+    FUNCTION,      // 24
+    RETURN,        // 25
+    MAIN,          // 26
+    SVETS,         // 27
+    LEFT_BRACKET,  // 28
+    RIGHT_BRACKET, // 29
+    COMMA          // 30
 };
 
-void create_variable(int type, char* name, int name_len, double value, Token* values, char* string, int list_len){
-    size_t var_size;
-    int mem_ptr;
+Get_var_return get_var_value(char *name, int length, int type, double index){
+    Get_var_return value;
+    for (int i = 0; i < var_index; i++){
+        if (!strncmp(name, variables[i].name, fmax(length, variables[i].name_len))){ // hittat en variabel
+            if (type == VAR_LIST){
+                value.value = variables[variables[i].mem_ptr+(int)index].value;
+                value.string = 0;
+                value.str_len = 0;
+                return value;
+            } else if (type == VAR_NUMBER){
+                value.value = variables[i].value;
+                value.string = 0;
+                value.str_len = 0;
+                return value;
+            } else if (type == VAR_STRING){
+                
+                value.value = 0;
+                value.string = variables[i].str_ptr;
+                value.str_len = variables[i].len;
+                //printf("returnerar strämg, struct: str_ptr: %x, str_len: %d, value: %lf\n", value.string, value.str_len, value.value);
+                return value;
+            }
+        }
+
+    }
+    printf("ERR: Kunde inte framställa ett variabelvärde\n");
+    exit(-1);
+}
+
+void create_list_var(char *name, int name_len, Token *values)
+{
+    // räkna ut hur många element den ska ha i listan
+    int len = 0;
+
+
+    for (int i = 0; values[i].type != TERMINATOR; i++){
+        if (values[i].type == COMMA) len++;;
+    }
+    len++;
+    
+    printf("VAR_LIST INFO: NAME: %c NAME_LEN: %d LIST_LEN: %d\n", name[0], name_len, len);
+
+    size_t var_size = 1 + len;   // grundvariabeln + strängen/listan
+    int mem_ptr = var_index + 1; // strängen/listan kommer efter grundvariabeln
+
+    Variable var = { // init var
+        .len = len,
+        .mem_ptr = mem_ptr,
+        .name = name,
+        .name_len = name_len,
+        .type = VAR_LIST,
+        .value = 0,
+        .str_ptr = 0
+    };
+
+    if (var_index >= variables_capacity)
+    { // kolla att strl är ok
+        variables = realloc(variables, variables_capacity + var_size + 64);
+        variables_capacity += var_size + 64;
+        if (variables == NULL)
+        {
+            printf("ERR: Minnesallokering misslyckades\n");
+            exit(1);
+        }
+    }
+    variables[var_index++] = var;
+
+
+    // lägg till lista
+    for (int i = 0; i < len+1; i++)
+    {
+        if (values[i].type == COMMA || values[i].type == RIGHT_BRACKET)
+            continue;
+
+        Variable list_var = {
+            .name = 0,
+            .name_len = 0,
+            .type = VAR_NONE,
+            .value = 0,
+            .len = 0,
+            .mem_ptr = 0,
+            .str_ptr = 0
+        };
+
+        if (values[i].type == NUMBER)
+        {
+            list_var.value = values[i].value;
+            list_var.type = VAR_LIST_NUMBER;
+            variables[var_index++] = list_var;
+        }
+        else if (values[i].type == STRING)
+        {
+            list_var.len = values[i].var.name_len;
+            char *list_str_ptr = malloc(values[i].var.name_len * sizeof(char));
+            if (list_str_ptr == NULL)
+            {
+                printf("ERR: Minnesallokering misslyckades\n");
+                exit(1);
+            }
+            list_var.str_ptr = list_str_ptr;
+            memcpy(list_str_ptr, values[i].var.name, values[i].var.name_len * sizeof(char));
+            list_var.type = VAR_LIST_STRING;
+            variables[var_index++] = list_var;
+        } else if (values[i].type == VARIABLE){
+
+            printf("hittade en variabel i listan, ");
+            int var_type = VAR_NONE;
+            Get_var_return test_var = get_var_value(values[i].var.name, values[i].var.name_len, VAR_STRING, 0);
+            if (!test_var.string) var_type = VAR_NUMBER;
+            else var_type = VAR_STRING;
+
+
+            if (var_type == VAR_STRING) {
+                printf("det var en sträng\n");
+                Get_var_return var = get_var_value(values[i].var.name, values[i].var.name_len, VAR_STRING, 0);
+                list_var.type = VAR_LIST_STRING;
+                list_var.str_ptr = values[i].var.name;
+                list_var.len = values[i].var.name_len;
+                variables[var_index++] = list_var;
+            }
+            else if (var_type == VAR_NUMBER) {
+                printf("det var ett nummer\n");
+                Get_var_return var = get_var_value(values[i].var.name, values[i].var.name_len, VAR_NUMBER, 0);
+                list_var.type = VAR_LIST_NUMBER;
+                list_var.value = var.value;
+                variables[var_index++] = list_var;
+            }
+            
+
+            
+            
+
+        } else {
+            printf("ERR: Okänd datatyp i lista\n");
+            exit(-1);
+        }
+    }
+}
+
+void create_num_var(char *name, int name_len, double value)
+{
+    Variable var = {// init var
+                    .len = 0,
+                    .mem_ptr = 0,
+                    .name = name,
+                    .name_len = name_len,
+                    .type = VAR_NUMBER,
+                    .value = value,
+                    .str_ptr = 0};
+
+    if (var_index >= variables_capacity)
+    { // kolla att strl är ok
+        variables = realloc(variables, variables_capacity + 1 + 64);
+        variables_capacity += 1 + 64;
+        if (variables == NULL)
+        {
+            printf("ERR: Minnesallokering misslyckades\n");
+            exit(1);
+        }
+    }
+    variables[var_index++] = var;
+}
+
+void create_str_var(char *name, int name_len, int len, char *string)
+{
+
+    // reservera minne till strängen
+
+    Variable var = {
+        // init var
+        .len = len,
+        .mem_ptr = 0,
+        .name = name,
+        .name_len = name_len,
+        .type = VAR_STRING,
+        .value = 0,
+    };
+
+    char *string_ptr = malloc(len * sizeof(char));
+    if (string_ptr == NULL)
+    {
+        printf("string_ptr == NULL\n");
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
+    }
+    printf("str_ptr: 0x%x\n", string_ptr);
+
+    // spara inputsträngen i nyreserverade området
+    memcpy(string_ptr, string, len * sizeof(char));
+
+    var.str_ptr = string_ptr;
+    var.type = VAR_STRING;
+    if (var_index >= variables_capacity)
+    { // kolla att strl är ok
+        variables = realloc(variables, variables_capacity + 1 + 64);
+        variables_capacity += 1 + 64;
+        if (variables == NULL)
+        {
+            printf("ERR: Minnesallokering misslyckades\n");
+            exit(1);
+        }
+    }
+    variables[var_index++] = var;
+}
+
+void create_variable(int type, char *name, int name_len, double value, Token *values, char *string, int list_len)
+{
 
     printf("\nSkapar variabel: \nType: %d\nName: %c\nName_len: %d\nValue: %lf\nLen: %d\nString: '", type, name[0], name_len, value, list_len);
-    for (int i = 0; i < list_len; i++){
+    for (int i = 0; i < list_len; i++)
+    {
         printf("%c", string[i]);
     }
     printf("'\n\n");
 
-    Variable var = {
-        .name = name,
-        .name_len = name_len,
-        .value = 0,
-        .type = VAR_NONE,
-        .len = list_len,
-        .mem_ptr = 0,
-        .str_ptr = 0
-    };
-    if (type == VAR_NUMBER){
-        var_size = 1;
-
-        var.type = VAR_NUMBER;
-        var.value = value;
-
-        if (var_index >= variables_capacity){ // kolla att strl är ok
-            variables = realloc(variables, variables_capacity+var_size+64);
-            variables_capacity+=var_size+64;
-            if (variables == NULL){
-                printf("ERR: Minnesallokering misslyckades\n");
-                exit(1);
-            }
-        }
-        variables[var_index++] = var;
-
-    } else if (type == VAR_LIST) {
+    if (type == VAR_NUMBER)
+    {
+        create_num_var(name, name_len, value);
+    }
+    else if (type == VAR_LIST)
+    {
         printf("VAR_LIST\n");
-        var_size = 1+list_len; // grundvariabeln + strängen/listan
-        mem_ptr = var_index+1; // strängen/listan kommer efter grundvariabeln
-        var.mem_ptr = mem_ptr;
-        var.len = list_len;
-        if (type == VAR_STRING)
-            var.type = VAR_STRING;
-        else 
-            var.type = VAR_LIST;
-
-        if (var_index >= variables_capacity){ // kolla att strl är ok
-            variables = realloc(variables, variables_capacity+var_size+64);
-            variables_capacity+=var_size+64;
-            if (variables == NULL){
-                printf("ERR: Minnesallokering misslyckades\n");
-                exit(1);
-            }
-        }
-        variables[var_index++] = var;
-        // lägg till sträng/lista 
-        for (int i = 0; i < list_len; i++){
-            if (values[i].type == COMMA || values[i].type == RIGHT_BRACKET) continue;
-            
-            Variable list_var = {
-                .name = 0,
-                .name_len = 0,
-                .type = VAR_NONE,
-                .value = 0,
-                .len = 0,
-                .mem_ptr = 0,
-                .str_ptr = 0
-            };
-
-            if (values[i].type == NUMBER) {
-
-                list_var.value = values[i].value;
-                list_var.type = VAR_LIST_NUMBER;
-                variables[var_index++] = list_var;
-
-            } else if (values[i].type == STRING){
-
-                list_var.len = values[i].var.name_len;
-                char* list_str_ptr = malloc(values[i].var.name_len*sizeof(char));
-                if (list_str_ptr == NULL){
-                    printf("ERR: Minnesallokering misslyckades\n");
-                    exit(1);
-                }
-                list_var.str_ptr = list_str_ptr;
-                memcpy(list_str_ptr, values[i].var.name, values[i].var.name_len*sizeof(char));
-                list_var.type = VAR_LIST_STRING;
-                variables[var_index++] = list_var;
-            }
-
-        } 
-   
-    
-    } else if (type == VAR_STRING){
-        // reservera minne till strängen
-        char* string_ptr = malloc(list_len*sizeof(char)); 
-        if (string_ptr == NULL){
-            printf("string_ptr == NULL\n");
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
-        }
-        printf("str_ptr: 0x%x\n", string_ptr);
-
-        // spara inputsträngen i nyreserverade området
-        memcpy(string_ptr, string, list_len*sizeof(char));
-
-        var.str_ptr = string_ptr;
-        var.type = type;
-        if (var_index >= variables_capacity){ // kolla att strl är ok
-            variables = realloc(variables, variables_capacity+var_size+64);
-            variables_capacity+=var_size+64;
-            if (variables == NULL){
-                printf("ERR: Minnesallokering misslyckades\n");
-                exit(1);
-            }
-        }
-        variables[var_index++] = var;
-
-    } else {
+        create_list_var(name, name_len, values);
+    }
+    else if (type == VAR_STRING)
+    {
+        create_str_var(name, name_len, list_len, string);
+    }
+    else
+    {
         printf("ERR: Felaktig variabeltyp\n");
         exit(-1);
     }
-
-
 }
 
 void create_variable_old(char *name, double value)
 {
-    if (global_var_index >= variables_capacity) {
-        variables_values = realloc(variables_values, variables_capacity+64);
-        variables_names = realloc(variables_names, (128+64)*sizeof*variables_names);
+    if (global_var_index >= variables_capacity)
+    {
+        variables_values = realloc(variables_values, variables_capacity + 64);
+        variables_names = realloc(variables_names, (128 + 64) * sizeof *variables_names);
         variables_capacity += 64;
-        if (variables_values == NULL || variables_names == NULL){
+        if (variables_values == NULL || variables_names == NULL)
+        {
             printf("ERR: Minnesallokering misslyckades\n");
             exit(1);
         }
@@ -244,7 +369,7 @@ void create_variable_old(char *name, double value)
     global_var_index++;
 }
 
-double get_var_value(char *name, int length)
+double get_var_value_old(char *name, int length, int type, double index)
 {
 
     int found = 0;
@@ -456,17 +581,25 @@ void print_tokens(Token instructions[][128], int instruction_amount)
     printf("\n");
 }
 
-void print_variables(){
-    for (int i = 0; i < var_index; i++){
+void print_variables()
+{
+    for (int i = 0; i < var_index; i++)
+    {
         printf("%i: Type: %d    Name: ", i, variables[i].type);
         // printa namn
-        for (int j = 0; j < variables[i].name_len; j++){
-            printf("%c", variables[i].name[j]);
+        if (variables[i].name != NULL)
+        {
+            for (int j = 0; j < variables[i].name_len; j++)
+            {
+                printf("%c", variables[i].name[j]);
+            }
         }
-        printf("    Value: %lf    List_size: %d    List_begin: %d   String: '", variables[i].value, variables[i].len, variables[i].mem_ptr);
+        printf("    Value: %lf    List/String_len: %d    List_begin: %d   String: '", variables[i].value, variables[i].len, variables[i].mem_ptr);
 
-        if (variables[i].str_ptr != 0){
-            for (int j = 0; j < variables[i].len; j++){
+        if (variables[i].str_ptr != 0)
+        {
+            for (int j = 0; j < variables[i].len; j++)
+            {
                 printf("%c", variables[i].str_ptr[j]);
             }
         }
@@ -520,7 +653,7 @@ Program tokenize(char *file_name)
         Token tok;
         tok.type = 0;
 
-        // ord-tokens 
+        // ord-tokens
         if (strncmp(&buff[i], "foug", 4) == 0)
         {
             tok.type = FOUG;
@@ -690,12 +823,10 @@ Program tokenize(char *file_name)
                 int start = i;
                 while (i < buff_len && ((buff[i] >= 'a' && buff[i] <= 'z') || (buff[i] >= 'A' && buff[i] <= 'Z') || (buff[i] >= '0' && buff[i] <= '9') || buff[i] == '_'))
                     i++;
-                Tok_Variable variable_info = {&buff[start], VAR_NONE, i-start};
+                Tok_Variable variable_info = {&buff[start], VAR_NONE, i - start};
                 tok.var = variable_info;
             }
         }
-
-
 
         if (tok.type != TERMINATOR)
         {
@@ -744,7 +875,6 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
 
 double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount)
 {
-
     /*for (int i = 0; i < args_amount; i++)
     {
         printf("TYPE: %d,    ", args[i].type, args[i].value);
@@ -762,12 +892,41 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
 
+    // ta bort list[index]
+    for (int i = 0; i < args_amount; i++)
+    {
+        if (args[i].type == VARIABLE && (i + 1) < args_amount && args[i + 1].type == LEFT_BRACKET)
+        {
+            // hitta motsvarande RIGHT_BRACKET
+            int start = i + 2; // första token i indexuttrycket
+            int stop = start;
+            while (stop < args_amount && args[stop].type != RIGHT_BRACKET)
+                stop++;
+            if (stop >= args_amount)
+            {
+                printf("ERR: Slutklammer hittades inte i indexering\n");
+                exit(-1);
+            }
+
+            int index_args_amount = stop - start;
+
+            int index = evaluate_expression(&args[start], index_args_amount, instructions, instruction_amount);
+            double val = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index).value;
+            args[i].type = NUMBER;
+            args[i].value = val;
+
+            // städa upp tokenerna inom hakparentesen inklusive parenteserna
+            for (int k = i + 1; k <= stop; k++)
+                args[k].type = NONE;
+        }
+    }
+
     // ta bort variablerna
     for (int i = 0; i < args_amount; i++)
     {
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION)
         {
-            double val = get_var_value(args[i].var.name, args[i].var.name_len);
+            double val = get_var_value(args[i].var.name, args[i].var.name_len, VAR_NUMBER, 0).value;
             args[i].value = val;
             args[i].type = NUMBER;
         }
@@ -783,6 +942,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
             args[i].value = value;
         }
     }
+
 
     while (1)
     {
@@ -925,7 +1085,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
                     }
                 }
 
-                // printf("FIRST: %lf, SECOND: %lf\n", first_arg, second_arg);
+                //printf("FIRST: %lf, SECOND: %lf\n", first_arg, second_arg);
                 if (args[i].type == PLUS)
                     args[i].value = first_arg + second_arg;
                 else
@@ -934,6 +1094,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
                 break;
             }
         }
+
 
         /*for (int i = 0; i < args_amount; i++)
         {
@@ -950,72 +1111,155 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
     }
 }
 
-void band2(Token *instruction, Token (*instructions)[128], int instruction_amount){
+String evaluate_str_expression(Token *args_old, int args_amount){
+    // konkatenera strängar. free:a gamla strängar!
+    Token args[args_amount];
+    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+
+    // räkna ut den totala längden som krävs
+    int final_len = 0;
+
+    for (int i = 0; i < args_amount; i++){
+        if (args[i].type == STRING){
+            final_len += args[i].var.name_len;
+        }
+        if (args[i].type == VARIABLE){
+            int var_len = get_var_value(args[i].var.name, args[i].var.name_len, VAR_STRING, 0).str_len;
+            //printf("VAR_LEN: %d\n", var_len);
+            final_len += var_len;
+        }
+    }
+
+
+    char* result_str = malloc(final_len*sizeof(char));
+    int copied_chars = 0;
+
+    // konkatenera samtliga strängar
+    for (int i = 0; i < final_len; i++){
+        if (args[i].type == STRING){
+            memcpy(result_str+copied_chars, args[i].var.name, args[i].var.name_len*sizeof(char));
+            copied_chars += args[i].var.name_len;
+        } else if (args[i].type == VARIABLE) {
+            Get_var_return var_ret = get_var_value(args[i].var.name, args[i].var.name_len, VAR_STRING, 0);
+            memcpy(result_str+copied_chars, var_ret.string, var_ret.str_len*sizeof(char));
+            copied_chars += var_ret.str_len;
+        }
+    }
+
+
+    String ret = {
+        .len = copied_chars,
+        .string = result_str
+    };
+
+    return ret;
+}
+
+void band2(Token *instruction, Token (*instructions)[128], int instruction_amount)
+{
     Token end_var = instruction[1];
     // ta reda på vilken typ av variabler som används
 
     int type = VAR_NUMBER;
 
     // kolla om det är en sträng
-    for (int i = 0; instruction[i].type != TERMINATOR; i++){ // leta hårdkodade strängar
-        if (instruction[i].type == STRING){
+    for (int i = 0; instruction[i].type != TERMINATOR; i++)
+    { // leta hårdkodade strängar
+        if (instruction[i].type == STRING)
+        {
             type = VAR_STRING;
         }
     }
-    if (instruction[3].type == LEFT_BRACKET){
+    if (instruction[3].type == LEFT_BRACKET)
+    {
         type = VAR_LIST;
     }
-    if (type != VAR_STRING){ // hitta om variablerna är strängar
+    if (type != VAR_STRING)
+    {                                                           // hitta om variablerna är strängar
         for (int i = 3; instruction[i].type != TERMINATOR; i++) // kolla efter varje variabel
         {
-            if (instruction[i].type == VARIABLE){ // kolla om det är en sträng
-                for (int j = 0; j < var_index; j++){
-                    if (!strncmp(instruction[i].var.name, variables[j].name, fmax(instruction[i].var.name_len, variables[j].name_len))){
+            if (instruction[i].type == VARIABLE && instruction[i].var.type == VAR_STRING)
+            { // kolla om det är en sträng
+                for (int j = 0; j < var_index; j++)
+                {
+                    if (variables[j].name != NULL && !strncmp(instruction[i].var.name, 
+                                                                variables[j].name, 
+                                                                fmax(instruction[i].var.name_len, 
+                                                                variables[j].name_len)))
+                    {
                         type = VAR_STRING;
                         break;
                     }
                 }
             }
-            if (type == VAR_STRING) break;
+            if (type == VAR_STRING)
+                break;
         }
     }
+
+    printf("BAND_TYPE: %d\n", type);
+
 
     // kolla om slutvariabeln finns sparad
     int create_new = 1;
-    for (int i = 0; i < var_index; i++){
-        if (!strncmp(end_var.var.name, variables[i].name, fmax(end_var.var.name_len, variables[i].name_len))){
+    for (int i = 0; i < var_index; i++)
+    {
+        // skippa list elements som inte har namn
+        if (variables[i].name == NULL)
+            continue;
+        if (!strncmp(end_var.var.name, variables[i].name, fmax(end_var.var.name_len, variables[i].name_len)))
+        {
             create_new = 0;
         }
     }
-
-    double value;
+    
+    double value = 0;
+    String string_pack;
+    char* string = 0;
+    int str_len = 0;
     // räkna hur många args
     int args_count = 3;
-    while (instruction[args_count].type != TERMINATOR) 
+    while (instruction[args_count].type != TERMINATOR)
         args_count++;
-    
-    args_count-=3;
-    if (type == VAR_NUMBER){
-        value = evaluate_expression(instruction+3, args_count, instructions, instruction_amount);
-    } else value = 0;
 
-    // todo: evaluate expression för strängar
-
-    char* string = instruction[3].var.name; // med denna logik kan man inte plussa ihop strängar
-    int str_len = instruction[3].var.name_len;
-
-    if (create_new){
-        create_variable(
-            type, 
-            end_var.var.name, 
-            end_var.var.name_len,
-            value, 
-            instruction+4, // values
-            string,
-            str_len
-        );
+    args_count -= 3;
+    if (type == VAR_NUMBER)
+    {
+        printf("BAND SPARAR ETT VÄRDE I EN NUMMERVARIABEL\n");
+        value = evaluate_expression(instruction + 3, args_count, instructions, instruction_amount);
     }
+    else if (type == VAR_STRING){
+        printf("BAND SPARAR ETT VÄRDE I EN STRÄNGVARIABEL\n");
+        string_pack = evaluate_str_expression(instruction+3, args_count);
+        string = string_pack.string;
+        str_len = string_pack.len;
+    }
+    
 
+    if (create_new)
+    {
+        if (type == VAR_NUMBER)
+        {
+            printf("Skapar ett nummer\n");
+            create_num_var(end_var.var.name, end_var.var.name_len, value);
+        }
+        else if (type == VAR_LIST)
+        {
+            printf("Skapar en lista\n");
+            create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4);
+        }
+        else if (type == VAR_STRING)
+        {
+            printf("Skapar en sträng\n");
+            create_str_var(end_var.var.name, end_var.var.name_len, str_len, string);
+        }
+        else
+        {
+            printf("ERR: Felaktig variabeltyp\n");
+            exit(-1);
+        }
+
+    }
 
 }
 
@@ -1071,7 +1315,8 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     }
 }
 
-void debug_print_var(char* name, int len){
+void debug_print_var(char *name, int len)
+{
     printf("§");
     for (int i = 0; i < len; i++)
     {
@@ -1102,7 +1347,7 @@ void foug(Token *instruction)
         else if (instruction[1].type == VARIABLE)
         {
             // printf("VARIABLE I FOUG\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len);
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, VAR_NUMBER, 0).value;
             if ((int)value == value)
                 printf("%d", (int)value);
             else
@@ -1113,8 +1358,11 @@ void foug(Token *instruction)
             printf("ERR: Foug: Syntax error\n");
             exit(-1);
         }
-    } else { // svets-string
-        for (int i = 0; i < instruction[2].var.name_len; i++){
+    }
+    else
+    { // svets-string
+        for (int i = 0; i < instruction[2].var.name_len; i++)
+        {
             if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
             {
                 printf("\n");
@@ -1126,46 +1374,50 @@ void foug(Token *instruction)
                 i += 2;
             }
 
-            if (instruction[2].var.name[i] == '%'){
+            if (instruction[2].var.name[i] == '%')
+            {
                 // kolla längden på den
                 int len = 0;
-                for (int j = i+1; j < instruction[2].var.name_len; j++){
-                    if (instruction[2].var.name[j] == '%') break;
+                for (int j = i + 1; j < instruction[2].var.name_len; j++)
+                {
+                    if (instruction[2].var.name[j] == '%')
+                        break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name+i+1, len);
+                double value = get_var_value(instruction[2].var.name + i + 1, len, VAR_NUMBER, 0).value;
                 if ((int)value == value)
                     printf("%d", (int)value);
-                else 
+                else
                     printf("%lf", value);
-                i+=len+1;
-            } else {
+                i += len + 1;
+            }
+            else
+            {
                 if (i < instruction[2].var.name_len)
                     printf("%c", instruction[2].var.name[i]);
             }
         }
-        
     }
 }
 
-void givet(Token *instruction, Program program){
+void givet(Token *instruction, Program program)
+{
     // hitta ptr till argumenten
-    
+
     int i = 2;
-    Token* left_args = &instruction[i];
+    Token *left_args = &instruction[i];
     while (instruction[i].type != EQUALS && instruction[i].type != GREATER_THAN && instruction[i].type != LESS_THAN && instruction[i].type != NOT_EQUAL_TO)
         i++;
     int operation = instruction[i].type;
-    int left_len = i-2;
+    int left_len = i - 2;
     i++;
-    Token* right_args = &instruction[i];
-    while (instruction[i].type != TERMINATOR) i++;
-    int right_len = i-left_len-4;
- 
+    Token *right_args = &instruction[i];
+    while (instruction[i].type != TERMINATOR)
+        i++;
+    int right_len = i - left_len - 4;
 
     double left_value = evaluate_expression(left_args, left_len, program.data, program.instruction_amount);
     double right_value = evaluate_expression(right_args, right_len, program.data, program.instruction_amount);
-
 
     int do_statement = 0;
 
@@ -1212,7 +1464,6 @@ void givet(Token *instruction, Program program){
         }
     }
 }
-
 
 void naer(Token *instruction, Token (*instructions)[128], int instruction_amount)
 {
@@ -1310,11 +1561,13 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
                 loop_already_exists = 1;
         if (!loop_already_exists)
         {
-            if (loop_stack_top_id >= loop_stack_capacity){
-                loop_id_stack = realloc(loop_id_stack, loop_stack_capacity+64);
-                loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity+64);
+            if (loop_stack_top_id >= loop_stack_capacity)
+            {
+                loop_id_stack = realloc(loop_id_stack, loop_stack_capacity + 64);
+                loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity + 64);
                 loop_stack_capacity += 64;
-                if (loop_id_stack == NULL || loop_program_counter_stack == NULL){
+                if (loop_id_stack == NULL || loop_program_counter_stack == NULL)
+                {
                     printf("ERR: Minnesallokering misslyckades\n");
                     exit(1);
                 }
@@ -1347,11 +1600,13 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
     }
 
     int call_stack_level = function_stack_top;
-    if (function_stack_top >= function_stack_capacity){
-        function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, function_stack_capacity+64);
-        function_return_stack = realloc(function_return_stack, function_stack_capacity+64);
+    if (function_stack_top >= function_stack_capacity)
+    {
+        function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, function_stack_capacity + 64);
+        function_return_stack = realloc(function_return_stack, function_stack_capacity + 64);
         function_stack_capacity += 64;
-        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL){
+        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL)
+        {
             printf("ERR: Minnesallokering misslyckades\n");
             exit(1);
         }
@@ -1378,7 +1633,6 @@ double call_function(char *name, int name_len, int origin_program_counter, Token
     double ret = function_return_stack[call_stack_level];
     return ret;
 }
-
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount)
 {
@@ -1418,7 +1672,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         if (current[1].type == NUMBER)
             return_value = current[1].value;
         else if (current[1].type == VARIABLE)
-            return_value = get_var_value(current[1].var.name, current[1].var.name_len);
+            return_value = get_var_value(current[1].var.name, current[1].var.name_len, VAR_NUMBER, 0).value;
 
         // printf("RETURN: %lf\n", return_value);
 
@@ -1433,7 +1687,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case VARIABLE: // anta att det är en funktion
         if (current[0].var.type == FUNCTION)
-        call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
+            call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
         break;
     }
 }
@@ -1448,25 +1702,25 @@ int main(int argc, char **argv)
     }
 
     // skapa konstantarrays
-        // variabler
-    variables = malloc(128*sizeof(Variable)); 
+    // variabler
+    variables = malloc(128 * sizeof(Variable));
 
-    variables_values = malloc(128*sizeof(double));
-    variables_names = malloc(128*sizeof(*variables_names));
-        // loopstack
-    loop_id_stack = malloc(128*sizeof(char));
-    loop_program_counter_stack = malloc(128*sizeof(int));
-        // function stack
-    function_origin_program_counter_stack = malloc(128*sizeof(int));
-    function_return_stack = malloc(128*sizeof(double));
+    variables_values = malloc(128 * sizeof(double));
+    variables_names = malloc(128 * sizeof(*variables_names));
+    // loopstack
+    loop_id_stack = malloc(128 * sizeof(char));
+    loop_program_counter_stack = malloc(128 * sizeof(int));
+    // function stack
+    function_origin_program_counter_stack = malloc(128 * sizeof(int));
+    function_return_stack = malloc(128 * sizeof(double));
 
-
-    if (variables_values == NULL || 
-        variables_names == NULL || 
-        loop_id_stack == NULL || 
-        loop_program_counter_stack == NULL || 
-        function_origin_program_counter_stack == NULL || 
-        function_return_stack == NULL){
+    if (variables_values == NULL ||
+        variables_names == NULL ||
+        loop_id_stack == NULL ||
+        loop_program_counter_stack == NULL ||
+        function_origin_program_counter_stack == NULL ||
+        function_return_stack == NULL)
+    {
         printf("ERR: Minnesallokering misslyckades\n");
         exit(1);
     }
