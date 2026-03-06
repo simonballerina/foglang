@@ -1075,7 +1075,9 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
 
 void tpos(Token *instruction)
 {
-    char call[128] = "";
+    //allocation
+    int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
+    char *call = malloc(call_len);
     if (instruction[1].type != SVETS)
     {
         if (instruction[1].type == STRING)
@@ -1100,10 +1102,14 @@ void tpos(Token *instruction)
             if ((int)value == value){
                 char buffer[128];
                 sprintf(buffer, "%d", (int)value);
+                call_len += sizeof(int);
+                call = realloc(call, call_len);
                 strcat(call, buffer);
             } else {
                 char buffer[128];
                 sprintf(buffer, "%lf", value);
+                call_len += sizeof(float);
+                call = realloc(call, call_len);
                 strcat(call, buffer);
             }
                 
@@ -1137,10 +1143,14 @@ void tpos(Token *instruction)
                 if ((int)value == value) {
                     char buffer[128];
                     sprintf(buffer, "%d", (int)value);
+                    call_len += sizeof(int);
+                    call = realloc(call, call_len);
                     strcat(call, buffer);
                 } else {
                     char buffer[128];
                     sprintf(buffer, "%lf", value);
+                    call_len += sizeof(float);
+                    call = realloc(call, call_len);
                     strcat(call, buffer);
                 }
                 i+=len+1;    
@@ -1153,8 +1163,10 @@ void tpos(Token *instruction)
         }
         
     }
-    //printf("found tp is <%s>\n", call);
     system(call);
+    //free my boy
+    free(call);
+    call = NULL;
     
 }
 
