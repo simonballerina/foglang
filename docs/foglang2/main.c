@@ -98,6 +98,8 @@ char *read_file(const char *filename)
 
 void print_tokens(Token instructions[][128], int instruction_amount)
 {
+    printf("Printing tokens...\n");
+    printf("Instruction amount: %d\n", instruction_amount);
     for (int i = 0; i < instruction_amount; i++)
     {
         printf("%d:     ", i);
@@ -864,6 +866,8 @@ void givet(Token *instruction, Program program)
         }
     }
 }
+
+    
 
 void naer(Token *instruction, Token (*instructions)[128], int instruction_amount)
 {
