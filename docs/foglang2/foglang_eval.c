@@ -1,6 +1,6 @@
 
 
-void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount){
+void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
@@ -12,10 +12,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     printf("ERR: Slutklammer saknas i indexering\n");
                     exit(-1);
                 }
-                cleanup_args(args + i + 2, index_len, instructions, instruction_amount);
-                int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount);
+                cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
+                int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index);
+                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
                 
                 for (int k = i+1; k <= j && k < args_amount; k++){
                     args[k].type = NONE;
@@ -30,7 +30,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     args[i].value = var.value;
                 }
             } else {
-                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0);
+                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
                     args[i].type = STRING;
@@ -62,7 +62,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
 }
 
 
-double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount)
+double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     /*for (int i = 0; i < args_amount; i++)
     {
@@ -81,7 +81,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
 
-    cleanup_args(args, args_amount, instructions, instruction_amount);
+    cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
     while (1)
@@ -252,14 +252,14 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 }
 
 
-String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount){
+String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
 
 
     // konkatenera strängar. free:a gamla strängar!
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
 
-    cleanup_args(args, args_amount, instructions, instruction_amount);
+    cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
     // räkna ut den totala längden som krävs
@@ -270,7 +270,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
             final_len += args[i].var.name_len;
         }
         if (args[i].type == VARIABLE){
-            int var_len = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0).str_len;
+            int var_len = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope).str_len;
             //printf("VAR_LEN: %d\n", var_len);
             final_len += var_len;
         }
@@ -286,7 +286,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
             memcpy(result_str+copied_chars, args[i].var.name, args[i].var.name_len*sizeof(char));
             copied_chars += args[i].var.name_len;
         } else if (args[i].type == VARIABLE) {
-            Get_var_return var_ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0);
+            Get_var_return var_ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
             memcpy(result_str+copied_chars, var_ret.string, var_ret.str_len*sizeof(char));
             copied_chars += var_ret.str_len;
         }
@@ -301,12 +301,12 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 }
 
 
-Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount){
+Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
 
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
     
-    cleanup_args(args, args_amount, instructions, instruction_amount);
+    cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
     int type = VAR_STRING;
@@ -318,7 +318,7 @@ Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructio
         }
 
         if (args[i].type == VARIABLE){
-            Get_var_return ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0);
+            Get_var_return ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
             if (ret.type == VAR_STRING) type = VAR_STRING;
         }
     }
@@ -330,7 +330,7 @@ Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructio
 
     if (type == VAR_STRING)
     {
-        str_ret = evaluate_str_expression(args, args_amount, instructions, instruction_amount);
+        str_ret = evaluate_str_expression(args, args_amount, instructions, instruction_amount, scope);
         ret.str_len = str_ret.len;
         ret.string = str_ret.string;
         ret.type = VAR_STRING;
@@ -339,7 +339,7 @@ Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructio
     } 
     else if (type == VAR_NUMBER)
     {
-        num_ret = evaluate_expression(args, args_amount, instructions, instruction_amount);
+        num_ret = evaluate_expression(args, args_amount, instructions, instruction_amount, scope);
         ret.str_len = 0;
         ret.string = 0;
         ret.type = VAR_NUMBER;

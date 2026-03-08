@@ -51,6 +51,13 @@ typedef struct
     int type;
 } Get_var_return;
 
+typedef struct
+{
+    Variable *variables;
+    int index;
+    int capacity;
+} Scope;
+
 enum Tok_type
 {
     NONE,          // 0
@@ -97,18 +104,18 @@ double str_to_double(char *num);
 char *read_file(const char *filename);
 void print_tokens(Token instructions[][128], int instruction_amount);
 void debug_print_var(char *name, int len);
-void print_variables();
+void print_variables(Scope *scope);
 
-double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount);
-String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount);
-void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount);
-Get_var_return dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount);
+double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
+String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
+void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
+Get_var_return dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
 
 
 
-void create_str_var(char *name, int name_len, int len, char *string);
-void create_num_var(char *name, int name_len, double value);
-void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount);
+void create_str_var(char *name, int name_len, int len, char *string, Scope *scope);
+void create_num_var(char *name, int name_len, double value, Scope *scope);
+void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount, Scope *scope);
 
 /*
 name: char* till variabelnamn. 
@@ -116,10 +123,10 @@ length: längden på namnsträngen.
 type: VAR_LIST om du indexerar en lista, annars 0. 
 index: indexeringen på listan, annars 0
 */
-Get_var_return get_var_value(char *name, int length, int type, double index);
-void change_list_item(char* name, int name_len, int index, Variable new_var);
+Get_var_return get_var_value(char *name, int length, int type, double index, Scope *scope);
+void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope);
 
 // declarations som inte är i foglang_var.c eller foglang_eval.c
 Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount);
-void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount);
+void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope);
 
