@@ -1,11 +1,10 @@
 
 Get_var_return get_var_value(char *name, int length, int type, double index){
     Get_var_return ret_value;
-    printf("getvarvalue: name: ");
-    for (int i = 0; i < length; i++){
+    /*for (int i = 0; i < length; i++){
         printf("%c", name[i]);
     }
-    printf("    length: %d, type: %d, index: %lf\n", length, type, index);
+    printf("    length: %d, type: %d, index: %lf\n", length, type, index);*/
     for (int i = 0; i < var_index; i++){
         if (length == variables[i].name_len && strncmp(name, variables[i].name, length) == 0){ // hittat en variabel
             if (type == VAR_LIST){

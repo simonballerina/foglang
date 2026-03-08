@@ -259,6 +259,9 @@ void debug_print_var(char *name, int len)
 }
 
 
+
+
+
 Program tokenize(char *file_name)
 {
     char *buff = read_file(file_name);
@@ -686,9 +689,6 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
 }
 
-
-
-
 void foug(Token *instruction)
 {
     // printf("FOUG KALLAD PÅ\n");
@@ -780,38 +780,69 @@ void givet(Token *instruction, Program program)
         i++;
     int right_len = i - left_len - 4;
 
-    String left_value_str;
-    String right_value_str;
-    double left_value = evaluate_expression(left_args, left_len, program.data, program.instruction_amount);
-    double right_value = evaluate_expression(right_args, right_len, program.data, program.instruction_amount);
 
+    Get_var_return left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount);
+    Get_var_return right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount);
 
-
+    int type = VAR_NONE;
+    if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
+    else if (left_value.type == VAR_STRING && right_value.type == VAR_STRING) type = VAR_STRING;
+    if (type == VAR_NONE){
+        printf("ERR: Kan inte jämföra två olika datatyper\n");
+        exit(1);
+    }
 
     int do_statement = 0;
 
-    switch (operation)
-    {
-    case EQUALS:
-        if (left_value == right_value)
-            do_statement = 1;
-        break;
+    if (type == VAR_NUMBER){
+        switch (operation)
+        {
+        case EQUALS:
+            if (left_value.value == right_value.value)
+                do_statement = 1;
+            break;
 
-    case GREATER_THAN:
-        if (left_value > right_value)
-            do_statement = 1;
-        break;
+        case GREATER_THAN:
+            if (left_value.value > right_value.value)
+                do_statement = 1;
+            break;
 
-    case LESS_THAN:
-        if (left_value < right_value)
-            do_statement = 1;
-        break;
+        case LESS_THAN:
+            if (left_value.value < right_value.value)
+                do_statement = 1;
+            break;
 
-    case NOT_EQUAL_TO:
-        if (left_value != right_value)
-            do_statement = 1;
-        break;
+        case NOT_EQUAL_TO:
+            if (left_value.value != right_value.value)
+                do_statement = 1;
+            break;
+        }
+    } else if (type == VAR_STRING){
+        switch (operation)
+        {
+        case EQUALS:
+            if (!strncmp(left_value.string, right_value.string, left_value.str_len) && left_value.str_len == right_value.str_len)
+                do_statement = 1;
+            break;
+
+        case GREATER_THAN:
+            printf("ERR: Ogiltig jämförelse mellan strängar\n");
+            exit(1);
+            break;
+
+        case LESS_THAN:
+            printf("ERR: Ogiltig jämförelse mellan strängar\n");
+            exit(1);
+            break;
+
+        case NOT_EQUAL_TO:
+            if (strncmp(left_value.string, right_value.string, left_value.str_len) || left_value.str_len != right_value.str_len)
+                do_statement = 1;
+            break;
+        }
+
     }
+
 
     if (!do_statement)
     {
@@ -862,30 +893,68 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     // for (int k=0; k<left_args_length; k++) printf("[DEBUG] LEFT %d: %d\n", k, left_args[k].type);
     // for (int k=0; k<right_args_length; k++) printf("[DEBUG] RIGHT %d: %d\n", k, right_args[k].type);
 
-    double left_value = evaluate_expression(left_args, left_args_length, instructions, instruction_amount);
-    double right_value = evaluate_expression(right_args, right_args_length, instructions, instruction_amount);
+    Get_var_return left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount);
+    Get_var_return right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount);
 
-    // printf("[DEBUG] NAER left: %lf, right: %lf\n", left_value, right_value);
+    int type = VAR_NONE;
+    if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
+    else if (left_value.type == VAR_STRING && right_value.type == VAR_STRING) type = VAR_STRING;
+    if (type == VAR_NONE){
+        printf("ERR: Kan inte jämföra två olika datatyper\n");
+        exit(1);
+    }
+
+    //printf("NAER LEFT: %lf, NAER RIGHT %lf\n", left_value.value, right_value.value);
 
     int do_statement = 0;
-    switch (operation)
-    {
-    case EQUALS:
-        if (left_value == right_value)
-            do_statement = 1;
-        break;
-    case GREATER_THAN:
-        if (left_value > right_value)
-            do_statement = 1;
-        break;
-    case LESS_THAN:
-        if (left_value < right_value)
-            do_statement = 1;
-        break;
-    case NOT_EQUAL_TO:
-        if (left_value != right_value)
-            do_statement = 1;
-        break;
+
+    if (type == VAR_NUMBER){
+        switch (operation)
+        {
+        case EQUALS:
+            if (left_value.value == right_value.value)
+                do_statement = 1;
+            break;
+
+        case GREATER_THAN:
+            if (left_value.value > right_value.value)
+                do_statement = 1;
+            break;
+
+        case LESS_THAN:
+            if (left_value.value < right_value.value)
+                do_statement = 1;
+            break;
+
+        case NOT_EQUAL_TO:
+            if (left_value.value != right_value.value)
+                do_statement = 1;
+            break;
+        }
+    } else if (type == VAR_STRING){
+        switch (operation)
+        {
+        case EQUALS:
+            if (!strncmp(left_value.string, right_value.string, left_value.str_len) && left_value.str_len == right_value.str_len)
+                do_statement = 1;
+            break;
+
+        case GREATER_THAN:
+            printf("ERR: Ogiltig jämförelse mellan strängar\n");
+            exit(1);
+            break;
+
+        case LESS_THAN:
+            printf("ERR: Ogiltig jämförelse mellan strängar\n");
+            exit(1);
+            break;
+
+        case NOT_EQUAL_TO:
+            if (strncmp(left_value.string, right_value.string, left_value.str_len) || left_value.str_len != right_value.str_len)
+                do_statement = 1;
+            break;
+        }
+
     }
 
     int k = 0;

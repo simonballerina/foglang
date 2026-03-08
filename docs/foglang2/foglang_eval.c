@@ -301,8 +301,11 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 }
 
 
-Get_var_return dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount){
+Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount){
 
+    Token args[args_amount];
+    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+    
     cleanup_args(args, args_amount, instructions, instruction_amount);
 
 
