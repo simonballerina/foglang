@@ -10,11 +10,6 @@
 // program counter
 int program_counter = -1;
 
-
-//Variable *variables;
-//int (*scope).index = 0;
-//int (*scope).capacity = 128;
-
 // loop stack
 char *loop_id_stack;
 int *loop_program_counter_stack;
