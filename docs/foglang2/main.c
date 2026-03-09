@@ -1022,12 +1022,20 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         }
     }
 }
-/*
-void tpos(Token *instruction)
+
+void tpos(Token *instruction, Scope *scope)
 {
     //allocation
     int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
     char *call = malloc(call_len);
+    if (call == NULL)
+    {
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
+    }
+    //printf("te %s\n", call);
+    //varför krävs detta?
+    strcpy(call, "");
     if (instruction[1].type != SVETS)
     {
         if (instruction[1].type == STRING)
@@ -1042,25 +1050,28 @@ void tpos(Token *instruction)
                     char buffer[128];
                     sprintf(buffer, "%c", instruction[1].var.name[i]);
                     strcat(call, buffer);
+                    //printf("add %s\n", call);
                 }  
             }
         }
         else if (instruction[1].type == VARIABLE)
         {
             // printf("VARIABLE I TPOS\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len);
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
             if ((int)value == value){
                 char buffer[128];
                 sprintf(buffer, "%d", (int)value);
                 call_len += sizeof(int);
                 call = realloc(call, call_len);
                 strcat(call, buffer);
+                //printf("add %s\n", call);
             } else {
                 char buffer[128];
                 sprintf(buffer, "%lf", value);
                 call_len += sizeof(float);
                 call = realloc(call, call_len);
                 strcat(call, buffer);
+                //printf("add %s\n", call);
             }
                 
         }
@@ -1075,11 +1086,13 @@ void tpos(Token *instruction)
             {
                 strcat(call, "\n");
                 i += 2;
+                //printf("add %s\n", call);
             }
             if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
             {
                 strcat(call, "%%");
                 i += 2;
+                //printf("add %s\n", call);
             }
 
             if (instruction[2].var.name[i] == '%'){
@@ -1089,37 +1102,42 @@ void tpos(Token *instruction)
                     if (instruction[2].var.name[j] == '%') break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name+i+1, len);
+                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
                 if ((int)value == value) {
                     char buffer[128];
                     sprintf(buffer, "%d", (int)value);
                     call_len += sizeof(int);
                     call = realloc(call, call_len);
                     strcat(call, buffer);
+                    //printf("add %s\n", call);
                 } else {
                     char buffer[128];
                     sprintf(buffer, "%lf", value);
                     call_len += sizeof(float);
                     call = realloc(call, call_len);
                     strcat(call, buffer);
+                    //printf("add %s\n", call);
                 }
                 i+=len+1;    
             } else if (i < instruction[2].var.name_len) {
                 char buffer[128];
                 sprintf(buffer, "%c", instruction[2].var.name[i]);
                 strcat(call, buffer);
+                //printf("add %s\n", call);
                 
             }
         }
         
     }
+    //printf("\n");
+    //printf(call);
     system(call);
     //free my boy
     free(call);
     call = NULL;
     
 }
-*/
+
 Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
     Scope scope = {
@@ -1127,7 +1145,7 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
                 .capacity = 128,
                 .variables = malloc(128 * sizeof(Variable))
             };
-    printf("new scope\n");
+    //printf("new scope\n");
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1213,7 +1231,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
 
     case TPOS:
-        tpos(current);
+        tpos(current, scope);
         break;
     case LOOP_MARKER:
         for (int i = 0; i < loop_stack_top_id; i++)
