@@ -369,45 +369,45 @@ Program tokenize(char* buff)
         tok.type = 0;
 
         // ord-tokens
-        if (strncmp(&buff[i], "foug", 4) == 0)
+        if (strncmp(&buff[i], "foug ", 5) == 0)
         {
             tok.type = FOUG;
-            i += 4;
+            i += 5;
         }
-        else if (strncmp(&buff[i], "svets", 5) == 0)
+        else if (strncmp(&buff[i], "svets ", 6) == 0)
         {
             tok.type = SVETS;
-            i += 5;
+            i += 6;
         }
-        else if (strncmp(&buff[i], "band", 4) == 0)
+        else if (strncmp(&buff[i], "band ", 5) == 0)
         {
             tok.type = BAND;
-            i += 4;
-        }
-        else if (strncmp(&buff[i], "givet", 5) == 0)
-        {
-            tok.type = GIVET;
             i += 5;
         }
-        else if (strncmp(&buff[i], "att", 3) == 0)
+        else if (strncmp(&buff[i], "givet ", 6) == 0)
+        {
+            tok.type = GIVET;
+            i += 6;
+        }
+        else if (strncmp(&buff[i], "att ", 4) == 0)
         {
             tok.type = ATT;
-            i += 3;
+            i += 4;
         }
-        else if (strncmp(&buff[i], "naer", 4) == 0)
+        else if (strncmp(&buff[i], "naer ", 5) == 0)
         {
             tok.type = NAER;
-            i += 4;
+            i += 5;
         }
-        else if (strncmp(&buff[i], "boul", 4) == 0)
+        else if (strncmp(&buff[i], "boul ", 5) == 0)
         {
             tok.type = FUNCTION;
-            i += 4;
+            i += 5;
         }
-        else if (strncmp(&buff[i], "return", 6) == 0)
+        else if (strncmp(&buff[i], "return ", 7) == 0)
         {
             tok.type = RETURN;
-            i += 6;
+            i += 7;
         }
         else if (strncmp(&buff[i], "main", 4) == 0)
         {
