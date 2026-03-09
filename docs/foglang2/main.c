@@ -284,6 +284,7 @@ char* bult(char* file_name){
                 name_len-=(i+5);
 
                 char* import_file_name = malloc((name_len+1)*sizeof(char));
+                if (import_file_name == NULL) goto malloc_error;
                 memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
 
                 import_file_name[name_len] = '\0';
@@ -302,6 +303,7 @@ char* bult(char* file_name){
                 int import_buff_len = strlen(import_buff);
                 // skapa ny sträng
                 char* new_buff = malloc(left_side_len + import_buff_len + right_side_len + 1);
+                if (new_buff == NULL) goto malloc_error;
 
                 memcpy(new_buff, buff, left_side_len*sizeof(char));
                 memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
@@ -326,6 +328,11 @@ char* bult(char* file_name){
     }
     
     return buff; 
+
+
+    malloc_error:
+        printf("[BULT] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
 
 
@@ -346,11 +353,8 @@ Program tokenize(char* buff)
 
     // skapa instruktionsarray
     Token(*instructions)[128] = calloc(instruction_amount, sizeof(*instructions));
-    if (instructions == NULL)
-    {
-        printf("Malloc failed\n");
-        exit(-1);
-    }
+    if (instructions == NULL) goto malloc_error;
+  
     printf("[DEBUG] instructions ptr: %p\n", instructions);
 
     int i = 0;
@@ -582,6 +586,11 @@ Program tokenize(char* buff)
     Program program = {instructions, instruction_amount};
     printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
     return program;
+
+    malloc_error:
+        printf("[LEXER] ERR: Minnesallokering misslyckades\n");
+        exit(1);
+        
 }
 
 
@@ -1073,16 +1082,18 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
                 loop_id_stack = realloc(loop_id_stack, loop_stack_capacity + 64);
                 loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity + 64);
                 loop_stack_capacity += 64;
-                if (loop_id_stack == NULL || loop_program_counter_stack == NULL)
-                {
-                    printf("ERR: Minnesallokering misslyckades\n");
-                    exit(1);
-                }
+                if (loop_id_stack == NULL || loop_program_counter_stack == NULL) goto malloc_error;
             }
             loop_id_stack[loop_stack_top_id] = loop_id;
             loop_program_counter_stack[loop_stack_top_id++] = program_counter;
         }
     }
+
+    return;
+
+    malloc_error:
+        printf("[NAER] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
 
 Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
@@ -1112,11 +1123,7 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
         function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, (function_stack_capacity + 64)*sizeof(int));
         function_return_stack = realloc(function_return_stack, (function_stack_capacity + 64)*sizeof(Get_var_return));
         function_stack_capacity += 64;
-        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL)
-        {
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
-        }
+        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL) goto malloc_error;
     }
     function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
     Get_var_return zero_var = {
@@ -1145,6 +1152,10 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
 
     Get_var_return ret = function_return_stack[call_stack_level];
     return ret;
+
+    malloc_error:
+        printf("[FUNCTION CALL] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount)
@@ -1233,15 +1244,14 @@ int main(int argc, char **argv)
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(double));
 
-    if (
+    if (variables == NULL ||
         loop_id_stack == NULL ||
         loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
         function_return_stack == NULL)
-    {
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
-    }
+        goto malloc_error;
+
+    
 
     char* buff = bult(argv[1]);
     Program program = tokenize(buff);
@@ -1272,4 +1282,8 @@ int main(int argc, char **argv)
 
     print_variables();
     return 0;
+
+    malloc_error:
+        printf("[MAIN] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
