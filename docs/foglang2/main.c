@@ -1028,14 +1028,13 @@ void tpos(Token *instruction, Scope *scope)
     //allocation
     int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
     char *call = malloc(call_len);
+    strcpy(call, "");
     if (call == NULL)
     {
         printf("ERR: Minnesallokering misslyckades\n");
         exit(1);
     }
-    //printf("te %s\n", call);
-    //varför krävs detta?
-    strcpy(call, "");
+    
     if (instruction[1].type != SVETS)
     {
         if (instruction[1].type == STRING)
