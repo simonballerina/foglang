@@ -260,13 +260,78 @@ void debug_print_var(char *name, int len)
     printf("§\n");
 }
 
+char* bult(char* file_name){
 
-
-
-
-Program tokenize(char *file_name)
-{
     char *buff = read_file(file_name);
+    if (!buff) {
+        printf("ERR: Kunde inte öppna fil\n");
+        exit(1);
+    }
+    int len = strlen(buff);
+    int found;
+    int search = 1;
+    while (search){
+        found = 0;
+        for (int i = 0; i < len; i++){
+            
+            if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
+
+                int name_len = 0;
+                // hitta längden på importnamnet
+                name_len = i+5;
+                while (name_len < len && buff[name_len] != ';')
+                    name_len++;
+                name_len-=(i+5);
+
+                char* import_file_name = malloc((name_len+1)*sizeof(char));
+                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
+
+                import_file_name[name_len] = '\0';
+                char* import_buff = read_file(import_file_name);
+                if (!buff) {
+                    printf("ERR: Kunde inte öppna importfil\n");
+                    exit(1);
+                }
+
+                free(import_file_name);
+                int import_end = i + 5 + name_len + 1;
+
+
+                int left_side_len = i;
+                int right_side_len = len - import_end;
+                int import_buff_len = strlen(import_buff);
+                // skapa ny sträng
+                char* new_buff = malloc(left_side_len + import_buff_len + right_side_len + 1);
+
+                memcpy(new_buff, buff, left_side_len*sizeof(char));
+                memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
+                memcpy(new_buff + left_side_len + import_buff_len, buff + import_end, right_side_len);
+
+                new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
+                char *old_buff = buff;
+                buff = new_buff;
+                len = left_side_len + import_buff_len + right_side_len;
+                found = 1;
+
+                free(old_buff);
+                free(import_buff);
+
+                break;
+            }
+        }
+        if (found)
+            search = 1;
+        else search = 0;
+
+    }
+    
+    return buff; 
+}
+
+
+
+Program tokenize(char* buff)
+{
     int buff_len = strlen(buff);
     printf("BUFF: -----------------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
@@ -1178,7 +1243,8 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    Program program = tokenize(argv[1]);
+    char* buff = bult(argv[1]);
+    Program program = tokenize(buff);
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
     print_tokens(instructions, instruction_amount);
