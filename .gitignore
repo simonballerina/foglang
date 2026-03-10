@@ -1,2 +1,3 @@
 *.fg
 docs/readthedocs/build/*
+docs/foglang2/build/*
