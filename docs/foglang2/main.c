@@ -408,10 +408,10 @@ Program tokenize(char* buff)
             tok.type = FUNCTION;
             i += 5;
         }
-        else if (strncmp(&buff[i], "return ", 7) == 0)
+        else if (strncmp(&buff[i], "return", 6) == 0)
         {
             tok.type = RETURN;
-            i += 7;
+            i += 6;
         }
         else if (strncmp(&buff[i], "main", 4) == 0)
         {
