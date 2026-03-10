@@ -1474,7 +1474,7 @@ int main(int argc, char **argv)
     }
     if (program_counter == -1)
     {
-        printf("ERR: main inte hittad\n");
+        printf("[MAIN] ERR: main inte hittad\n");
         exit(-1);
     }
 
