@@ -1034,6 +1034,7 @@ void tpos(Token *instruction, Scope *scope)
         printf("ERR: Minnesallokering misslyckades\n");
         exit(1);
     }
+    int writer = 0;
     
     if (instruction[1].type != SVETS)
     {
@@ -1046,10 +1047,8 @@ void tpos(Token *instruction, Scope *scope)
                     i += 2;
                 }
                 if (i < instruction[1].var.name_len) {
-                    char buffer[128];
-                    sprintf(buffer, "%c", instruction[1].var.name[i]);
-                    strcat(call, buffer);
-                    //printf("add %s\n", call);
+                    sprintf(call + writer, "%c", instruction[1].var.name[i]);
+                    writer++;
                 }  
             }
         }
@@ -1058,19 +1057,15 @@ void tpos(Token *instruction, Scope *scope)
             // printf("VARIABLE I TPOS\n");
             double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
             if ((int)value == value){
-                char buffer[128];
-                sprintf(buffer, "%d", (int)value);
                 call_len += sizeof(int);
                 call = realloc(call, call_len);
-                strcat(call, buffer);
-                //printf("add %s\n", call);
+                sprintf(call + writer, "%d", (int)value);
+                writer += strlen(call + writer);
             } else {
-                char buffer[128];
-                sprintf(buffer, "%lf", value);
-                call_len += sizeof(float);
+                call_len += sizeof(double);
                 call = realloc(call, call_len);
-                strcat(call, buffer);
-                //printf("add %s\n", call);
+                sprintf(call + writer, "%lf", (int)value);
+                writer += strlen(call + writer);
             }
                 
         }
@@ -1085,13 +1080,11 @@ void tpos(Token *instruction, Scope *scope)
             {
                 strcat(call, "\n");
                 i += 2;
-                //printf("add %s\n", call);
             }
             if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
             {
                 strcat(call, "%%");
                 i += 2;
-                //printf("add %s\n", call);
             }
 
             if (instruction[2].var.name[i] == '%'){
@@ -1103,33 +1096,25 @@ void tpos(Token *instruction, Scope *scope)
                 }
                 double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
                 if ((int)value == value) {
-                    char buffer[128];
-                    sprintf(buffer, "%d", (int)value);
                     call_len += sizeof(int);
                     call = realloc(call, call_len);
-                    strcat(call, buffer);
-                    //printf("add %s\n", call);
+                    sprintf(call + writer, "%d", (int)value);
+                    writer += strlen(call + writer);
                 } else {
-                    char buffer[128];
-                    sprintf(buffer, "%lf", value);
-                    call_len += sizeof(float);
+                    call_len += sizeof(double);
                     call = realloc(call, call_len);
-                    strcat(call, buffer);
-                    //printf("add %s\n", call);
+                    sprintf(call + writer, "%lf", (int)value);
+                    writer += strlen(call + writer);
                 }
                 i+=len+1;    
             } else if (i < instruction[2].var.name_len) {
-                char buffer[128];
-                sprintf(buffer, "%c", instruction[2].var.name[i]);
-                strcat(call, buffer);
-                //printf("add %s\n", call);
+                sprintf(call + writer, "%c", instruction[2].var.name[i]);
+                writer++;
                 
             }
         }
         
     }
-    //printf("\n");
-    //printf(call);
     system(call);
     //free my boy
     free(call);
