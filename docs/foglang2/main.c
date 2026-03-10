@@ -283,10 +283,9 @@ char* bult(char* file_name){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1)*sizeof(char));
-                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
-
-                import_file_name[name_len] = '\0';
+                char* import_file_name = malloc((name_len+1+7)*sizeof(char));
+                buff[i + 5 + name_len] = '\0';
+                sprintf(import_file_name, "lib/%s.fg", buff+i+5);
                 char* import_buff = read_file(import_file_name);
                 if (!buff) {
                     printf("ERR: Kunde inte öppna importfil\n");
