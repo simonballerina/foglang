@@ -593,6 +593,211 @@ Program tokenize(char* buff)
         
 }
 
+void check_syntax(Program* program){
+    Token(*instructions)[128] = program->data;
+    int instruction_amount = program->instruction_amount; 
+
+    for (int i = 0; i < instruction_amount; i++){
+        
+        switch (instructions[i][0].type){
+            
+            case NAER: 
+                /*
+                naer 14*2 = 10+18 {1};
+                    // gör något
+                {1};
+                */
+                int j = 1;
+                int comp_amount = 0;
+                int left_args = 0;
+                int right_args = 0;
+                char loop_id = 0;
+                int found_loop_id = 0;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 4) break;
+                        printf("[NAER]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+
+                    int tok = instructions[i][j].type;
+
+
+
+                    if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
+                        if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
+                            right_args = 1;
+                        }
+                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                            left_args = 1;
+                        }
+
+                        comp_amount++;
+                    }
+
+                    if (tok == LOOP_MARKER){
+                        loop_id = instructions[i][j].loop_id;
+                    }
+                    // kolla om den hittar en matchande loop marker
+                    for (int k = i; k < instruction_amount; k++){
+                        if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                            found_loop_id = 1;
+                            break;
+                        }
+                    }
+
+                    j++;
+                }
+                if (comp_amount != 1){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                    exit(-1);
+                }
+                if (!left_args || !right_args){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    exit(-1);
+                }
+                if (!found_loop_id || !loop_id){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                break;
+
+            case GIVET: 
+                /*
+                givet att 14*2 = 10+18 {1};
+                    // gör något
+                {1};
+                */
+                j = 1;
+                comp_amount = 0;
+                left_args = 0;
+                right_args = 0;
+                int att_exists = 0;
+                loop_id = 0;
+                found_loop_id = 0;
+
+                if (instructions[i][1].type == ATT) att_exists = 1;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 5) break;
+                        printf("[GIVET]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+                    int tok = instructions[i][j].type;
+                    
+
+
+                    if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
+                        if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
+                            right_args = 1;
+                        }
+                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                            left_args = 1;
+                        }
+
+                        comp_amount++;
+                    }
+
+                    if (tok == LOOP_MARKER){
+                        loop_id = instructions[i][j].loop_id;
+                        // kolla om den hittar en matchande loop marker
+                        for (int k = i; k < instruction_amount; k++){
+
+                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                                found_loop_id = 1;
+                                break;
+                            }
+                        }
+                    }
+
+
+                    j++;
+                }
+                
+                if (comp_amount != 1){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                    exit(-1);
+                }
+                if (!left_args || !right_args){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    exit(-1);
+                }
+                if (!found_loop_id || !loop_id){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                if (!att_exists){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, ATT token saknas\n", i);
+                    exit(-1);
+                }
+
+                break;
+
+            case FOUG:
+                break;
+            case BAND:
+                break;
+            case FUNCTION:
+                /*
+                boul func_name(a, b) {1};
+                    // gör skit
+                {1};
+                */
+                j = 1;
+                found_loop_id = 0;
+                loop_id = 0;
+                int found_return = 0;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 4) break;
+                        printf("[BOUL]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+                    int tok = instructions[i][j].type;
+
+                    int func_stop;
+                    if (instructions[i][j].type == LOOP_MARKER) {
+                        loop_id = instructions[i][j].loop_id;
+                        // hitta loop marker
+                        for (int k = i; k < instruction_amount; k++){
+
+                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                                found_loop_id = 1;
+                                func_stop = k;
+                                break;
+                            }
+                        }
+                        // hitta ret
+                        if (!found_return){
+                            for (int k = i; k < func_stop; k++){
+                                if (instructions[k][0].type == RETURN){
+                                    found_return = 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+
+                    j++;
+                }
+                
+                if (!found_loop_id || !loop_id){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                if (!found_return){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta RETURN token\n", i);
+                    exit(-1);
+                }
+                break;
+        }
+    }
+
+}
 
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount)
 {
@@ -1255,9 +1460,11 @@ int main(int argc, char **argv)
 
     char* buff = bult(argv[1]);
     Program program = tokenize(buff);
+    
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
     print_tokens(instructions, instruction_amount);
+    check_syntax(&program);
 
     // hitta entry point (main)
     for (int i = 0; i < instruction_amount; i++)
