@@ -10,11 +10,6 @@
 // program counter
 int program_counter = -1;
 
-
-Variable *variables;
-int var_index = 0;
-int variables_capacity = 128;
-
 // loop stack
 char *loop_id_stack;
 int *loop_program_counter_stack;
@@ -223,26 +218,26 @@ void print_tokens(Token instructions[][128], int instruction_amount)
     printf("\n");
 }
 
-void print_variables()
+void print_variables(Scope *scope)
 {
-    for (int i = 0; i < var_index; i++)
+    for (int i = 0; i < (*scope).index; i++)
     {
-        printf("%i: Type: %d    Name: ", i, variables[i].type);
+        printf("%i: Type: %d    Name: ", i, (*scope).variables[i].type);
         // printa namn
-        if (variables[i].name != NULL)
+        if ((*scope).variables[i].name != NULL)
         {
-            for (int j = 0; j < variables[i].name_len; j++)
+            for (int j = 0; j < (*scope).variables[i].name_len; j++)
             {
-                printf("%c", variables[i].name[j]);
+                printf("%c", (*scope).variables[i].name[j]);
             }
         }
-        printf("    Value: %lf    List/String_len: %d   String: '", variables[i].value, variables[i].len);
+        printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
 
-        if (variables[i].str_ptr != 0)
+        if ((*scope).variables[i].str_ptr != 0)
         {
-            for (int j = 0; j < variables[i].len; j++)
+            for (int j = 0; j < (*scope).variables[i].len; j++)
             {
-                printf("%c", variables[i].str_ptr[j]);
+                printf("%c", (*scope).variables[i].str_ptr[j]);
             }
         }
 
@@ -799,7 +794,7 @@ void check_syntax(Program* program){
 
 }
 
-void band(Token *instruction, Token (*instructions)[128], int instruction_amount)
+void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     Token end_var = instruction[1];
     // ta reda på vilken typ av variabler som används
@@ -829,7 +824,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     Get_var_return eval_result;
     if (type != VAR_LIST){
-        eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount);
+        eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
         type = eval_result.type;
     }
         
@@ -849,12 +844,12 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     // kolla om slutvariabeln finns sparad
     int create_new = 1;
-    for (int i = 0; i < var_index; i++)
+    for (int i = 0; i < (*scope).index; i++)
     {
         // skippa list elements som inte har namn
-        if (variables[i].name == NULL)
+        if ((*scope).variables[i].name == NULL)
             continue;
-        if (!strncmp(end_var.var.name, variables[i].name, end_var.var.name_len) && end_var.var.name_len == variables[i].name_len)
+        if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len)
         {
             create_new = 0;
         }
@@ -880,7 +875,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
             }
         }
         
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount);
+        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
     }
     else if (type == VAR_LIST_STRING){
 
@@ -896,7 +891,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 break;
             }
         }
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount);
+        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
     }
     
 
@@ -904,15 +899,15 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     {
         if (type == VAR_NUMBER)
         {
-            create_num_var(end_var.var.name, end_var.var.name_len, eval_result.value);
+            create_num_var(end_var.var.name, end_var.var.name_len, eval_result.value, scope);
         }
         else if (type == VAR_LIST)
         {
-            create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4, instructions, instruction_amount);
+            create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4, instructions, instruction_amount, scope);
         }
         else if (type == VAR_STRING)
         {
-            create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string);
+            create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string, scope);
         } else 
         {
             printf("ERR: Felaktig variabeltyp\n");
@@ -921,27 +916,27 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     } else { // uppdatera istället
         if (type == VAR_NUMBER){
-            for (int i = 0; i < var_index; i++){
-                if (variables[i].name == NULL) // hoppa över de som inte har namn!!!
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL) // hoppa över de som inte har namn!!!
                     continue;
-                if (!strncmp(end_var.var.name, variables[i].name, variables[i].name_len) && variables[i].name_len == end_var.var.name_len){
-                    variables[i].value = eval_result.value;
-                    variables[i].type = VAR_NUMBER;
-                    variables[i].str_ptr = 0;
-                    variables[i].len = 0;
+                if (!strncmp(end_var.var.name, (*scope).variables[i].name, (*scope).variables[i].name_len) && (*scope).variables[i].name_len == end_var.var.name_len){
+                    (*scope).variables[i].value = eval_result.value;
+                    (*scope).variables[i].type = VAR_NUMBER;
+                    (*scope).variables[i].str_ptr = 0;
+                    (*scope).variables[i].len = 0;
                 }
             }
         }
         else if (type == VAR_STRING){
-            for (int i = 0; i < var_index; i++){
-                if (variables[i].name == NULL)
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL)
                     continue;
-                if (!strncmp(end_var.var.name, variables[i].name, end_var.var.name_len) && end_var.var.name_len == variables[i].name_len){
-                    free(variables[i].str_ptr);
-                    variables[i].value = 0;
-                    variables[i].str_ptr = eval_result.string;
-                    variables[i].len = eval_result.str_len;
-                    variables[i].type = VAR_STRING;
+                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                    free((*scope).variables[i].str_ptr);
+                    (*scope).variables[i].value = 0;
+                    (*scope).variables[i].str_ptr = eval_result.string;
+                    (*scope).variables[i].len = eval_result.str_len;
+                    (*scope).variables[i].type = VAR_STRING;
                 }
             }
         } else if (type == VAR_LIST_NUMBER){
@@ -953,7 +948,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 .type = VAR_LIST_NUMBER,
                 .value = eval_result.value
             };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item);
+            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
 
         } else if (type == VAR_LIST_STRING){
             Variable new_list_item = {
@@ -964,13 +959,13 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 .type = VAR_LIST_STRING,
                 .value = 0
             };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item);
+            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
         }
     }
 
 }
 
-void foug(Token *instruction)
+void foug(Token *instruction, Scope *scope)
 {
     // printf("FOUG KALLAD PÅ\n");
     if (instruction[1].type != SVETS)
@@ -992,7 +987,7 @@ void foug(Token *instruction)
         else if (instruction[1].type == VARIABLE)
         {
             // printf("VARIABLE I FOUG\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0).value;
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
             if ((int)value == value)
                 printf("%d", (int)value);
             else
@@ -1029,7 +1024,7 @@ void foug(Token *instruction)
                         break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0).value;
+                double value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope).value;
                 if ((int)value == value)
                     printf("%d", (int)value);
                 else
@@ -1045,7 +1040,7 @@ void foug(Token *instruction)
     }
 }
 
-void givet(Token *instruction, Program program)
+void givet(Token *instruction, Program program, Scope *scope)
 {
     // hitta ptr till argumenten
 
@@ -1062,8 +1057,8 @@ void givet(Token *instruction, Program program)
     int right_len = i - left_len - 4;
 
 
-    Get_var_return left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount);
-    Get_var_return right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount);
+    Get_var_return left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
+    Get_var_return right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -1148,7 +1143,7 @@ void givet(Token *instruction, Program program)
 
     
 
-void naer(Token *instruction, Token (*instructions)[128], int instruction_amount)
+void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     // printf("[DEBUG] Entered NAER, program_counter: %d\n", program_counter);
     int i = 1;
@@ -1176,8 +1171,8 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     // for (int k=0; k<left_args_length; k++) printf("[DEBUG] LEFT %d: %d\n", k, left_args[k].type);
     // for (int k=0; k<right_args_length; k++) printf("[DEBUG] RIGHT %d: %d\n", k, right_args[k].type);
 
-    Get_var_return left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount);
-    Get_var_return right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount);
+    Get_var_return left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
+    Get_var_return right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -1303,6 +1298,11 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
 
 Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
+    Scope scope = {
+                .index = 0,
+                .capacity = 128,
+                .variables = malloc(128 * sizeof(Variable))
+            };
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1350,10 +1350,14 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
             exit(-1);
         }
         Token *current = instructions[program_counter];
-        interpret_instruction(current, instructions, instruction_amount);
+        interpret_instruction(current, instructions, instruction_amount, &scope);
         program_counter++;
     }
     program_counter--; // program_counter inkrementeras 2 ggr annars
+
+    //free up
+    free(scope.variables);
+    scope.variables = NULL;
 
     Get_var_return ret = function_return_stack[call_stack_level];
     return ret;
@@ -1363,24 +1367,24 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
         exit(1);
 }
 
-void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount)
+void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     switch (current[0].type)
     {
     case FOUG:
-        foug(current);
+        foug(current, scope);
         break;
 
     case BAND:
-        band(current, instructions, instruction_amount);
+        band(current, instructions, instruction_amount, scope);
         break;
 
     case GIVET:
-        givet(current, (Program){instructions, instruction_amount});
+        givet(current, (Program){instructions, instruction_amount}, scope);
         break;
 
     case NAER:
-        naer(current, instructions, instruction_amount);
+        naer(current, instructions, instruction_amount, scope);
         break;
 
     case LOOP_MARKER:
@@ -1403,7 +1407,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
             return_value.string = 0;
             return_value.str_len = 0;
         } else if (current[1].type == VARIABLE) {
-            return_value = get_var_value(current[1].var.name, current[1].var.name_len, 0, 0);
+            return_value = get_var_value(current[1].var.name, current[1].var.name_len, 0, 0, scope);
         } else if (current[1].type == STRING) {
             return_value.string = current[1].var.name;
             return_value.str_len = current[1].var.name_len;
@@ -1423,8 +1427,10 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
     }
 
     case VARIABLE: // anta att det är en funktion
-        if (current[0].var.type == FUNCTION)
+        if (current[0].var.type == FUNCTION) {
             call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
+        }
+            
         break;
     }
 }
@@ -1440,7 +1446,11 @@ int main(int argc, char **argv)
 
     // skapa konstantarrays
     // variabler
-    variables = malloc(128 * sizeof(Variable));
+    Scope scope = {
+        .index = 0,
+        .capacity = 128,
+        .variables = malloc(128 * sizeof(Variable))
+    };
 
     // loopstack
     loop_id_stack = malloc(128 * sizeof(char));
@@ -1449,7 +1459,7 @@ int main(int argc, char **argv)
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(double));
 
-    if (variables == NULL ||
+    if (scope.variables == NULL ||
         loop_id_stack == NULL ||
         loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
@@ -1482,12 +1492,12 @@ int main(int argc, char **argv)
     {
         Token *current = instructions[program_counter];
 
-        interpret_instruction(current, instructions, instruction_amount);
+        interpret_instruction(current, instructions, instruction_amount, &scope);
 
         program_counter++;
     }
 
-    print_variables();
+    print_variables(&scope);
     return 0;
 
     malloc_error:

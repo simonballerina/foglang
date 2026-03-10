@@ -1,19 +1,19 @@
 
-Get_var_return get_var_value(char *name, int length, int type, double index){
+Get_var_return get_var_value(char *name, int length, int type, double index, Scope *scope){
     Get_var_return ret_value;
     /*for (int i = 0; i < length; i++){
         printf("%c", name[i]);
     }
     printf("    length: %d, type: %d, index: %lf\n", length, type, index);*/
-    for (int i = 0; i < var_index; i++){
-        if (length == variables[i].name_len && strncmp(name, variables[i].name, length) == 0){ // hittat en variabel
+    for (int i = 0; i < (*scope).index; i++){
+        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
             if (type == VAR_LIST){
                 int ret_type = VAR_STRING;
-                if (index >= variables[i].len || index < 0){
+                if (index >= (*scope).variables[i].len || index < 0){
                     printf("ERR: Ogiltig indexing av lista\n");
                     exit(-1);
                 }
-                Variable found_var = variables[i+(int)index+1];
+                Variable found_var = (*scope).variables[i+(int)index+1];
                 
                 if (found_var.type == VAR_NUMBER) ret_type = VAR_NUMBER;
 
@@ -35,9 +35,9 @@ Get_var_return get_var_value(char *name, int length, int type, double index){
                 return ret_value;
             }
             else {
-                ret_value.value = variables[i].value;
-                ret_value.string = variables[i].str_ptr;
-                ret_value.str_len = variables[i].len;
+                ret_value.value = (*scope).variables[i].value;
+                ret_value.string = (*scope).variables[i].str_ptr;
+                ret_value.str_len = (*scope).variables[i].len;
                 ret_value.type = VAR_STRING;
                 if (!ret_value.string) ret_value.type = VAR_NUMBER;
                 return ret_value;
@@ -50,7 +50,7 @@ Get_var_return get_var_value(char *name, int length, int type, double index){
 }
 
 
-void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount)
+void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     // räkna ut hur många element den ska ha i listan
     int len = 0;
@@ -80,17 +80,17 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
         .str_ptr = 0
     };
 
-    if (var_index >= variables_capacity)
+    if ((*scope).index >= (*scope).capacity)
     { // kolla att strl är ok
-        variables = realloc(variables, sizeof(Variable)*(variables_capacity + var_size + 64));
-        variables_capacity += var_size + 64;
-        if (variables == NULL)
+        (*scope).variables = realloc((*scope).variables, sizeof(Variable)*((*scope).capacity + var_size + 64));
+        (*scope).capacity += var_size + 64;
+        if ((*scope).variables == NULL)
         {
             printf("ERR: Minnesallokering misslyckades\n");
             exit(1);
         }
     }
-    variables[var_index++] = var;
+    (*scope).variables[(*scope).index++] = var;
 
 
     // lägg till lista
@@ -120,14 +120,14 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
         if (values[i].type == NUMBER)
         {
 
-            list_var.value = evaluate_expression(values+i, item_len, instructions, instruction_amount);
+            list_var.value = evaluate_expression(values+i, item_len, instructions, instruction_amount, scope);
             list_var.type = VAR_LIST_NUMBER;
-            variables[var_index++] = list_var;
+            (*scope).variables[(*scope).index++] = list_var;
             i+=item_len;
         }
         else if (values[i].type == STRING)
         {
-            String list_str = evaluate_str_expression(values+i, item_len, instructions, instruction_amount);
+            String list_str = evaluate_str_expression(values+i, item_len, instructions, instruction_amount, scope);
             list_var.len = list_str.len;
             if (list_str.string == NULL)
             {
@@ -136,29 +136,29 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
             }
             list_var.str_ptr = list_str.string;
             list_var.type = VAR_LIST_STRING;
-            variables[var_index++] = list_var;
+            (*scope).variables[(*scope).index++] = list_var;
             i+=item_len;
         } else if (values[i].type == VARIABLE){
 
             int var_type = VAR_NONE;
-            Get_var_return test_var = get_var_value(values[i].var.name, values[i].var.name_len, 0, 0);
+            Get_var_return test_var = get_var_value(values[i].var.name, values[i].var.name_len, 0, 0, scope);
             var_type = test_var.type;
 
 
             if (var_type == VAR_STRING) {
-                String var = evaluate_str_expression(values+i, item_len, instructions, instruction_amount);
+                String var = evaluate_str_expression(values+i, item_len, instructions, instruction_amount, scope);
                 list_var.type = VAR_LIST_STRING;
                 list_var.str_ptr = var.string;
                 list_var.len = var.len;
-                variables[var_index++] = list_var;
+                (*scope).variables[(*scope).index++] = list_var;
                 i+=item_len;
             }
             else if (var_type == VAR_NUMBER) {
-                double var_value = evaluate_expression(values+i, item_len, instructions, instruction_amount);
+                double var_value = evaluate_expression(values+i, item_len, instructions, instruction_amount, scope);
 
                 list_var.value = var_value;
                 list_var.type = VAR_LIST_NUMBER;
-                variables[var_index++] = list_var;
+                (*scope).variables[(*scope).index++] = list_var;
                 i+=item_len;
             }
             
@@ -174,7 +174,7 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
 }
 
 
-void create_num_var(char *name, int name_len, double value)
+void create_num_var(char *name, int name_len, double value, Scope *scope)
 {
     Variable var = {// init var
                     .len = 0,
@@ -184,53 +184,53 @@ void create_num_var(char *name, int name_len, double value)
                     .value = value,
                     .str_ptr = 0};
 
-    if (var_index >= variables_capacity)
+    if ((*scope).index >= (*scope).capacity)
     { // kolla att strl är ok
-        variables = realloc(variables, variables_capacity + 1 + 64);
-        variables_capacity += 1 + 64;
-        if (variables == NULL)
+        (*scope).variables = realloc((*scope).variables, (*scope).capacity + 1 + 64);
+        (*scope).capacity += 1 + 64;
+        if ((*scope).variables == NULL)
         {
             printf("ERR: Minnesallokering misslyckades\n");
             exit(1);
         }
     }
-    variables[var_index++] = var;
+    (*scope).variables[(*scope).index++] = var;
 }
 
 
-void change_list_item(char* name, int name_len, int index, Variable new_var){
+void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope){
 
-    for (int i = 0; i < var_index; i++){
-        if (variables[i].name_len == name_len && !strncmp(name, variables[i].name, name_len)){
-            if (index < variables[i].len){
+    for (int i = 0; i < (*scope).index; i++){
+        if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
+            if (index < (*scope).variables[i].len){
                 // free gamla strängar
-                if (variables[i+1+index].type == VAR_LIST_STRING) free(variables[i+1+index].str_ptr);
+                if ((*scope).variables[i+1+index].type == VAR_LIST_STRING) free((*scope).variables[i+1+index].str_ptr);
 
                 // kopiera över nya variabeln
-                variables[i+1+index] = new_var;
+                (*scope).variables[i+1+index] = new_var;
             } else { // skapa nytt item
-                if (var_index >= variables_capacity){
-                    variables = realloc(variables, sizeof(Variable)*(variables_capacity + 1 + 64));
-                    variables_capacity += 64+1;
-                    if (variables == NULL){
+                if ((*scope).index >= (*scope).capacity){
+                    (*scope).variables = realloc((*scope).variables, sizeof(Variable)*((*scope).capacity + 1 + 64));
+                    (*scope).capacity += 64+1;
+                    if ((*scope).variables == NULL){
                         printf("ERR: Minnesallokering misslyckades\n");
                         exit(1);
                     }
                 }
                 memmove(
-                    variables + i + index + 2,
-                    variables + i + index + 1,
-                    (var_index - (i + index + 1)) * sizeof(Variable)
+                    (*scope).variables + i + index + 2,
+                    (*scope).variables + i + index + 1,
+                    ((*scope).index - (i + index + 1)) * sizeof(Variable)
                 );                
-                variables[i+1+index] = new_var;
-                var_index++;
+                (*scope).variables[i+1+index] = new_var;
+                (*scope).index++;
             }
         }
     }
 }
 
 
-void create_str_var(char *name, int name_len, int len, char *string)
+void create_str_var(char *name, int name_len, int len, char *string, Scope *scope)
 {
 
     // reservera minne till strängen
@@ -256,15 +256,15 @@ void create_str_var(char *name, int name_len, int len, char *string)
 
     var.str_ptr = string_ptr;
     var.type = VAR_STRING;
-    if (var_index >= variables_capacity)
+    if ((*scope).index >= (*scope).capacity)
     { // kolla att strl är ok
-        variables = realloc(variables, variables_capacity + 1 + 64);
-        variables_capacity += 1 + 64;
-        if (variables == NULL)
+        (*scope).variables = realloc((*scope).variables, (*scope).capacity + 1 + 64);
+        (*scope).capacity += 1 + 64;
+        if ((*scope).variables == NULL)
         {
             printf("ERR: Minnesallokering misslyckades\n");
             exit(1);
         }
     }
-    variables[var_index++] = var;
+    (*scope).variables[(*scope).index++] = var;
 }

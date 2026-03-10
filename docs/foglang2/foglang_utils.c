@@ -201,26 +201,26 @@ void debug_print_var(char *name, int len)
 }
 
 
-void print_variables()
+void print_variables(Scope *scope)
 {
-    for (int i = 0; i < var_index; i++)
+    for (int i = 0; i < (*scope).index; i++)
     {
-        printf("%i: Type: %d    Name: ", i, variables[i].type);
+        printf("%i: Type: %d    Name: ", i, (*scope).variables[i].type);
         // printa namn
-        if (variables[i].name != NULL)
+        if ((*scope).variables[i].name != NULL)
         {
-            for (int j = 0; j < variables[i].name_len; j++)
+            for (int j = 0; j < (*scope).variables[i].name_len; j++)
             {
-                printf("%c", variables[i].name[j]);
+                printf("%c", (*scope).variables[i].name[j]);
             }
         }
-        printf("    Value: %lf    List/String_len: %d   String: '", variables[i].value, variables[i].len);
+        printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
 
-        if (variables[i].str_ptr != 0)
+        if ((*scope).variables[i].str_ptr != 0)
         {
-            for (int j = 0; j < variables[i].len; j++)
+            for (int j = 0; j < (*scope).variables[i].len; j++)
             {
-                printf("%c", variables[i].str_ptr[j]);
+                printf("%c", (*scope).variables[i].str_ptr[j]);
             }
         }
 
