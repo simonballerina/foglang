@@ -1459,7 +1459,7 @@ int main(int argc, char **argv)
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(double));
 
-    if (variables == NULL ||
+    if (scope.variables == NULL ||
         loop_id_stack == NULL ||
         loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
