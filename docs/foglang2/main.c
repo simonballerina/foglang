@@ -1022,7 +1022,6 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
                 .capacity = 128,
                 .variables = malloc(128 * sizeof(Variable))
             };
-    printf("new scope\n");
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
