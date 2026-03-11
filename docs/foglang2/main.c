@@ -1064,7 +1064,7 @@ void tpos(Token *instruction, Scope *scope)
             } else {
                 call_len += sizeof(double);
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%lf", (int)value);
+                sprintf(call + writer, "%lf", (double)value);
                 writer += strlen(call + writer);
             }
                 
@@ -1103,7 +1103,7 @@ void tpos(Token *instruction, Scope *scope)
                 } else {
                     call_len += sizeof(double);
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%lf", (int)value);
+                    sprintf(call + writer, "%lf", (double)value);
                     writer += strlen(call + writer);
                 }
                 i+=len+1;    
@@ -1115,6 +1115,7 @@ void tpos(Token *instruction, Scope *scope)
         }
         
     }
+    printf("extra is %d\n\n\n\n\n\n", writer);
     system(call);
     //free my boy
     free(call);
