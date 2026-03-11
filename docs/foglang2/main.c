@@ -18,7 +18,7 @@ int loop_stack_capacity = 128;
 
 // function stack
 int *function_origin_program_counter_stack;
-Get_var_return *function_return_stack;
+Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
@@ -822,7 +822,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
         type = VAR_LIST;
     }
 
-    Get_var_return eval_result;
+    Dynamic_Var eval_result;
     if (type != VAR_LIST){
         eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
         type = eval_result.type;
@@ -1057,8 +1057,8 @@ void givet(Token *instruction, Program program, Scope *scope)
     int right_len = i - left_len - 4;
 
 
-    Get_var_return left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
-    Get_var_return right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
+    Dynamic_Var left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
+    Dynamic_Var right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -1171,8 +1171,8 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     // for (int k=0; k<left_args_length; k++) printf("[DEBUG] LEFT %d: %d\n", k, left_args[k].type);
     // for (int k=0; k<right_args_length; k++) printf("[DEBUG] RIGHT %d: %d\n", k, right_args[k].type);
 
-    Get_var_return left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
-    Get_var_return right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
+    Dynamic_Var left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
+    Dynamic_Var right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -1296,7 +1296,7 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         exit(1);
 }
 
-Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
     Scope scope = {
                 .index = 0,
@@ -1326,12 +1326,12 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
     if (function_stack_top >= function_stack_capacity)
     {
         function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, (function_stack_capacity + 64)*sizeof(int));
-        function_return_stack = realloc(function_return_stack, (function_stack_capacity + 64)*sizeof(Get_var_return));
+        function_return_stack = realloc(function_return_stack, (function_stack_capacity + 64)*sizeof(Dynamic_Var));
         function_stack_capacity += 64;
         if (function_origin_program_counter_stack == NULL || function_return_stack == NULL) goto malloc_error;
     }
     function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
-    Get_var_return zero_var = {
+    Dynamic_Var zero_var = {
         .str_len = 0,
         .string = 0,
         .type = 0,
@@ -1359,7 +1359,7 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
     free(scope.variables);
     scope.variables = NULL;
 
-    Get_var_return ret = function_return_stack[call_stack_level];
+    Dynamic_Var ret = function_return_stack[call_stack_level];
     return ret;
 
     malloc_error:
@@ -1400,7 +1400,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case RETURN:
     {
-        Get_var_return return_value;
+        Dynamic_Var return_value;
         if (current[1].type == NUMBER) {
             return_value.value = current[1].value;
             return_value.type = VAR_NUMBER;
