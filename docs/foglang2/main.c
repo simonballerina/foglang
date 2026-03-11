@@ -291,10 +291,10 @@ char* bult(char* file_name){
                 if (is_sax) {
                     memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
                 } else {
-                sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
                 }
                 char* import_buff = read_file(import_file_name);
-                if (!buff) {
+                if (!import_buff) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
