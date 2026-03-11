@@ -1,6 +1,6 @@
 
-Get_var_return get_var_value(char *name, int length, int type, double index, Scope *scope){
-    Get_var_return ret_value;
+Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope){
+    Dynamic_Var ret_value;
     /*for (int i = 0; i < length; i++){
         printf("%c", name[i]);
     }
@@ -15,7 +15,7 @@ Get_var_return get_var_value(char *name, int length, int type, double index, Sco
                 }
                 Variable found_var = (*scope).variables[i+(int)index+1];
                 
-                if (found_var.type == VAR_NUMBER) ret_type = VAR_NUMBER;
+                if (found_var.type == VAR_LIST_NUMBER) ret_type = VAR_NUMBER;
 
                 if (ret_type == VAR_STRING){
                     char* ret_str = found_var.str_ptr;
@@ -24,14 +24,18 @@ Get_var_return get_var_value(char *name, int length, int type, double index, Sco
                     
                     ret_value.value = 0;
                     ret_value.str_len = found_var.len;
+                    ret_value.type = VAR_STRING;
                 } else if (ret_type == VAR_NUMBER){
+                    
                     ret_value.str_len = 0;
                     ret_value.string = 0;
                     ret_value.value = found_var.value;
+                    ret_value.type = VAR_NUMBER;
                 } else {
                     printf("ERR: Kunde inte framställe ett variabelvärde för en ogiltig datatyp\n");
                     exit(-1);
                 }
+
                 return ret_value;
             }
             else {
@@ -141,7 +145,7 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
         } else if (values[i].type == VARIABLE){
 
             int var_type = VAR_NONE;
-            Get_var_return test_var = get_var_value(values[i].var.name, values[i].var.name_len, 0, 0, scope);
+            Dynamic_Var test_var = get_var_value(values[i].var.name, values[i].var.name_len, 0, 0, scope);
             var_type = test_var.type;
 
 
