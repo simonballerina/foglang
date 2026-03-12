@@ -271,6 +271,13 @@ char* bult(char* file_name){
             
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
+                int is_sax = 0;
+                if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
+                {
+                    is_sax = 1;
+                    i += 4;
+                }
+
                 int name_len = 0;
                 // hitta längden på importnamnet
                 name_len = i+5;
@@ -278,13 +285,16 @@ char* bult(char* file_name){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1)*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax)*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
-                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
-
-                import_file_name[name_len] = '\0';
+                buff[i + name_len + 5] = '\0';
+                if (is_sax) {
+                    memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
+                } else {
+                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                }
                 char* import_buff = read_file(import_file_name);
-                if (!buff) {
+                if (!import_buff) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
@@ -293,7 +303,7 @@ char* bult(char* file_name){
                 int import_end = i + 5 + name_len + 1;
 
 
-                int left_side_len = i;
+                int left_side_len = i - 4*is_sax;
                 int right_side_len = len - import_end;
                 int import_buff_len = strlen(import_buff);
                 // skapa ny sträng
