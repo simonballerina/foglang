@@ -1,10 +1,12 @@
 
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
             if (i+1 < args_amount && args[i+1].type == LEFT_BRACKET){
+                
                 int index_len = 0;
                 int j = i+2;
                 while (j < args_amount && args[j].type != RIGHT_BRACKET){ index_len++; j++; }
@@ -15,8 +17,8 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
-                
+                Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
+
                 for (int k = i+1; k <= j && k < args_amount; k++){
                     args[k].type = NONE;
                 }
@@ -30,7 +32,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     args[i].value = var.value;
                 }
             } else {
-                Get_var_return var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
+                Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
                     args[i].type = STRING;
@@ -48,7 +50,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
         }
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            Get_var_return value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
+            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
             if (value.type == VAR_NUMBER){
                 args[i].type = NUMBER;
                 args[i].value = value.value;
@@ -59,6 +61,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
             }
         }
     }
+
 }
 
 
@@ -286,7 +289,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
             memcpy(result_str+copied_chars, args[i].var.name, args[i].var.name_len*sizeof(char));
             copied_chars += args[i].var.name_len;
         } else if (args[i].type == VARIABLE) {
-            Get_var_return var_ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
+            Dynamic_Var var_ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
             memcpy(result_str+copied_chars, var_ret.string, var_ret.str_len*sizeof(char));
             copied_chars += var_ret.str_len;
         }
@@ -301,7 +304,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 }
 
 
-Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
 
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
@@ -318,15 +321,14 @@ Get_var_return dynamic_eval(Token *args_old, int args_amount, Token (*instructio
         }
 
         if (args[i].type == VARIABLE){
-            Get_var_return ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
+            Dynamic_Var ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
             if (ret.type == VAR_STRING) type = VAR_STRING;
         }
     }
     String str_ret;
     double num_ret;
 
-    Get_var_return ret;
-
+    Dynamic_Var ret;
 
     if (type == VAR_STRING)
     {
