@@ -50,7 +50,7 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
         }
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
+            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args, scope);
             if (value.type == VAR_NUMBER){
                 args[i].type = NUMBER;
                 args[i].value = value.value;

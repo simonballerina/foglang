@@ -1296,13 +1296,39 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         exit(1);
 }
 
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope)
 {
+    printf("innan:printmaxx\n");
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        printf("    %d", instruction[i].type);
+
+    }
+    printf("\n");
     Scope scope = {
                 .index = 0,
                 .capacity = 128,
                 .variables = malloc(128 * sizeof(Variable))
             };
+    
+    int amount_of_args = 1;
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        if (instruction[i].type == COMMA) amount_of_args++;
+    }
+    printf("args: %d\n", amount_of_args);
+    cleanup_args(instruction+2, amount_of_args, instructions, instruction_amount, old_scope);
+    printf("cleanat!\n");
+    /*for (int i = 0; i < 6; i++){
+        printf("    %d", instruction[i+2].type);
+    }
+    printf("\n");
+    cleanup_args(instruction+2, 6, instructions, instruction_amount, old_scope);
+    printf("cleanat!\n");
+    for (int i = 0; i < 6; i++){
+        printf("    %d", instruction[i+2].type);
+    }
+    printf("\n");*/
+   
+
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1341,6 +1367,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     function_stack_top++;
 
     program_counter = func_index + 1; // börja precis efter "boul"
+
+    // skapa argumenten/parametermaxxing
 
     while (function_stack_top > call_stack_level)
     {
@@ -1428,7 +1456,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case VARIABLE: // anta att det är en funktion
         if (current[0].var.type == FUNCTION) {
-            call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
+            call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount, current, scope);
         }
             
         break;
