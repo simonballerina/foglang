@@ -49,7 +49,7 @@ typedef struct
     int str_len;
     double value;
     int type;
-} Get_var_return;
+} Dynamic_Var;
 
 typedef struct
 {
@@ -110,7 +110,7 @@ void print_variables(Scope *scope);
 double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
 String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
-Get_var_return dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
+Dynamic_Var dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
 
 
 
@@ -124,10 +124,10 @@ length: längden på namnsträngen.
 type: VAR_LIST om du indexerar en lista, annars 0. 
 index: indexeringen på listan, annars 0
 */
-Get_var_return get_var_value(char *name, int length, int type, double index, Scope *scope);
+Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
 void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope);
 
 // declarations som inte är i foglang_var.c eller foglang_eval.c
-Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount);
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount);
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope);
 

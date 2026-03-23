@@ -18,7 +18,7 @@ int loop_stack_capacity = 128;
 
 // function stack
 int *function_origin_program_counter_stack;
-Get_var_return *function_return_stack;
+Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
@@ -258,13 +258,85 @@ void debug_print_var(char *name, int len)
     printf("§\n");
 }
 
+char* bult(char* file_name){
 
-
-
-
-Program tokenize(char *file_name)
-{
     char *buff = read_file(file_name);
+    if (!buff) {
+        printf("ERR: Kunde inte öppna fil\n");
+        exit(1);
+    }
+    int len = strlen(buff);
+    int found;
+    int search = 1;
+    while (search){
+        found = 0;
+        for (int i = 0; i < len; i++){
+            
+            if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
+
+                int name_len = 0;
+                // hitta längden på importnamnet
+                name_len = i+5;
+                while (name_len < len && buff[name_len] != ';')
+                    name_len++;
+                name_len-=(i+5);
+
+                char* import_file_name = malloc((name_len+1)*sizeof(char));
+                if (import_file_name == NULL) goto malloc_error;
+                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
+
+                import_file_name[name_len] = '\0';
+                char* import_buff = read_file(import_file_name);
+                if (!buff) {
+                    printf("ERR: Kunde inte öppna importfil\n");
+                    exit(1);
+                }
+
+                free(import_file_name);
+                int import_end = i + 5 + name_len + 1;
+
+
+                int left_side_len = i;
+                int right_side_len = len - import_end;
+                int import_buff_len = strlen(import_buff);
+                // skapa ny sträng
+                char* new_buff = malloc(left_side_len + import_buff_len + right_side_len + 1);
+                if (new_buff == NULL) goto malloc_error;
+
+                memcpy(new_buff, buff, left_side_len*sizeof(char));
+                memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
+                memcpy(new_buff + left_side_len + import_buff_len, buff + import_end, right_side_len);
+
+                new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
+                char *old_buff = buff;
+                buff = new_buff;
+                len = left_side_len + import_buff_len + right_side_len;
+                found = 1;
+
+                free(old_buff);
+                free(import_buff);
+
+                break;
+            }
+        }
+        if (found)
+            search = 1;
+        else search = 0;
+
+    }
+    
+    return buff; 
+
+
+    malloc_error:
+        printf("[BULT] ERR: Minnesallokering misslyckades\n");
+        exit(1);
+}
+
+
+
+Program tokenize(char* buff)
+{
     int buff_len = strlen(buff);
     printf("BUFF: -----------------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
@@ -279,11 +351,8 @@ Program tokenize(char *file_name)
 
     // skapa instruktionsarray
     Token(*instructions)[128] = calloc(instruction_amount, sizeof(*instructions));
-    if (instructions == NULL)
-    {
-        printf("Malloc failed\n");
-        exit(-1);
-    }
+    if (instructions == NULL) goto malloc_error;
+  
     printf("[DEBUG] instructions ptr: %p\n", instructions);
 
     int i = 0;
@@ -302,40 +371,40 @@ Program tokenize(char *file_name)
         tok.type = 0;
 
         // ord-tokens
-        if (strncmp(&buff[i], "foug", 4) == 0)
+        if (strncmp(&buff[i], "foug ", 5) == 0)
         {
             tok.type = FOUG;
-            i += 4;
+            i += 5;
         }
-        else if (strncmp(&buff[i], "svets", 5) == 0)
+        else if (strncmp(&buff[i], "svets ", 6) == 0)
         {
             tok.type = SVETS;
-            i += 5;
+            i += 6;
         }
-        else if (strncmp(&buff[i], "band", 4) == 0)
+        else if (strncmp(&buff[i], "band ", 5) == 0)
         {
             tok.type = BAND;
-            i += 4;
-        }
-        else if (strncmp(&buff[i], "givet", 5) == 0)
-        {
-            tok.type = GIVET;
             i += 5;
         }
-        else if (strncmp(&buff[i], "att", 3) == 0)
+        else if (strncmp(&buff[i], "givet ", 6) == 0)
+        {
+            tok.type = GIVET;
+            i += 6;
+        }
+        else if (strncmp(&buff[i], "att ", 4) == 0)
         {
             tok.type = ATT;
-            i += 3;
+            i += 4;
         }
-        else if (strncmp(&buff[i], "naer", 4) == 0)
+        else if (strncmp(&buff[i], "naer ", 5) == 0)
         {
             tok.type = NAER;
-            i += 4;
+            i += 5;
         }
-        else if (strncmp(&buff[i], "boul", 4) == 0)
+        else if (strncmp(&buff[i], "boul ", 5) == 0)
         {
             tok.type = FUNCTION;
-            i += 4;
+            i += 5;
         }
         else if (strncmp(&buff[i], "tpos", 4) == 0)
         {
@@ -520,8 +589,218 @@ Program tokenize(char *file_name)
     Program program = {instructions, instruction_amount};
     printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
     return program;
+
+    malloc_error:
+        printf("[LEXER] ERR: Minnesallokering misslyckades\n");
+        exit(1);
+        
 }
 
+void check_syntax(Program* program){
+    Token(*instructions)[128] = program->data;
+    int instruction_amount = program->instruction_amount; 
+
+    for (int i = 0; i < instruction_amount; i++){
+        
+        switch (instructions[i][0].type){
+            
+            case NAER: 
+                /*
+                naer 14*2 = 10+18 {1};
+                    // gör något
+                {1};
+                */
+                int j = 1;
+                int comp_amount = 0;
+                int left_args = 0;
+                int right_args = 0;
+                char loop_id = 0;
+                int found_loop_id = 0;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 4) break;
+                        printf("[NAER]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+
+                    int tok = instructions[i][j].type;
+
+
+
+                    if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
+                        if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
+                            right_args = 1;
+                        }
+                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                            left_args = 1;
+                        }
+
+                        comp_amount++;
+                    }
+
+                    if (tok == LOOP_MARKER){
+                        loop_id = instructions[i][j].loop_id;
+                    }
+                    // kolla om den hittar en matchande loop marker
+                    for (int k = i; k < instruction_amount; k++){
+                        if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                            found_loop_id = 1;
+                            break;
+                        }
+                    }
+
+                    j++;
+                }
+                if (comp_amount != 1){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                    exit(-1);
+                }
+                if (!left_args || !right_args){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    exit(-1);
+                }
+                if (!found_loop_id || !loop_id){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                break;
+
+            case GIVET: 
+                /*
+                givet att 14*2 = 10+18 {1};
+                    // gör något
+                {1};
+                */
+                j = 1;
+                comp_amount = 0;
+                left_args = 0;
+                right_args = 0;
+                int att_exists = 0;
+                loop_id = 0;
+                found_loop_id = 0;
+
+                if (instructions[i][1].type == ATT) att_exists = 1;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 5) break;
+                        printf("[GIVET]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+                    int tok = instructions[i][j].type;
+                    
+
+
+                    if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
+                        if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
+                            right_args = 1;
+                        }
+                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                            left_args = 1;
+                        }
+
+                        comp_amount++;
+                    }
+
+                    if (tok == LOOP_MARKER){
+                        loop_id = instructions[i][j].loop_id;
+                        // kolla om den hittar en matchande loop marker
+                        for (int k = i; k < instruction_amount; k++){
+
+                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                                found_loop_id = 1;
+                                break;
+                            }
+                        }
+                    }
+
+
+                    j++;
+                }
+                
+                if (comp_amount != 1){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                    exit(-1);
+                }
+                if (!left_args || !right_args){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    exit(-1);
+                }
+                if (!found_loop_id || !loop_id){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                if (!att_exists){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, ATT token saknas\n", i);
+                    exit(-1);
+                }
+
+                break;
+
+            case FOUG:
+                break;
+            case BAND:
+                break;
+            case FUNCTION:
+                /*
+                boul func_name(a, b) {1};
+                    // gör skit
+                {1};
+                */
+                j = 1;
+                found_loop_id = 0;
+                loop_id = 0;
+                int found_return = 0;
+
+                while (instructions[i][j-1].type != TERMINATOR){
+                    if (instructions[i][j].type == TERMINATOR){
+                        if (j >= 4) break;
+                        printf("[BOUL]: ERR: Syntax error, instruktion %d\n", i);
+                        exit(-1);
+                    }
+                    int tok = instructions[i][j].type;
+
+                    int func_stop;
+                    if (instructions[i][j].type == LOOP_MARKER) {
+                        loop_id = instructions[i][j].loop_id;
+                        // hitta loop marker
+                        for (int k = i; k < instruction_amount; k++){
+
+                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
+                                found_loop_id = 1;
+                                func_stop = k;
+                                break;
+                            }
+                        }
+                        // hitta ret
+                        if (!found_return){
+                            for (int k = i; k < func_stop; k++){
+                                if (instructions[k][0].type == RETURN){
+                                    found_return = 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+
+                    j++;
+                }
+                
+                if (!found_loop_id || !loop_id){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                    exit(-1);
+                }
+                if (!found_return){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta RETURN token\n", i);
+                    exit(-1);
+                }
+                break;
+        }
+    }
+
+}
 
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
@@ -551,7 +830,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
         type = VAR_LIST;
     }
 
-    Get_var_return eval_result;
+    Dynamic_Var eval_result;
     if (type != VAR_LIST){
         eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
         type = eval_result.type;
@@ -786,8 +1065,8 @@ void givet(Token *instruction, Program program, Scope *scope)
     int right_len = i - left_len - 4;
 
 
-    Get_var_return left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
-    Get_var_return right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
+    Dynamic_Var left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
+    Dynamic_Var right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -900,8 +1179,8 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     // for (int k=0; k<left_args_length; k++) printf("[DEBUG] LEFT %d: %d\n", k, left_args[k].type);
     // for (int k=0; k<right_args_length; k++) printf("[DEBUG] RIGHT %d: %d\n", k, right_args[k].type);
 
-    Get_var_return left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
-    Get_var_return right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
+    Dynamic_Var left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
+    Dynamic_Var right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
 
     int type = VAR_NONE;
     if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
@@ -1011,18 +1290,21 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
                 loop_id_stack = realloc(loop_id_stack, loop_stack_capacity + 64);
                 loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity + 64);
                 loop_stack_capacity += 64;
-                if (loop_id_stack == NULL || loop_program_counter_stack == NULL)
-                {
-                    printf("ERR: Minnesallokering misslyckades\n");
-                    exit(1);
-                }
+                if (loop_id_stack == NULL || loop_program_counter_stack == NULL) goto malloc_error;
             }
             loop_id_stack[loop_stack_top_id] = loop_id;
             loop_program_counter_stack[loop_stack_top_id++] = program_counter;
         }
     }
+
+    return;
+
+    malloc_error:
+        printf("[NAER] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
 
+<<<<<<< temple-fragetecken
 void tpos(Token *instruction, Scope *scope)
 {
     //allocation
@@ -1124,13 +1406,19 @@ void tpos(Token *instruction, Scope *scope)
 }
 
 Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
+=======
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
+>>>>>>> main
 {
     Scope scope = {
                 .index = 0,
                 .capacity = 128,
                 .variables = malloc(128 * sizeof(Variable))
             };
+<<<<<<< temple-fragetecken
     //printf("new scope\n");
+=======
+>>>>>>> main
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1154,16 +1442,12 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
     if (function_stack_top >= function_stack_capacity)
     {
         function_origin_program_counter_stack = realloc(function_origin_program_counter_stack, (function_stack_capacity + 64)*sizeof(int));
-        function_return_stack = realloc(function_return_stack, (function_stack_capacity + 64)*sizeof(Get_var_return));
+        function_return_stack = realloc(function_return_stack, (function_stack_capacity + 64)*sizeof(Dynamic_Var));
         function_stack_capacity += 64;
-        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL)
-        {
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
-        }
+        if (function_origin_program_counter_stack == NULL || function_return_stack == NULL) goto malloc_error;
     }
     function_origin_program_counter_stack[function_stack_top] = origin_program_counter;
-    Get_var_return zero_var = {
+    Dynamic_Var zero_var = {
         .str_len = 0,
         .string = 0,
         .type = 0,
@@ -1191,8 +1475,12 @@ Get_var_return call_function(char *name, int name_len, int origin_program_counte
     free(scope.variables);
     scope.variables = NULL;
 
-    Get_var_return ret = function_return_stack[call_stack_level];
+    Dynamic_Var ret = function_return_stack[call_stack_level];
     return ret;
+
+    malloc_error:
+        printf("[FUNCTION CALL] ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope)
@@ -1231,7 +1519,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case RETURN:
     {
-        Get_var_return return_value;
+        Dynamic_Var return_value;
         if (current[1].type == NUMBER) {
             return_value.value = current[1].value;
             return_value.type = VAR_NUMBER;
@@ -1290,20 +1578,22 @@ int main(int argc, char **argv)
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(double));
 
-    if (
+    if (scope.variables == NULL ||
         loop_id_stack == NULL ||
         loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
         function_return_stack == NULL)
-    {
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
-    }
+        goto malloc_error;
 
-    Program program = tokenize(argv[1]);
+    
+
+    char* buff = bult(argv[1]);
+    Program program = tokenize(buff);
+    
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
     print_tokens(instructions, instruction_amount);
+    check_syntax(&program);
 
     // hitta entry point (main)
     for (int i = 0; i < instruction_amount; i++)
@@ -1313,7 +1603,7 @@ int main(int argc, char **argv)
     }
     if (program_counter == -1)
     {
-        printf("ERR: main inte hittad\n");
+        printf("[MAIN] ERR: main inte hittad\n");
         exit(-1);
     }
 
@@ -1328,4 +1618,12 @@ int main(int argc, char **argv)
 
     print_variables(&scope);
     return 0;
+<<<<<<< temple-fragetecken
 }
+=======
+
+    malloc_error:
+        printf("[MAIN] ERR: Minnesallokering misslyckades\n");
+        exit(1);
+}
+>>>>>>> main
