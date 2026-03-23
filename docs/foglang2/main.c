@@ -258,6 +258,8 @@ void debug_print_var(char *name, int len)
 char* bult(char* file_name){
 
     char *buff = read_file(file_name);
+    int imports_capacity = 32;
+    char *imports = malloc(imports_capacity);
     if (!buff) {
         printf("ERR: Kunde inte öppna fil\n");
         exit(1);
@@ -271,6 +273,12 @@ char* bult(char* file_name){
             
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
+                int is_sax = 0;
+                if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
+                {
+                    is_sax = 1;
+                    i += 4;
+                }
                 int name_len = 0;
                 // hitta längden på importnamnet
                 name_len = i+5;
@@ -278,22 +286,30 @@ char* bult(char* file_name){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1)*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax)*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
-                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
-
-                import_file_name[name_len] = '\0';
+                buff[i + name_len + 5] = '\0';
+                if (is_sax) {
+                    memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
+                } else {
+                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                }
+                
+                int is_dupe = 1;
                 char* import_buff = read_file(import_file_name);
-                if (!buff) {
+                if (find_substring(imports, import_file_name) == -1) {
+                    is_dupe = 0;
+                    imports_capacity += name_len+7*is_sax;
+                    imports = realloc(imports, imports_capacity);
+                    strcat(imports, import_file_name);
+                }
+                if (!import_buff && !is_dupe) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
-
                 free(import_file_name);
                 int import_end = i + 5 + name_len + 1;
-
-
-                int left_side_len = i;
+                int left_side_len = i - 4*is_sax;
                 int right_side_len = len - import_end;
                 int import_buff_len = strlen(import_buff);
                 // skapa ny sträng
@@ -302,7 +318,7 @@ char* bult(char* file_name){
 
                 memcpy(new_buff, buff, left_side_len*sizeof(char));
                 memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
-                memcpy(new_buff + left_side_len + import_buff_len, buff + import_end, right_side_len);
+                memcpy(new_buff + left_side_len + (import_buff_len)*!is_dupe, buff + import_end, right_side_len);
 
                 new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
                 char *old_buff = buff;
@@ -321,7 +337,10 @@ char* bult(char* file_name){
         else search = 0;
 
     }
-    
+
+    free(imports);
+    imports = NULL;
+
     return buff; 
 
 
@@ -1503,4 +1522,21 @@ int main(int argc, char **argv)
     malloc_error:
         printf("[MAIN] ERR: Minnesallokering misslyckades\n");
         exit(1);
+}
+
+int find_substring(char *txt, char *pat) {
+    int n = strlen(txt);
+    int m = strlen(pat);
+    for (int i = 0; i <= n - m; i++) {
+        int j;
+        for (j = 0; j < m; j++) {
+            if (txt[i + j] != pat[j]) {
+                break;
+            }
+        }
+        if (j == m) {
+            return i;
+        }
+    }
+    return -1;
 }
