@@ -236,7 +236,6 @@ void change_list_item(char* name, int name_len, int index, Variable new_var, Sco
 
 void create_str_var(char *name, int name_len, int len, char *string, Scope *scope)
 {
-
     // reservera minne till strängen
 
     Variable var = {
