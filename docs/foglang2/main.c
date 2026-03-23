@@ -279,7 +279,6 @@ char* bult(char* file_name){
                     is_sax = 1;
                     i += 4;
                 }
-
                 int name_len = 0;
                 // hitta längden på importnamnet
                 name_len = i+5;
@@ -304,17 +303,12 @@ char* bult(char* file_name){
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
-                
-                //char* import_buff = read_file(import_file_name);
                 if (!import_buff && !is_dupe) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
-
                 free(import_file_name);
                 int import_end = i + 5 + name_len + 1;
-
-
                 int left_side_len = i - 4*is_sax;
                 int right_side_len = len - import_end;
                 int import_buff_len = strlen(import_buff);
