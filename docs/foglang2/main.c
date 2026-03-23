@@ -1514,3 +1514,20 @@ int main(int argc, char **argv)
         printf("[MAIN] ERR: Minnesallokering misslyckades\n");
         exit(1);
 }
+
+int find_substring(char *txt, char *pat) {
+    int n = strlen(txt);
+    int m = strlen(pat);
+    for (int i = 0; i <= n - m; i++) {
+        int j;
+        for (j = 0; j < m; j++) {
+            if (txt[i + j] != pat[j]) {
+                break;
+            }
+        }
+        if (j == m) {
+            return i;
+        }
+    }
+    return -1;
+}
