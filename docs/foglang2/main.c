@@ -258,6 +258,8 @@ void debug_print_var(char *name, int len)
 char* bult(char* file_name){
 
     char *buff = read_file(file_name);
+    int imports_capacity = 32;
+    char *imports = malloc(imports_capacity);
     if (!buff) {
         printf("ERR: Kunde inte öppna fil\n");
         exit(1);
@@ -293,8 +295,18 @@ char* bult(char* file_name){
                 } else {
                     sprintf(import_file_name, "lib/%s.fg", buff+i+5);
                 }
+                
+                int is_dupe = 1;
                 char* import_buff = read_file(import_file_name);
-                if (!import_buff) {
+                if (find_substring(imports, import_file_name) == -1) {
+                    is_dupe = 0;
+                    imports_capacity += name_len+7*is_sax;
+                    imports = realloc(imports, imports_capacity);
+                    strcat(imports, import_file_name);
+                }
+                
+                //char* import_buff = read_file(import_file_name);
+                if (!import_buff && !is_dupe) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
@@ -312,7 +324,7 @@ char* bult(char* file_name){
 
                 memcpy(new_buff, buff, left_side_len*sizeof(char));
                 memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
-                memcpy(new_buff + left_side_len + import_buff_len, buff + import_end, right_side_len);
+                memcpy(new_buff + left_side_len + (import_buff_len)*!is_dupe, buff + import_end, right_side_len);
 
                 new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
                 char *old_buff = buff;
@@ -331,7 +343,10 @@ char* bult(char* file_name){
         else search = 0;
 
     }
-    
+
+    free(imports);
+    imports = NULL;
+
     return buff; 
 
 
