@@ -425,10 +425,10 @@ Program tokenize(char* buff)
             tok.type = FUNCTION;
             i += 5;
         }
-        else if (strncmp(&buff[i], "tpos", 4) == 0)
+        else if (strncmp(&buff[i], "tpos ", 5) == 0)
         {
             tok.type = TPOS;
-            i += 4;
+            i += 5;
         }
         else if (strncmp(&buff[i], "return", 6) == 0)
         {
@@ -1421,7 +1421,7 @@ void tpos(Token *instruction, Scope *scope)
     
 }
 
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope)
 {
     // börja med att hitta argument
     // städa upp instruction
