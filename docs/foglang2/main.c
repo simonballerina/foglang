@@ -208,6 +208,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case SVETS:
                 printf("'SVETS'    ");
                 break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
             case COMMA:
                 printf("','    ");
                 break;
@@ -421,6 +424,11 @@ Program tokenize(char* buff)
         {
             tok.type = FUNCTION;
             i += 5;
+        }
+        else if (strncmp(&buff[i], "tpos", 4) == 0)
+        {
+            tok.type = TPOS;
+            i += 4;
         }
         else if (strncmp(&buff[i], "return", 6) == 0)
         {
@@ -1315,6 +1323,105 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         exit(1);
 }
 
+void tpos(Token *instruction, Scope *scope)
+{
+    //allocation
+    int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
+    char *call = malloc(call_len);
+    strcpy(call, "");
+    if (call == NULL)
+    {
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
+    }
+    int writer = 0;
+    
+    if (instruction[1].type != SVETS)
+    {
+        if (instruction[1].type == STRING)
+        {
+            for (int i = 0; i < instruction[1].var.name_len; i++)
+            {
+                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
+                {
+                    i += 2;
+                }
+                if (i < instruction[1].var.name_len) {
+                    sprintf(call + writer, "%c", instruction[1].var.name[i]);
+                    writer++;
+                }  
+            }
+        }
+        else if (instruction[1].type == VARIABLE)
+        {
+            // printf("VARIABLE I TPOS\n");
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
+            if ((int)value == value){
+                call_len += sizeof(int);
+                call = realloc(call, call_len);
+                sprintf(call + writer, "%d", (int)value);
+                writer += strlen(call + writer);
+            } else {
+                call_len += sizeof(double);
+                call = realloc(call, call_len);
+                sprintf(call + writer, "%lf", (double)value);
+                writer += strlen(call + writer);
+            }
+                
+        }
+        else
+        {
+            printf("ERR: Tpos: Syntax error\n");
+            exit(-1);
+        }
+    } else { // svets-string
+        for (int i = 0; i < instruction[2].var.name_len; i++){
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
+            {
+                strcat(call, "\n");
+                i += 2;
+            }
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            {
+                strcat(call, "%%");
+                i += 2;
+            }
+
+            if (instruction[2].var.name[i] == '%'){
+                // kolla längden på den
+                int len = 0;
+                for (int j = i+1; j < instruction[2].var.name_len; j++){
+                    if (instruction[2].var.name[j] == '%') break;
+                    len++;
+                }
+                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
+                if ((int)value == value) {
+                    call_len += sizeof(int);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%d", (int)value);
+                    writer += strlen(call + writer);
+                } else {
+                    call_len += sizeof(double);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%lf", (double)value);
+                    writer += strlen(call + writer);
+                }
+                i+=len+1;    
+            } else if (i < instruction[2].var.name_len) {
+                sprintf(call + writer, "%c", instruction[2].var.name[i]);
+                writer++;
+                
+            }
+        }
+        
+    }
+    system(call);
+    //free my boy
+    free(call);
+    call = NULL;
+    
+}
+
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
     Scope scope = {
@@ -1406,6 +1513,9 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         naer(current, instructions, instruction_amount, scope);
         break;
 
+    case TPOS:
+        tpos(current, scope);
+        break;
     case LOOP_MARKER:
         for (int i = 0; i < loop_stack_top_id; i++)
         {

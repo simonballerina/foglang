@@ -90,7 +90,8 @@ enum Tok_type
     SVETS,         // 27
     LEFT_BRACKET,  // 28
     RIGHT_BRACKET, // 29
-    COMMA          // 30
+    COMMA,         // 30
+    TPOS           // 31
 };
 
 typedef struct
