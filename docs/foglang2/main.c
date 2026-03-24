@@ -1479,7 +1479,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
     case RETURN:
     {
         Dynamic_Var return_value;
-        if (current[1].type == NUMBER) {
+        if (current[1].type == NUMBER || current[1].type == TERMINATOR) {
             return_value.value = current[1].value;
             return_value.type = VAR_NUMBER;
             return_value.string = 0;
@@ -1490,6 +1490,8 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
             return_value.string = current[1].var.name;
             return_value.str_len = current[1].var.name_len;
             return_value.type = VAR_STRING;
+            return_value.value = 0;
+        } else if (current[1].type == TERMINATOR){
             return_value.value = 0;
         }
 
@@ -1503,7 +1505,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
     }
 
     case VARIABLE: // anta att det är en funktion
-        if (current[0].var.type == FUNCTION) {
+        if (current[0].var.type == VAR_FUNCTION) {
             call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount, current, scope);
         }
             
