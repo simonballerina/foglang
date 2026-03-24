@@ -1304,7 +1304,6 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         exit(1);
 }
 
-<<<<<<< temple-fragetecken
 void tpos(Token *instruction, Scope *scope)
 {
     //allocation
@@ -1397,7 +1396,6 @@ void tpos(Token *instruction, Scope *scope)
         }
         
     }
-    printf("extra is %d\n\n\n\n\n\n", writer);
     system(call);
     //free my boy
     free(call);
@@ -1405,20 +1403,13 @@ void tpos(Token *instruction, Scope *scope)
     
 }
 
-Get_var_return call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
-=======
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
->>>>>>> main
 {
     Scope scope = {
                 .index = 0,
                 .capacity = 128,
                 .variables = malloc(128 * sizeof(Variable))
             };
-<<<<<<< temple-fragetecken
-    //printf("new scope\n");
-=======
->>>>>>> main
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1618,12 +1609,8 @@ int main(int argc, char **argv)
 
     print_variables(&scope);
     return 0;
-<<<<<<< temple-fragetecken
-}
-=======
 
     malloc_error:
         printf("[MAIN] ERR: Minnesallokering misslyckades\n");
         exit(1);
 }
->>>>>>> main
