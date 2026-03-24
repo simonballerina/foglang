@@ -615,7 +615,7 @@ Program tokenize(char* buff)
         
 }
 
-void check_syntax(Program* program){
+void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
     Token(*instructions)[128] = program->data;
     int instruction_amount = program->instruction_amount; 
 
@@ -1168,7 +1168,6 @@ void givet(Token *instruction, Program program, Scope *scope)
     }
 }
 
-    
 
 void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
@@ -1424,11 +1423,67 @@ void tpos(Token *instruction, Scope *scope)
 
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
+    // börja med att hitta argument
+    // städa upp instruction
+
     Scope scope = {
-                .index = 0,
-                .capacity = 128,
-                .variables = malloc(128 * sizeof(Variable))
-            };
+        .index = 0,
+        .capacity = 128,
+        .variables = malloc(128 * sizeof(Variable))
+    };
+    
+    // hitta antal argument
+    int amount_of_args = 1;
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        if (instruction[i].type == COMMA) amount_of_args++;
+    }
+
+    typedef struct {
+        int start_index;
+        int len;
+        Dynamic_Var info;
+    } Arg;
+
+    int arg_count = 0;
+    int depth = 0;
+    int start = 2; // första token efter (
+
+    Arg arg_info[amount_of_args];
+
+    for (int i = 2; instruction[i].type != TERMINATOR; i++) {
+        if (instruction[i].type == LEFT_PAR) depth++;
+        if (instruction[i].type == RIGHT_PAR) {
+            if (depth == 0) {
+                // sista argumentet
+                arg_info[arg_count].start_index = start;
+                arg_info[arg_count].len = i - start;
+
+                arg_count++;
+                break;
+            }
+            depth--;
+        }
+
+        if (instruction[i].type == COMMA && depth == 0) {
+            arg_info[arg_count].start_index = start;
+            arg_info[arg_count].len = i - start;
+            arg_count++;
+
+            start = i + 1;
+        }
+    }
+
+
+    cleanup_args(instruction+2, amount_of_args, instructions, instruction_amount, old_scope);
+
+
+    // skapa Dynamic_Var för varje värde
+    for (int i = 0; i < arg_count; i++){
+        Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
+        arg_info[i].info = eval_ret;
+    }
+
+    // hitta index dit den ska hoppa
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1448,6 +1503,26 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         exit(-1);
     }
 
+    // skapa variabler
+    int arg_number = 0;
+    for (int i = 3; instructions[func_index][i].type != TERMINATOR; i++){
+        Token current = instructions[func_index][i];
+        if (current.type == VARIABLE){
+            int type = arg_info[arg_number].info.type;
+
+            if (type == VAR_NUMBER){
+                double value = arg_info[arg_number].info.value;
+                create_num_var(current.var.name, current.var.name_len, value, &scope);
+
+            } else if (type == VAR_STRING){
+                int str_len = arg_info[arg_number].info.str_len;
+                char* string = arg_info[arg_number].info.string;
+                create_str_var(current.var.name, current.var.name_len, str_len, string, &scope);
+            }
+
+            arg_number++;
+        }
+    }
     int call_stack_level = function_stack_top;
     if (function_stack_top >= function_stack_capacity)
     {
@@ -1468,6 +1543,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
     program_counter = func_index + 1; // börja precis efter "boul"
 
+    // skapa argumenten/parametermaxxing
+
     while (function_stack_top > call_stack_level)
     {
         if (program_counter >= instruction_amount)
@@ -1477,10 +1554,10 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         }
         Token *current = instructions[program_counter];
         interpret_instruction(current, instructions, instruction_amount, &scope);
+        if (function_stack_top <= call_stack_level)
+            break;
         program_counter++;
     }
-    program_counter--; // program_counter inkrementeras 2 ggr annars
-
     //free up
     free(scope.variables);
     scope.variables = NULL;
@@ -1491,6 +1568,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     malloc_error:
         printf("[FUNCTION CALL] ERR: Minnesallokering misslyckades\n");
         exit(1);
+        
 }
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope)
@@ -1529,39 +1607,30 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case RETURN:
     {
-        Dynamic_Var return_value;
-        if (current[1].type == NUMBER) {
-            return_value.value = current[1].value;
-            return_value.type = VAR_NUMBER;
-            return_value.string = 0;
-            return_value.str_len = 0;
-        } else if (current[1].type == VARIABLE) {
-            return_value = get_var_value(current[1].var.name, current[1].var.name_len, 0, 0, scope);
-        } else if (current[1].type == STRING) {
-            return_value.string = current[1].var.name;
-            return_value.str_len = current[1].var.name_len;
-            return_value.type = VAR_STRING;
-            return_value.value = 0;
-        }
+        Dynamic_Var return_value = { 0 };
 
-        // printf("RETURN: %lf\n", return_value);
+        // räkna hur lång eval strängen blir
+        int len = 0;
+        while(current[len].type != TERMINATOR) len++;
+        len--;
+
+        return_value = dynamic_eval(current+1, len, instructions, instruction_amount, scope);
 
         function_return_stack[function_stack_top - 1] = return_value;
-
         program_counter = function_origin_program_counter_stack[function_stack_top - 1];
-
         function_stack_top--;
 
         break;
     }
 
     case VARIABLE: // anta att det är en funktion
-        if (current[0].var.type == FUNCTION) {
-            call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount);
+        if (current[0].var.type == VAR_FUNCTION) {
+            call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount, current, scope);
         }
             
         break;
     }
+
 }
 
 int main(int argc, char **argv)
@@ -1586,7 +1655,7 @@ int main(int argc, char **argv)
     loop_program_counter_stack = malloc(128 * sizeof(int));
     // function stack
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
-    function_return_stack = malloc(128 * sizeof(double));
+    function_return_stack = malloc(128 * sizeof(Dynamic_Var));
 
     if (scope.variables == NULL ||
         loop_id_stack == NULL ||

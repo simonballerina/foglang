@@ -1,7 +1,6 @@
 
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
-
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
@@ -48,18 +47,42 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
         
 
         }
+
+
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
-            if (value.type == VAR_NUMBER){
-                args[i].type = NUMBER;
+            int start = i;           // funktionen själv
+            int depth = 0;
+            int end = i + 1;
+
+            // hitta var slutet på funktionsanropet är (RIGHT_PAR på nivå 0)
+            while (end < args_amount) {
+                if (args[end].type == LEFT_PAR) depth++;
+                if (args[end].type == RIGHT_PAR) {
+                    if (depth == 0) break;
+                    depth--;
+                }
+                end++;
+            }
+
+            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args, scope);
+
+            // ersätt hela token-strängen med returvärdet
+            args[i].type = (value.type == VAR_NUMBER) ? NUMBER : STRING;
+            if (value.type == VAR_NUMBER) {
                 args[i].value = value.value;
-            } else if (value.type == VAR_STRING){
-                args[i].type = STRING;
+            } else {
                 args[i].var.name = value.string;
                 args[i].var.name_len = value.str_len;
             }
+
+            // sätt resten till NONE
+            for (int j = i+1; j <= end && j < args_amount; j++) {
+                args[j].type = NONE;
+            }
         }
+
+
     }
 
 }
@@ -86,9 +109,9 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
-
     while (1)
     {
+
         // räkna mängden tokens med värden
         int valid_token_count = 0;
         for (int i = 0; i < args_amount; i++)
@@ -252,11 +275,11 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
         }
         printf("\n");*/
     }
+
 }
 
 
 String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
-
 
     // konkatenera strängar. free:a gamla strängar!
     Token args[args_amount];
@@ -308,13 +331,13 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
 
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
-    
+
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
     int type = VAR_STRING;
 
-    for (int i = 0; args[i].type != TERMINATOR; i++){
+    for (int i = 0; i < args_amount; i++){
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
             break;

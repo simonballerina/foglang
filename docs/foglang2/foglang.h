@@ -129,6 +129,6 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope);
 
 // declarations som inte är i foglang_var.c eller foglang_eval.c
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount);
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope);
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope);
 
