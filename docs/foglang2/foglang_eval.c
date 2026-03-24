@@ -372,5 +372,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         return ret;
     }
 
+    return ret;
 
 }

@@ -90,7 +90,8 @@ enum Tok_type
     SVETS,         // 27
     LEFT_BRACKET,  // 28
     RIGHT_BRACKET, // 29
-    COMMA          // 30
+    COMMA,         // 30
+    TPOS           // 31
 };
 
 typedef struct
@@ -105,6 +106,7 @@ char *read_file(const char *filename);
 void print_tokens(Token instructions[][128], int instruction_amount);
 void debug_print_var(char *name, int len);
 void print_variables(Scope *scope);
+int find_substring(char *txt, char *pat);
 
 double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
 String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);

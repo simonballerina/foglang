@@ -208,6 +208,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case SVETS:
                 printf("'SVETS'    ");
                 break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
             case COMMA:
                 printf("','    ");
                 break;
@@ -258,6 +261,8 @@ void debug_print_var(char *name, int len)
 char* bult(char* file_name){
 
     char *buff = read_file(file_name);
+    int imports_capacity = 32;
+    char *imports = malloc(imports_capacity);
     if (!buff) {
         printf("ERR: Kunde inte öppna fil\n");
         exit(1);
@@ -271,6 +276,12 @@ char* bult(char* file_name){
             
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
+                int is_sax = 0;
+                if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
+                {
+                    is_sax = 1;
+                    i += 4;
+                }
                 int name_len = 0;
                 // hitta längden på importnamnet
                 name_len = i+5;
@@ -278,22 +289,30 @@ char* bult(char* file_name){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1)*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax)*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
-                memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
-
-                import_file_name[name_len] = '\0';
+                buff[i + name_len + 5] = '\0';
+                if (is_sax) {
+                    memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
+                } else {
+                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                }
+                
+                int is_dupe = 1;
                 char* import_buff = read_file(import_file_name);
-                if (!buff) {
+                if (find_substring(imports, import_file_name) == -1) {
+                    is_dupe = 0;
+                    imports_capacity += name_len+7*is_sax;
+                    imports = realloc(imports, imports_capacity);
+                    strcat(imports, import_file_name);
+                }
+                if (!import_buff && !is_dupe) {
                     printf("ERR: Kunde inte öppna importfil\n");
                     exit(1);
                 }
-
                 free(import_file_name);
                 int import_end = i + 5 + name_len + 1;
-
-
-                int left_side_len = i;
+                int left_side_len = i - 4*is_sax;
                 int right_side_len = len - import_end;
                 int import_buff_len = strlen(import_buff);
                 // skapa ny sträng
@@ -302,7 +321,7 @@ char* bult(char* file_name){
 
                 memcpy(new_buff, buff, left_side_len*sizeof(char));
                 memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
-                memcpy(new_buff + left_side_len + import_buff_len, buff + import_end, right_side_len);
+                memcpy(new_buff + left_side_len + (import_buff_len)*!is_dupe, buff + import_end, right_side_len);
 
                 new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
                 char *old_buff = buff;
@@ -321,7 +340,10 @@ char* bult(char* file_name){
         else search = 0;
 
     }
-    
+
+    free(imports);
+    imports = NULL;
+
     return buff; 
 
 
@@ -402,6 +424,11 @@ Program tokenize(char* buff)
         {
             tok.type = FUNCTION;
             i += 5;
+        }
+        else if (strncmp(&buff[i], "tpos", 4) == 0)
+        {
+            tok.type = TPOS;
+            i += 4;
         }
         else if (strncmp(&buff[i], "return", 6) == 0)
         {
@@ -1295,7 +1322,106 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
         exit(1);
 }
 
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope)
+void tpos(Token *instruction, Scope *scope)
+{
+    //allocation
+    int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
+    char *call = malloc(call_len);
+    strcpy(call, "");
+    if (call == NULL)
+    {
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
+    }
+    int writer = 0;
+    
+    if (instruction[1].type != SVETS)
+    {
+        if (instruction[1].type == STRING)
+        {
+            for (int i = 0; i < instruction[1].var.name_len; i++)
+            {
+                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
+                {
+                    i += 2;
+                }
+                if (i < instruction[1].var.name_len) {
+                    sprintf(call + writer, "%c", instruction[1].var.name[i]);
+                    writer++;
+                }  
+            }
+        }
+        else if (instruction[1].type == VARIABLE)
+        {
+            // printf("VARIABLE I TPOS\n");
+            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
+            if ((int)value == value){
+                call_len += sizeof(int);
+                call = realloc(call, call_len);
+                sprintf(call + writer, "%d", (int)value);
+                writer += strlen(call + writer);
+            } else {
+                call_len += sizeof(double);
+                call = realloc(call, call_len);
+                sprintf(call + writer, "%lf", (double)value);
+                writer += strlen(call + writer);
+            }
+                
+        }
+        else
+        {
+            printf("ERR: Tpos: Syntax error\n");
+            exit(-1);
+        }
+    } else { // svets-string
+        for (int i = 0; i < instruction[2].var.name_len; i++){
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
+            {
+                strcat(call, "\n");
+                i += 2;
+            }
+            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            {
+                strcat(call, "%%");
+                i += 2;
+            }
+
+            if (instruction[2].var.name[i] == '%'){
+                // kolla längden på den
+                int len = 0;
+                for (int j = i+1; j < instruction[2].var.name_len; j++){
+                    if (instruction[2].var.name[j] == '%') break;
+                    len++;
+                }
+                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
+                if ((int)value == value) {
+                    call_len += sizeof(int);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%d", (int)value);
+                    writer += strlen(call + writer);
+                } else {
+                    call_len += sizeof(double);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%lf", (double)value);
+                    writer += strlen(call + writer);
+                }
+                i+=len+1;    
+            } else if (i < instruction[2].var.name_len) {
+                sprintf(call + writer, "%c", instruction[2].var.name[i]);
+                writer++;
+                
+            }
+        }
+        
+    }
+    system(call);
+    //free my boy
+    free(call);
+    call = NULL;
+    
+}
+
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount)
 {
     // börja med att hitta argument
     // städa upp instruction
@@ -1465,6 +1591,9 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         naer(current, instructions, instruction_amount, scope);
         break;
 
+    case TPOS:
+        tpos(current, scope);
+        break;
     case LOOP_MARKER:
         for (int i = 0; i < loop_stack_top_id; i++)
         {
@@ -1572,4 +1701,21 @@ int main(int argc, char **argv)
     malloc_error:
         printf("[MAIN] ERR: Minnesallokering misslyckades\n");
         exit(1);
+}
+
+int find_substring(char *txt, char *pat) {
+    int n = strlen(txt);
+    int m = strlen(pat);
+    for (int i = 0; i <= n - m; i++) {
+        int j;
+        for (j = 0; j < m; j++) {
+            if (txt[i + j] != pat[j]) {
+                break;
+            }
+        }
+        if (j == m) {
+            return i;
+        }
+    }
+    return -1;
 }
