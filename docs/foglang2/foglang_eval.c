@@ -328,15 +328,16 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
-    
+
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
     int type = VAR_STRING;
 
-    for (int i = 0; args[i].type != TERMINATOR; i++){
+    for (int i = 0; i < args_amount; i++){
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
             break;

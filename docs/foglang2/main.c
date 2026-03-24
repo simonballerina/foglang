@@ -1478,25 +1478,15 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
 
     case RETURN:
     {
-        Dynamic_Var return_value;
-        if (current[1].type == NUMBER || current[1].type == TERMINATOR) {
-            return_value.value = current[1].value;
-            return_value.type = VAR_NUMBER;
-            return_value.string = 0;
-            return_value.str_len = 0;
-        } else if (current[1].type == VARIABLE) {
-            return_value = get_var_value(current[1].var.name, current[1].var.name_len, 0, 0, scope);
-        } else if (current[1].type == STRING) {
-            return_value.string = current[1].var.name;
-            return_value.str_len = current[1].var.name_len;
-            return_value.type = VAR_STRING;
-            return_value.value = 0;
-        } else if (current[1].type == TERMINATOR){
-            return_value.value = 0;
-        }
+        Dynamic_Var return_value = { 0 };
 
-        //printf("RETURN: %lf\n", return_value.value);
-        //printf("HOPPAR TILL %d\n", function_origin_program_counter_stack[function_stack_top - 1]);
+        // räkna hur lång eval strängen blir
+        int len = 0;
+        while(current[len].type != TERMINATOR) len++;
+        len--;
+
+        return_value = dynamic_eval(current+1, len, instructions, instruction_amount, scope);
+
         function_return_stack[function_stack_top - 1] = return_value;
         program_counter = function_origin_program_counter_stack[function_stack_top - 1];
         function_stack_top--;
