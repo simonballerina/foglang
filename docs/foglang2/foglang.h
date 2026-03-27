@@ -51,8 +51,7 @@ typedef struct
     int type;
 } Dynamic_Var;
 
-typedef struct
-{
+typedef struct Scope {
     Variable *variables;
     int index;
     int capacity;

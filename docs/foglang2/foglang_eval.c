@@ -1,11 +1,4 @@
-Token* copy_arguments(Token* old_args){
-    // hitta längden
-    int len = 0;
-    while (old_args[len].type != TERMINATOR) len++;
-    Token* copy[len];
-    memcpy(copy, old_args, len*sizeof(Token));
-    return copy;
-}
+
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
     for (int i = 0; i < args_amount; i++){
@@ -23,6 +16,11 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
+                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                print_variables(scope);
+                printf("----§§§§§§----\n");
+                
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
 
                 for (int k = i+1; k <= j && k < args_amount; k++){
@@ -38,6 +36,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     args[i].value = var.value;
                 }
             } else {
+                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                print_variables(scope);
+                printf("----§§§§§§----\n");
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
@@ -58,21 +60,35 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
 
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            int start = i;           // funktionen själv
-            int depth = 0;
-            int end = i + 1;
+            
 
-            // hitta var slutet på funktionsanropet är (RIGHT_PAR på nivå 0)
-            while (end < args_amount) {
+            int start = i;
+            int depth = 0;
+            int end = i;
+
+            // hitta första (
+            while (end < args_amount && args[end].type != LEFT_PAR)
+                end++;
+
+            if (end == args_amount) {
+                printf("ERR: expected (\n");
+                exit(1);
+            }
+
+            depth = 1;
+            end++; // gå in i parentes
+
+            while (end < args_amount && depth > 0) {
                 if (args[end].type == LEFT_PAR) depth++;
-                if (args[end].type == RIGHT_PAR) {
-                    if (depth == 0) break;
-                    depth--;
-                }
+                else if (args[end].type == RIGHT_PAR) depth--;
                 end++;
             }
 
-            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args, scope);
+            end--; // backa till sista ')'
+
+
+            
+            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args+start, scope);
 
             // ersätt hela token-strängen med returvärdet
             args[i].type = (value.type == VAR_NUMBER) ? NUMBER : STRING;
@@ -335,12 +351,22 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+    printf("ANTAL TOKENS DEN SKA EVALUATA: %d\n", args_amount);
+    Token *args = malloc((args_amount+1) * sizeof(Token));
+    if (!args) goto malloc_error;
 
-    Token args[args_amount];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+    memcpy(args, args_old, (args_amount+1) * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
+    printf("EFTER CLEANUP:\n");
+    for (int i = 0; i < args_amount; i++) {
+        printf("TYPE: %d ", args[i].type);
+        if (args[i].type == NUMBER)
+            printf("VAL: %lf", args[i].value);
+        printf("\n");
+    }
+    printf("\n");
 
     int type = VAR_STRING;
 
@@ -367,6 +393,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         ret.string = str_ret.string;
         ret.type = VAR_STRING;
         ret.value = 0;
+        free(args);
         return ret;
     } 
     else if (type == VAR_NUMBER)
@@ -376,9 +403,12 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         ret.string = 0;
         ret.type = VAR_NUMBER;
         ret.value = num_ret;
+        free(args);
         return ret;
     }
-
+    free(args);
     return ret;
-
+    malloc_error:
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }

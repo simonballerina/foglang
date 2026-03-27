@@ -464,8 +464,6 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
         printf("\n");
 }
 
-
-
 Program tokenize(char* buff)
 {
     int buff_len = strlen(buff);
@@ -938,22 +936,19 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     Token end_var = instruction[1];
     // ta reda på vilken typ av variabler som används
     
-    // räkna hur många args
-    int args_count = 3;
 
-
-    for (int i = 0; instruction[i].type != TERMINATOR; i++){
-        if (instruction[i].type == EQUALS){
-            while (instruction[args_count].type != TERMINATOR)
-                args_count++;
-            break;
-        }
-    }
 
     int start_eval = 0;
-    while (instruction[start_eval].type != EQUALS && instruction[start_eval].type != TERMINATOR)
+    while (instruction[start_eval].type != EQUALS &&
+        instruction[start_eval].type != TERMINATOR)
         start_eval++;
-    start_eval++;
+
+    start_eval++; // hoppa över =
+
+    // räkna korrekt antal tokens
+    int args_count = 0;
+    while (instruction[start_eval + args_count].type != TERMINATOR)
+        args_count++;
 
     // kolla om en lista skapas
     int type = VAR_NONE;
@@ -963,7 +958,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     Dynamic_Var eval_result;
     if (type != VAR_LIST){
-        printf("KOMMER FRÅN BAND\n");
+        printf("KOMMER FRÅN BAND: start_eval: %d args_count: %d\n", start_eval, args_count);
         print_token_row(instruction);
         eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
                 printf("==================================\n");
@@ -1003,7 +998,6 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     
     int index = 0;
 
-    args_count -= 3;
     
 
     if (type == VAR_LIST_NUMBER)
@@ -1287,7 +1281,6 @@ void givet(Token *instruction, Program program, Scope *scope)
     }
 }
 
-
 void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     // printf("[DEBUG] Entered NAER, program_counter: %d\n", program_counter);
@@ -1548,7 +1541,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     Scope scope = {
         .index = 0,
         .capacity = 128,
-        .variables = malloc(128 * sizeof(Variable))
+        .variables = malloc(128 * sizeof(Variable)),
     };
     
     // hitta antal argument
@@ -1556,7 +1549,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     for (int i = 0; instruction[i].type != TERMINATOR; i++){
         if (instruction[i].type == COMMA) amount_of_args++;
     }
-    printf("ARGS_AMOUNT: %d\n", amount_of_args);
+    printf("FUNC_ARGS_AMOUNT: %d\n", amount_of_args);
 
     typedef struct {
         int start_index;

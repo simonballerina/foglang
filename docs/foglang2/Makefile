@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -lm
+CFLAGS = -lm -Wall -Wextra -g
 TARGET = build/foglang2
 
 $(TARGET): main.c foglang.h foglang_eval.c foglang_var.c

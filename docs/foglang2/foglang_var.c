@@ -1,6 +1,7 @@
 
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope){
     Dynamic_Var ret_value;
+    
     /*for (int i = 0; i < length; i++){
         printf("%c", name[i]);
     }
