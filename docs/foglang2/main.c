@@ -352,6 +352,118 @@ char* bult(char* file_name){
         exit(1);
 }
 
+void print_token_row(Token* args){
+for (int j = 0; args[j].type != TERMINATOR; j++)
+        {
+            switch (args[j].type)
+            {
+            case FOUG:
+                printf("'FOUG'    ");
+                break;
+            case BAND:
+                printf("'BAND'    ");
+                break;
+            case GIVET:
+                printf("'GIVET'    ");
+                break;
+            case ATT:
+                printf("'ATT'    ");
+                break;
+            case NAER:
+                printf("'NAER'    ");
+                break;
+            case RIGHT_PAR:
+                printf("')'    ");
+                break;
+            case LEFT_PAR:
+                printf("'('    ");
+                break;
+            case RIGHT_BRACKET:
+                printf("']'    ");
+                break;
+            case LEFT_BRACKET:
+                printf("'['    ");
+                break;
+            case LOOP_MARKER:
+                printf("'{%c}'    ", args[j].loop_id);
+                break;
+            case PLUS:
+                printf("'+'    ");
+                break;
+            case MINUS:
+                printf("'-'    ");
+                break;
+            case MULTIPLIED:
+                printf("'*'    ");
+                break;
+            case DIVIDED:
+                printf("'/'    ");
+                break;
+            case EXPONENT:
+                printf("'^'    ");
+                break;
+            case MODULO:
+                printf("'%%'    ");
+                break;
+            case VARIABLE:
+                printf("'");
+                if (args[j].var.type == VAR_FUNCTION)
+                    printf("f ");
+                for (int k = 0; k < args[j].var.name_len; k++)
+                {
+                    printf("%c", *(args[j].var.name + k));
+                }
+                printf("'    ");
+                break;
+            case STRING:
+                printf("'");
+                for (int k = 0; k < args[j].var.name_len; k++)
+                {
+                    printf("%c", *(args[j].var.name + k));
+                }
+                printf("'    ");
+                break;
+            case EQUALS:
+                printf("'='    ");
+                break;
+            case NOT_EQUAL_TO:
+                printf("'!='    ");
+                break;
+            case GREATER_THAN:
+                printf("'>'    ");
+                break;
+            case LESS_THAN:
+                printf("'<'    ");
+                break;
+            case NUMBER:
+                printf("'%lf'    ", args[j].value);
+                break;
+            case TERMINATOR:
+                printf("'\\0'    ");
+                break;
+            case FUNCTION:
+                printf("'BOUL'    ");
+                break;
+            case RETURN:
+                printf("'RETURN'    ");
+                break;
+            case MAIN:
+                printf("'MAIN'    ");
+                break;
+            case SVETS:
+                printf("'SVETS'    ");
+                break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
+            case COMMA:
+                printf("','    ");
+                break;
+            }
+        }
+        printf("\n");
+}
+
 
 
 Program tokenize(char* buff)
@@ -851,7 +963,14 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     Dynamic_Var eval_result;
     if (type != VAR_LIST){
+        printf("KOMMER FRÅN BAND\n");
+        print_token_row(instruction);
         eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
+                printf("==================================\n");
+
+        print_token_row(instruction);
+        printf("\n\n\n\n");
+
         type = eval_result.type;
     }
         
@@ -1437,6 +1556,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     for (int i = 0; instruction[i].type != TERMINATOR; i++){
         if (instruction[i].type == COMMA) amount_of_args++;
     }
+    printf("ARGS_AMOUNT: %d\n", amount_of_args);
 
     typedef struct {
         int start_index;
@@ -1479,7 +1599,12 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
     // skapa Dynamic_Var för varje värde
     for (int i = 0; i < arg_count; i++){
+        printf("KOMMER FRÅN CALL_FUNCTION\n");
+        print_token_row(instruction);
         Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
+        printf("==================================\n");
+        print_token_row(instruction);
+        printf("\n\n\n");
         arg_info[i].info = eval_ret;
     }
 
@@ -1523,6 +1648,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
             arg_number++;
         }
     }
+
+    print_variables(&scope);
     int call_stack_level = function_stack_top;
     if (function_stack_top >= function_stack_capacity)
     {
@@ -1614,7 +1741,12 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         while(current[len].type != TERMINATOR) len++;
         len--;
 
+        printf("KOMMER FRÅN INTERPRET_INSTRUCTION\n");
+        print_token_row(current);
         return_value = dynamic_eval(current+1, len, instructions, instruction_amount, scope);
+        printf("==================================\n");
+        print_token_row(current);
+        printf("\n\n\n");
 
         function_return_stack[function_stack_top - 1] = return_value;
         program_counter = function_origin_program_counter_stack[function_stack_top - 1];

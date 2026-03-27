@@ -1,4 +1,11 @@
-
+Token* copy_arguments(Token* old_args){
+    // hitta längden
+    int len = 0;
+    while (old_args[len].type != TERMINATOR) len++;
+    Token* copy[len];
+    memcpy(copy, old_args, len*sizeof(Token));
+    return copy;
+}
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
     for (int i = 0; i < args_amount; i++){
