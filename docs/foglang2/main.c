@@ -623,7 +623,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
         
         switch (instructions[i][0].type){
             
-            case NAER: 
+            case NAER: ;
                 /*
                 naer 14*2 = 10+18 {1};
                     // gör något
