@@ -490,8 +490,38 @@ Program tokenize(char* buff)
 
     while (i < buff_len)
     {
+        printf("char: %c\n", buff[i]);
         while (i < buff_len && (buff[i] == ' ' || buff[i] == '\n' || buff[i] == '\r' || buff[i] == '\t'))
             i++;
+
+        // kommentar
+        if (buff[i] == '#' && i+1 < buff_len && buff[i+1] != '*'){
+            while (i < buff_len && buff[i] != '\n') {
+                i++;
+                if (buff[i] == ';') {
+                    instruction_amount--;
+                    instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
+                    if (instructions == NULL) goto malloc_error;
+                }
+            }      
+            i++;
+            continue;      
+        }
+        
+
+        if (buff[i] == '#' && i+1 < buff_len && buff[i+1] == '*') {
+            i += 2;
+            while (i+1 < buff_len && !(buff[i] == '*' && buff[i+1] == '#')) {
+                i++;
+                if (buff[i] == ';') {
+                    instruction_amount--;
+                    instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
+                    if (instructions == NULL) goto malloc_error;
+                }
+            }
+            i += 2;
+            continue;
+        }
 
         if (i >= buff_len)
             break;

@@ -1,0 +1,26 @@
+boul factorial(x) {0};
+    foug svets "ingångsvärde: %x%\n";
+    band result = 1;
+    naer x > 0 {a};
+        band result = result*x;
+        band x = x-1;
+    {a};
+    return result;
+{0};
+
+boul sin(x) {1};
+
+    # kommentar
+    
+    band result = 0;
+    band term = x;
+    band n = 0;
+
+    naer n < 25 {a};
+        band result = result + term;
+        band factor = (0 - (x * x)) / ((2*n + 2) * (2*n + 3));
+        band term = term * factor;
+        band n = n + 1;
+    {a};
+    return result;
+{1};
