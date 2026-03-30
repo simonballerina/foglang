@@ -2,10 +2,10 @@
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope){
     Dynamic_Var ret_value;
     
-    /*for (int i = 0; i < length; i++){
-        printf("%c", name[i]);
-    }
-    printf("    length: %d, type: %d, index: %lf\n", length, type, index);*/
+    //printf("[DEBUG get_var_value] Looking for var, name len: %d, scope ptr: %p, scope->index: %d\n", length, (void*)scope, scope->index);
+    //for (int i = 0; i < length && i < 10; i++) printf("%c", name[i]);
+    //printf("\n");
+    
     for (int i = 0; i < (*scope).index; i++){
         if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
             if (type == VAR_LIST){

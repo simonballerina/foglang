@@ -958,13 +958,13 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     Dynamic_Var eval_result;
     if (type != VAR_LIST){
-        printf("KOMMER FRÅN BAND: start_eval: %d args_count: %d\n", start_eval, args_count);
-        print_token_row(instruction);
+        //printf("KOMMER FRÅN BAND: start_eval: %d args_count: %d\n", start_eval, args_count);
+        //print_token_row(instruction);
         eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
-                printf("==================================\n");
+                //printf("==================================\n");
 
-        print_token_row(instruction);
-        printf("\n\n\n\n");
+        //print_token_row(instruction);
+        //printf("\n\n\n\n");
 
         type = eval_result.type;
     }
@@ -1543,13 +1543,22 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         .capacity = 128,
         .variables = malloc(128 * sizeof(Variable)),
     };
+    // Save loop stack state before executing nested function
+    int saved_loop_stack_top = loop_stack_top_id;
+    int saved_loop_stack[loop_stack_top_id];
+    int saved_loop_pc_stack[loop_stack_top_id];
+    for (int i = 0; i < loop_stack_top_id; i++) {
+        saved_loop_stack[i] = loop_id_stack[i];
+        saved_loop_pc_stack[i] = loop_program_counter_stack[i];
+    }
+    loop_stack_top_id = 0;  // Clear loop stack for the nested function
     
     // hitta antal argument
     int amount_of_args = 1;
     for (int i = 0; instruction[i].type != TERMINATOR; i++){
         if (instruction[i].type == COMMA) amount_of_args++;
     }
-    printf("FUNC_ARGS_AMOUNT: %d\n", amount_of_args);
+    //printf("FUNC_ARGS_AMOUNT: %d\n", amount_of_args);
 
     typedef struct {
         int start_index;
@@ -1592,12 +1601,12 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
     // skapa Dynamic_Var för varje värde
     for (int i = 0; i < arg_count; i++){
-        printf("KOMMER FRÅN CALL_FUNCTION\n");
-        print_token_row(instruction);
+        //printf("KOMMER FRÅN CALL_FUNCTION\n");
+        //print_token_row(instruction);
         Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
-        printf("==================================\n");
-        print_token_row(instruction);
-        printf("\n\n\n");
+        //printf("==================================\n");
+        //print_token_row(instruction);
+        //printf("\n\n\n");
         arg_info[i].info = eval_ret;
     }
 
@@ -1642,7 +1651,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         }
     }
 
-    print_variables(&scope);
+    //print_variables(&scope);
     int call_stack_level = function_stack_top;
     if (function_stack_top >= function_stack_capacity)
     {
@@ -1681,6 +1690,14 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     //free up
     free(scope.variables);
     scope.variables = NULL;
+
+    // Restore loop stack after function completion
+    loop_stack_top_id = saved_loop_stack_top;
+    for (int i = 0; i < saved_loop_stack_top; i++) {
+        loop_id_stack[i] = saved_loop_stack[i];
+        loop_program_counter_stack[i] = saved_loop_pc_stack[i];
+    }
+
 
     Dynamic_Var ret = function_return_stack[call_stack_level];
     return ret;
@@ -1734,12 +1751,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         while(current[len].type != TERMINATOR) len++;
         len--;
 
-        printf("KOMMER FRÅN INTERPRET_INSTRUCTION\n");
-        print_token_row(current);
         return_value = dynamic_eval(current+1, len, instructions, instruction_amount, scope);
-        printf("==================================\n");
-        print_token_row(current);
-        printf("\n\n\n");
 
         function_return_stack[function_stack_top - 1] = return_value;
         program_counter = function_origin_program_counter_stack[function_stack_top - 1];

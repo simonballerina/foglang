@@ -16,10 +16,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
-                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
-                print_variables(scope);
-                printf("----§§§§§§----\n");
+                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                //print_variables(scope);
+                //printf("----§§§§§§----\n");
                 
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
 
@@ -36,10 +36,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     args[i].value = var.value;
                 }
             } else {
-                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
-                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
-                print_variables(scope);
-                printf("----§§§§§§----\n");
+                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                //print_variables(scope);
+                //printf("----§§§§§§----\n");
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
@@ -88,7 +88,9 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
 
 
             
+            int saved_pc = program_counter;
             Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args+start, scope);
+            program_counter = saved_pc;
 
             // ersätt hela token-strängen med returvärdet
             args[i].type = (value.type == VAR_NUMBER) ? NUMBER : STRING;
@@ -351,7 +353,6 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
-    printf("ANTAL TOKENS DEN SKA EVALUATA: %d\n", args_amount);
     Token *args = malloc((args_amount+1) * sizeof(Token));
     if (!args) goto malloc_error;
 
@@ -359,14 +360,14 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
-    printf("EFTER CLEANUP:\n");
+    /*printf("EFTER CLEANUP:\n");
     for (int i = 0; i < args_amount; i++) {
         printf("TYPE: %d ", args[i].type);
         if (args[i].type == NUMBER)
             printf("VAL: %lf", args[i].value);
         printf("\n");
     }
-    printf("\n");
+    printf("\n");*/
 
     int type = VAR_STRING;
 
