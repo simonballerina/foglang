@@ -118,6 +118,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case BAND:
                 printf("'BAND'    ");
                 break;
+            case SLIP:
+                printf("'SLIP'    ");
+                break;
             case GIVET:
                 printf("'GIVET'    ");
                 break;
@@ -363,6 +366,9 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
             case BAND:
                 printf("'BAND'    ");
                 break;
+            case SLIP:
+                printf("'SLIP'    ");
+                break;
             case GIVET:
                 printf("'GIVET'    ");
                 break;
@@ -543,6 +549,11 @@ Program tokenize(char* buff)
         else if (strncmp(&buff[i], "band ", 5) == 0)
         {
             tok.type = BAND;
+            i += 5;
+        }
+        else if (strncmp(&buff[i], "slip ", 5) == 0)
+        {
+            tok.type = SLIP;
             i += 5;
         }
         else if (strncmp(&buff[i], "givet ", 6) == 0)
@@ -978,13 +989,15 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
 
 }
 
+
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
-    Token end_var = instruction[1];
+    int is_slip = 0;
+    
+    if (instruction[1].type == SLIP) is_slip = 1;
+    Token end_var = instruction[1+is_slip];
     // ta reda på vilken typ av variabler som används
     
-
-
     int start_eval = 0;
     while (instruction[start_eval].type != EQUALS &&
         instruction[start_eval].type != TERMINATOR)
@@ -999,7 +1012,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     // kolla om en lista skapas
     int type = VAR_NONE;
-    if (instruction[3].type == LEFT_BRACKET){
+    if (instruction[3+is_slip].type == LEFT_BRACKET){
         type = VAR_LIST;
     }
 
@@ -1020,9 +1033,9 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     
 
     // kolla om en lista ska uppdateras istället
-    if (instruction[2].type == LEFT_BRACKET && type == VAR_STRING)
+    if (instruction[2+is_slip].type == LEFT_BRACKET && type == VAR_STRING)
         type = VAR_LIST_STRING;
-    else if (instruction[2].type == LEFT_BRACKET && type == VAR_NUMBER)
+    else if (instruction[2+is_slip].type == LEFT_BRACKET && type == VAR_NUMBER)
         type = VAR_LIST_NUMBER;
     
 
@@ -1092,10 +1105,24 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
         {
             create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4, instructions, instruction_amount, scope);
         }
-        else if (type == VAR_STRING)
+        else if (type == VAR_STRING && is_slip == 0)
         {
             create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string, scope);
-        } else 
+        } 
+        else if (is_slip) 
+        {
+            // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
+            char eval_c_str[eval_result.str_len+1];
+            memcpy(eval_c_str, eval_result.string, eval_result.str_len);
+            eval_c_str[eval_result.str_len] = '\0';
+
+            char* slip_string = read_file(eval_c_str);
+            if (slip_string == NULL) goto malloc_error;
+            create_str_var(end_var.var.name, end_var.var.name_len, strlen(slip_string), slip_string, scope);
+            free(slip_string);
+        }
+        
+        else 
         {
             printf("ERR: Felaktig variabeltyp\n");
             exit(-1);
@@ -1114,7 +1141,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 }
             }
         }
-        else if (type == VAR_STRING){
+        else if (type == VAR_STRING && is_slip == 0){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
                     continue;
@@ -1147,8 +1174,36 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 .value = 0
             };
             change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
+        } else if (is_slip){
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL)
+                    continue;
+                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                    free((*scope).variables[i].str_ptr);
+                    (*scope).variables[i].value = 0;
+                    // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
+                    char eval_c_str[eval_result.str_len+1];
+                    memcpy(eval_c_str, eval_result.string, eval_result.str_len);
+                    eval_c_str[eval_result.str_len] = '\0';
+
+                    char* slip_string = read_file(eval_c_str);
+                    if (slip_string == NULL) goto malloc_error;
+                    
+                    (*scope).variables[i].str_ptr = slip_string;
+                    (*scope).variables[i].len = strlen(slip_string);
+
+                    (*scope).variables[i].type = VAR_STRING;
+                }
+            }
+
         }
     }
+
+    return;
+
+    malloc_error:
+        printf("[BAND] ERR: Minnesallokering misslyckades, eller kunde inte läsa fil\n");
+        exit(1);
 
 }
 
