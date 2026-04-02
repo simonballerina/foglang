@@ -19,10 +19,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
-                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
-                print_variables(scope);
-                printf("----§§§§§§----\n");
+                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                //print_variables(scope);
+                //printf("----§§§§§§----\n");
                 
                 // ta reda på om det är en lista som indexeras eller en sträng som indexeras
                 Dynamic_Var str_var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
