@@ -8,7 +8,10 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 
                 int index_len = 0;
                 int j = i+2;
-                while (j < args_amount && args[j].type != RIGHT_BRACKET){ index_len++; j++; }
+                while (j < args_amount && args[j].type != RIGHT_BRACKET){ 
+                    index_len++; 
+                    j++; 
+                }
                 if (j >= args_amount){
                     printf("ERR: Slutklammer saknas i indexering\n");
                     exit(-1);
@@ -16,25 +19,47 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
-                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
-                //print_variables(scope);
-                //printf("----§§§§§§----\n");
+                printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                print_variables(scope);
+                printf("----§§§§§§----\n");
                 
-                Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
+                // ta reda på om det är en lista som indexeras eller en sträng som indexeras
+                Dynamic_Var str_var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
+                if (str_var.type == VAR_STRING){
 
-                for (int k = i+1; k <= j && k < args_amount; k++){
-                    args[k].type = NONE;
-                }
-
-                if (var.type == VAR_STRING){
+                    for (int k = i+1; k <= j && k < args_amount; k++){
+                        args[k].type = NONE;
+                    }
+                    
                     args[i].type = STRING;
-                    args[i].var.name = var.string;
-                    args[i].var.name_len = var.str_len;
-                } else if (var.type == VAR_NUMBER){
-                    args[i].type = NUMBER;
-                    args[i].value = var.value;
+                    // är index ok?
+                    if (index < 0) index = str_var.str_len+index;
+                    if (index >= str_var.str_len || index < 0){
+                        printf("ERR: Ogiltig indexing av lista\n");
+                        exit(-1);
+                    } 
+                    args[i].var.name = str_var.string+index;
+                    args[i].var.name_len = 1;
+                } else {
+                    Dynamic_Var list_var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
+
+                    for (int k = i+1; k <= j && k < args_amount; k++){
+                        args[k].type = NONE;
+                    }
+
+                    if (list_var.type == VAR_STRING){
+                        args[i].type = STRING;
+                        args[i].var.name = list_var.string;
+                        args[i].var.name_len = list_var.str_len;
+                    } else if (list_var.type == VAR_NUMBER){
+                        args[i].type = NUMBER;
+                        args[i].value = list_var.value;
+                    }
+
                 }
+
+                
             } else {
                 //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
                 //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
