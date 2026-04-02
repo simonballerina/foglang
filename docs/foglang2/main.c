@@ -1155,7 +1155,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 void foug(Token *instruction, Scope *scope)
 {
     // printf("FOUG KALLAD PÅ\n");
-    if (instruction[1].type != SVETS)
+    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
     {
         if (instruction[1].type == STRING)
         {
@@ -1171,18 +1171,22 @@ void foug(Token *instruction, Scope *scope)
                     printf("%c", instruction[1].var.name[i]);
             }
         }
-        else if (instruction[1].type == VARIABLE)
+        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
         {
             // printf("VARIABLE I FOUG\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
-            if ((int)value == value)
-                printf("%d", (int)value);
-            else
-                printf("%lf", value);
+            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            if (value.type == VAR_NUMBER){
+                if ((int)(value.value) == (value.value))
+                    printf("%d\n", (int)(value.value));
+                else
+                    printf("%lf\n", value.value);
+            } else if (value.type == VAR_STRING){
+                printf("%.*s\n", value.str_len, value.string);
+            } 
         }
         else
         {
-            printf("ERR: Foug: Syntax error\n");
+            printf("[FOUG]: ERR: Syntax error\n");
             exit(-1);
         }
     }
@@ -1211,11 +1215,17 @@ void foug(Token *instruction, Scope *scope)
                         break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope).value;
-                if ((int)value == value)
-                    printf("%d", (int)value);
-                else
-                    printf("%lf", value);
+                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+
+                if (value.type == VAR_NUMBER){
+                    if ((int)(value.value) == (value.value))
+                        printf("%d", (int)(value.value));
+                    else
+                        printf("%lf", value.value);
+                } else if (value.type == VAR_STRING){
+                    printf("%.*s", value.str_len, value.string);
+                } 
+
                 i += len + 1;
             }
             else
