@@ -989,179 +989,6 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
 
 }
 
-void band0(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
-{
-    Token end_var = instruction[1];
-    // ta reda på vilken typ av variabler som används
-    
-
-
-    int start_eval = 0;
-    while (instruction[start_eval].type != EQUALS &&
-        instruction[start_eval].type != TERMINATOR)
-        start_eval++;
-
-    start_eval++; // hoppa över =
-
-    // räkna korrekt antal tokens
-    int args_count = 0;
-    while (instruction[start_eval + args_count].type != TERMINATOR)
-        args_count++;
-
-    // kolla om en lista skapas
-    int type = VAR_NONE;
-    if (instruction[3].type == LEFT_BRACKET){
-        type = VAR_LIST;
-    }
-
-    Dynamic_Var eval_result;
-    if (type != VAR_LIST){
-        //printf("KOMMER FRÅN BAND: start_eval: %d args_count: %d\n", start_eval, args_count);
-        //print_token_row(instruction);
-        eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
-                //printf("==================================\n");
-
-        //print_token_row(instruction);
-        //printf("\n\n\n\n");
-
-        type = eval_result.type;
-    }
-        
-
-    
-
-    // kolla om en lista ska uppdateras istället
-    if (instruction[2].type == LEFT_BRACKET && type == VAR_STRING)
-        type = VAR_LIST_STRING;
-    else if (instruction[2].type == LEFT_BRACKET && type == VAR_NUMBER)
-        type = VAR_LIST_NUMBER;
-    
-
-
-    //printf("BAND_TYPE: %d\n", type);
-
-
-    // kolla om slutvariabeln finns sparad
-    int create_new = 1;
-    for (int i = 0; i < (*scope).index; i++)
-    {
-        // skippa list elements som inte har namn
-        if ((*scope).variables[i].name == NULL)
-            continue;
-        if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len)
-        {
-            create_new = 0;
-        }
-    }
-    
-    int index = 0;
-
-    
-
-    if (type == VAR_LIST_NUMBER)
-    {
-        //printf("BAND SPARAR ETT VÄRDE I EN LISTNUMMERVARIABEL\n");
-        // hitta hur mycket som ska evaluatas i indexet
-        int index_args_count = 0;
-        for (int i = 0; instruction[i].type != TERMINATOR; i++){
-            if (instruction[i].type == LEFT_BRACKET){
-                for (int j = i+1; instruction[j].type != TERMINATOR; j++){
-                    if (instruction[j].type == RIGHT_BRACKET) break;
-                    index_args_count++;
-                }  
-                break;
-            }
-        }
-        
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
-    }
-    else if (type == VAR_LIST_STRING){
-
-        //printf("BAND SPARAR ETT VÄRDE I EN LISTSTRÄNGVARIABEL\n");
-            // hitta hur mycket som ska evaluatas i indexet
-        int index_args_count = 0;
-        for (int i = 0; instruction[i].type != TERMINATOR; i++){
-            if (instruction[i].type == LEFT_BRACKET){
-                for (int j = i+1; instruction[j].type != TERMINATOR; j++){
-                    if (instruction[j].type == RIGHT_BRACKET) break;
-                    index_args_count++;
-                }  
-                break;
-            }
-        }
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
-    }
-    
-
-    if (create_new)
-    {
-        if (type == VAR_NUMBER)
-        {
-            create_num_var(end_var.var.name, end_var.var.name_len, eval_result.value, scope);
-        }
-        else if (type == VAR_LIST)
-        {
-            create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4, instructions, instruction_amount, scope);
-        }
-        else if (type == VAR_STRING)
-        {
-            create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string, scope);
-        } else 
-        {
-            printf("ERR: Felaktig variabeltyp\n");
-            exit(-1);
-        }
-
-    } else { // uppdatera istället
-        if (type == VAR_NUMBER){
-            for (int i = 0; i < (*scope).index; i++){
-                if ((*scope).variables[i].name == NULL) // hoppa över de som inte har namn!!!
-                    continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, (*scope).variables[i].name_len) && (*scope).variables[i].name_len == end_var.var.name_len){
-                    (*scope).variables[i].value = eval_result.value;
-                    (*scope).variables[i].type = VAR_NUMBER;
-                    (*scope).variables[i].str_ptr = 0;
-                    (*scope).variables[i].len = 0;
-                }
-            }
-        }
-        else if (type == VAR_STRING){
-            for (int i = 0; i < (*scope).index; i++){
-                if ((*scope).variables[i].name == NULL)
-                    continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
-                    free((*scope).variables[i].str_ptr);
-                    (*scope).variables[i].value = 0;
-                    (*scope).variables[i].str_ptr = eval_result.string;
-                    (*scope).variables[i].len = eval_result.str_len;
-                    (*scope).variables[i].type = VAR_STRING;
-                }
-            }
-        } else if (type == VAR_LIST_NUMBER){
-            Variable new_list_item = {
-                .len = 0,
-                .name = 0,
-                .name_len = 0,
-                .str_ptr = 0,
-                .type = VAR_LIST_NUMBER,
-                .value = eval_result.value
-            };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
-
-        } else if (type == VAR_LIST_STRING){
-            Variable new_list_item = {
-                .len = eval_result.str_len,
-                .name = 0,
-                .name_len = 0,
-                .str_ptr = eval_result.string,
-                .type = VAR_LIST_STRING,
-                .value = 0
-            };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
-        }
-    }
-
-}
 
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
@@ -1284,7 +1111,6 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
         } 
         else if (is_slip) 
         {
-            
             // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
             char eval_c_str[eval_result.str_len+1];
             memcpy(eval_c_str, eval_result.string, eval_result.str_len);
@@ -1348,6 +1174,28 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
                 .value = 0
             };
             change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
+        } else if (is_slip){
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL)
+                    continue;
+                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                    free((*scope).variables[i].str_ptr);
+                    (*scope).variables[i].value = 0;
+                    // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
+                    char eval_c_str[eval_result.str_len+1];
+                    memcpy(eval_c_str, eval_result.string, eval_result.str_len);
+                    eval_c_str[eval_result.str_len] = '\0';
+
+                    char* slip_string = read_file(eval_c_str);
+                    if (slip_string == NULL) goto malloc_error;
+                    
+                    (*scope).variables[i].str_ptr = slip_string;
+                    (*scope).variables[i].len = strlen(slip_string);
+
+                    (*scope).variables[i].type = VAR_STRING;
+                }
+            }
+
         }
     }
 
