@@ -10,6 +10,8 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
         if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
             if (type == VAR_LIST){
                 int ret_type = VAR_STRING;
+                Variable list_var = (*scope).variables[i];
+                if (index < 0) index = list_var.len+index;
                 if (index >= (*scope).variables[i].len || index < 0){
                     printf("ERR: Ogiltig indexing av lista\n");
                     exit(-1);
