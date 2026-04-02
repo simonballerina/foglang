@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <unistd.h>
 #include "foglang.h"
 
 // konstanter och globala variabler
@@ -716,7 +716,7 @@ Program tokenize(char* buff)
         }
     }
 
-    // sätt funktionerna till funktioner
+    // sätt funktionerna till funktioner & hitta loop id skit
     for (int i = 0; i < instruction_amount; i++)
     {
         if (instructions[i][0].type == FUNCTION)
@@ -740,6 +740,23 @@ Program tokenize(char* buff)
                             instructions[j][k].var.type = VAR_FUNCTION;
                         }
                     }
+                }
+            }
+        }
+        else if (instructions[i][0].type == LOOP_MARKER){ // använd tok.value som parent program counter
+            for (int j = i; j >= 0; j--){
+                int type = instructions[j][0].type;
+                if (type == NAER || type == GIVET) { 
+                    // hitta id
+                    int found = 0;
+                    for (int k = 0; instructions[j][k].type != TERMINATOR; k++){
+                        if (instructions[j][k].type == LOOP_MARKER && instructions[j][k].loop_id == instructions[i][0].loop_id){
+                            instructions[i][0].value = j;
+                            found = 1;
+                        }
+                    }
+                    if (found) break;
+
                 }
             }
         }
@@ -1297,13 +1314,13 @@ void givet(Token *instruction, Program program, Scope *scope)
             k++;
         char givet_id = instruction[k - 1].loop_id;
 
-        for (int k = program_counter; k < program.instruction_amount; k++)
-        { // kolla varje rad
+        for (int k = program_counter + 1; k < program.instruction_amount; k++)
+        { // kolla varje rad - hopp över egen marker
             for (int l = 0; program.data[k][l].type != TERMINATOR; l++)
             { // kolla varje token i raden
                 if (program.data[k][l].type == LOOP_MARKER && program.data[k][l].loop_id == givet_id)
                 {
-                    program_counter = k + 1;
+                    program_counter = k;
                     return;
                 }
             }
@@ -1409,10 +1426,25 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
     char loop_id = 0;
     if (k > 0 && instruction[k - 1].type == LOOP_MARKER)
         loop_id = instruction[k - 1].loop_id;
-    // printf("[DEBUG] NAER loop_id: %c\n", loop_id);
+    //printf("[DEBUG] NAER loop_id: %c\n", loop_id);
 
     if (!do_statement)
     {
+        // ta bort id från stack!!
+        for (int m = 0; m < loop_stack_top_id; m++)
+        {
+            if (loop_id_stack[m] == loop_id)
+            {
+                for (int n = m; n < loop_stack_top_id - 1; n++)
+                {
+                    loop_id_stack[n] = loop_id_stack[n + 1];
+                    loop_program_counter_stack[n] = loop_program_counter_stack[n + 1];
+                }
+                loop_stack_top_id--;
+                break;
+            }
+        }
+
         // printf("[DEBUG] Condition false, jumping\n");
         // printf("[DEBUG] Looking for loop_id: %c\n", loop_id);
 
@@ -1425,7 +1457,7 @@ void naer(Token *instruction, Token (*instructions)[128], int instruction_amount
                 {
                     if (instructions[k][l].loop_id == loop_id)
                     {
-                        // printf(" -> MATCH! Jumping to instruction %d\n", k);
+                        // printf("jumping to instruction %d\n", k);
                         program_counter = k;
                         return;
                     }
@@ -1766,7 +1798,8 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         {
             if (loop_id_stack[i] == current[0].loop_id)
             {
-                program_counter = loop_program_counter_stack[i] - 1;
+                program_counter = (int)(current->value)-1;
+                //sleep(1);
                 break;
             }
         }

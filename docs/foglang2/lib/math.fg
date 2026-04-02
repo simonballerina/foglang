@@ -1,5 +1,4 @@
 boul factorial(x) {0};
-    foug svets "ingångsvärde: %x%\n";
     band result = 1;
     naer x > 0 {a};
         band result = result*x;
@@ -8,19 +7,138 @@ boul factorial(x) {0};
     return result;
 {0};
 
+boul sqrt(x) {0};
+    band result = x^(0.5);
+    return result;
+{0};
+
 boul sin(x) {1};
 
-    # kommentar
+    band iterations = 25; # ändra denna för att öka noggrannheten
+    band PI = 3.14159265359;
     
+    # ta bort 2PI*n
+
+    givet att x < 0 {a};
+        naer x < 0 {b};
+            band x = x+2*PI;
+        {b};
+    {a};
+
+    givet att x > 2*PI {a};
+        naer x > 2*PI {b};
+            band x = x-2*PI;
+        {b};
+    {a};
+
+    # räkna ut själva sinusen
+
     band result = 0;
     band term = x;
     band n = 0;
 
-    naer n < 25 {a};
-        band result = result + term;
-        band factor = (0 - (x * x)) / ((2*n + 2) * (2*n + 3));
-        band term = term * factor;
-        band n = n + 1;
+    naer n < iterations {a};
+        band result = result+term;
+        band factor = (0-(x*x))/((2*n+2)*(2*n+3));
+        band term = term*factor;
+        band n = n+1;
     {a};
     return result;
 {1};
+
+boul arcsin(x) {1};
+
+    band iterations = 25; # ändra denna för att öka noggrannheten
+    # definitionsmängden arcsin är [-1, 1]
+    band undef = 0;
+
+    givet att x < 1*(-1) {a};
+        foug svets "Definitionsmängden för arcsin/arccos är [-1, 1], fick ingångsvärde %x%\n";
+        band undef = 1;
+    {a};
+    
+    givet att x > 1 {b};
+        foug svets "Definitionsmängden för arcsin/arccos är [-1, 1], fick ingångsvärde %x%\n";
+        band undef = 1;
+    {b};
+
+    band result = 0;
+    band term = x;
+    band n = 0;
+
+    naer n < iterations {c};
+        band term = ((x^(2*n+1))*factorial(2*n))/(((4^n)*(factorial(n))^2)*(2*n+1));
+        band result = result+term;
+        band n = n+1;
+    {c};
+
+    givet att undef = 1 {d};
+        band result = 0;
+    {d};
+    
+
+    return result;
+{1};
+
+boul cos(x) {2};
+
+    band PI = 3.14159265359;
+    band result = sin(x+PI/2);
+
+    return result;
+{2};
+
+boul arccos(x) {2};
+    band undef = 0;
+
+    givet att x < 1*(-1) {a};
+        band undef = 1;
+    {a};
+    
+    givet att x > 1 {b};
+        band undef = 1;
+    {b};
+
+    band PI = 3.14159265359;
+
+    band result = arcsin(x)-PI/2;
+    
+    givet att undef = 1 {c};
+        band result = 0;
+    {c};
+
+    return result;
+{2};
+
+boul rad(degrees) {3};
+    band PI = 3.14159265359;
+    band result = degrees*(PI/180);
+    
+    return result;
+{3};
+
+boul deg(radians) {4};
+    band PI = 3.14159265359;
+    band result = radians*(180/PI);
+
+    return result;
+{4};
+
+boul tan(x) {5};
+    band result = sin(x)/cos(x);
+
+    return result;
+{5};
+
+boul arctan(x) {5};
+    band bottom = sqrt(1+x^2);
+    band eval = x/bottom;
+    band result = arcsin(x/bottom);
+    return result;
+{5};
+
+main;
+band PI = 3.14159265359;
+band ans = arctan(0.5);
+
+foug svets "ans: %ans%\n";
