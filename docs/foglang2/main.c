@@ -496,7 +496,6 @@ Program tokenize(char* buff)
 
     while (i < buff_len)
     {
-        printf("char: %c\n", buff[i]);
         while (i < buff_len && (buff[i] == ' ' || buff[i] == '\n' || buff[i] == '\r' || buff[i] == '\t'))
             i++;
 
@@ -1165,15 +1164,38 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
             change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
 
         } else if (type == VAR_LIST_STRING){
-            Variable new_list_item = {
-                .len = eval_result.str_len,
-                .name = 0,
-                .name_len = 0,
-                .str_ptr = eval_result.string,
-                .type = VAR_LIST_STRING,
-                .value = 0
-            };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
+            Dynamic_Var ret = get_var_value(end_var.var.name, end_var.var.name_len, 0, 0, scope);
+            if (ret.type == VAR_STRING){
+
+                for (int i = 0; i < (*scope).index; i++){
+                    if ((*scope).variables[i].name == NULL)
+                        continue;
+                    if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                        if (index < 0) index = ret.str_len+index;
+                        if (index >= (*scope).variables[i].len || index < 0){
+                            printf("ERR: Ogiltig indexing av lista\n");
+                            exit(-1);
+                        }
+                        (*scope).variables[i].value = 0;
+                        ((*scope).variables[i].str_ptr)[index] = *(eval_result.string);
+                        (*scope).variables[i].type = VAR_STRING;
+                    }
+                }
+
+
+            } else {
+                Variable new_list_item = {
+                    .len = eval_result.str_len,
+                    .name = 0,
+                    .name_len = 0,
+                    .str_ptr = eval_result.string,
+                    .type = VAR_LIST_STRING,
+                    .value = 0
+                };
+                change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
+            }
+
+            
         } else if (is_slip){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
