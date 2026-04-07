@@ -1,7 +1,9 @@
 
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+    
     for (int i = 0; i < args_amount; i++){
+
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
             if (i+1 < args_amount && args[i+1].type == LEFT_BRACKET){
@@ -159,6 +161,17 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
+    // kolla efter negativa tal
+    for (int i = 1; i < args_amount; i++){ // i = 1 för att inte läsa utanför buffer
+        if (args[i].type == NUMBER && args[i-1].type == MINUS){
+            if (i <= 2 && args[i-2].type == NUMBER) continue;
+
+            args[i-1].type = NONE;
+            args[i].value = args[i].value*(-1);
+        }
+    }
+
+
     while (1)
     {
 
@@ -176,7 +189,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
             {
                 if (args[i].type == NUMBER)
                 {
-                    // printf("RETURNADE %lf\n", args[i].value);
+                    //printf("RETURNADE %lf\n", args[i].value);
                     return args[i].value;
                 }
             }
