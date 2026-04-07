@@ -221,7 +221,7 @@ void print_tokens(Token instructions[][128], int instruction_amount)
         }
         printf("\n");
     }
-    printf("\n");
+    printf("-----------------------------------------------\n");
 }
 
 void print_variables(Scope *scope)
@@ -470,10 +470,11 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
         printf("\n");
 }
 
-Program tokenize(char* buff)
+Program tokenize(char* buff, int debug)
 {
+
     int buff_len = strlen(buff);
-    printf("BUFF: -----------------------------------------------\n%s\n-----------------------------------------------\n", buff);
+    if (debug) printf("BUFF: -----------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
     // räkna antal instr
     int instruction_amount = 0;
@@ -482,13 +483,13 @@ Program tokenize(char* buff)
         if (buff[i] == ';')
             instruction_amount++;
     }
-    printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
+    if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
 
     // skapa instruktionsarray
     Token(*instructions)[128] = calloc(instruction_amount, sizeof(*instructions));
     if (instructions == NULL) goto malloc_error;
   
-    printf("[DEBUG] instructions ptr: %p\n", instructions);
+    if (debug) printf("[DEBUG] instructions ptr: %p\n", instructions);
 
     int i = 0;
     int instructions_OUTER_arr_index = 0;
@@ -631,7 +632,7 @@ Program tokenize(char* buff)
             tok.type = LOOP_MARKER;
             tok.loop_id = buff[i + 1];
 
-            printf("[DEBUG] Found LOOP_MARKER: {%c} at instructions[%d][%d]\n", tok.loop_id, instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            if (debug) printf("[DEBUG] Found LOOP_MARKER: {%c} at instructions[%d][%d]\n", tok.loop_id, instructions_OUTER_arr_index, instructions_INNER_arr_index);
             i += 3;
         }
         else if (buff[i] == '=')
@@ -688,7 +689,7 @@ Program tokenize(char* buff)
         {
             tok.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
-            printf("[DEBUG] TERMINATOR at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
+            if (debug) printf("[DEBUG] TERMINATOR at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
             i++;
             instructions_INNER_arr_index = 0;
             instructions_OUTER_arr_index++;
@@ -722,7 +723,7 @@ Program tokenize(char* buff)
         if (tok.type != TERMINATOR)
         {
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
-            printf("[DEBUG] Added token type %d at instructions[%d][%d]\n", tok.type, instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
+            if (debug) printf("[DEBUG] Added token type %d at instructions[%d][%d]\n", tok.type, instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
         }
     }
 
@@ -732,7 +733,7 @@ Program tokenize(char* buff)
         if (instructions[i][0].type == FUNCTION)
         {
             instructions[i][1].var.type = VAR_FUNCTION;
-            printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
+            if (debug) printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
             // sätt funktionsflaggan på alla med samma namn
             for (int j = i + 1; j < instruction_amount; j++)
             { // rad-loop
@@ -773,7 +774,7 @@ Program tokenize(char* buff)
     }
 
     Program program = {instructions, instruction_amount};
-    printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
+    if (debug) printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
     return program;
 
     malloc_error:
@@ -783,6 +784,7 @@ Program tokenize(char* buff)
 }
 
 void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
+    return;
     Token(*instructions)[128] = program->data;
     int instruction_amount = program->instruction_amount; 
 
@@ -1929,6 +1931,16 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // kolla om -d finns
+
+    int debug = 0;
+    if (argc > 2){
+        if (!strncmp(argv[2], "-d", 2)){
+            debug = 1;
+        }
+    }
+    
+
     // skapa konstantarrays
     // variabler
     Scope scope = {
@@ -1954,11 +1966,11 @@ int main(int argc, char **argv)
     
 
     char* buff = bult(argv[1]);
-    Program program = tokenize(buff);
+    Program program = tokenize(buff, debug);
     
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
-    print_tokens(instructions, instruction_amount);
+    if (debug) print_tokens(instructions, instruction_amount);
     check_syntax(&program);
 
     // hitta entry point (main)
@@ -1982,7 +1994,7 @@ int main(int argc, char **argv)
         program_counter++;
     }
 
-    print_variables(&scope);
+    if (debug) print_variables(&scope);
     return 0;
 
     malloc_error:
