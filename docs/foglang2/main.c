@@ -734,7 +734,7 @@ Program tokenize(char* buff, int debug)
         {
             instructions[i][1].var.type = VAR_FUNCTION;
             if (debug) printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
-            // sätt funktionsflaggan på alla med samma namn
+            // sätt funktionsflaggan på faktiska funktionsanrop (variabel följt av parantes)
             for (int j = i + 1; j < instruction_amount; j++)
             { // rad-loop
                 for (int k = 0; instructions[j][k].type != TERMINATOR; k++)
@@ -746,7 +746,9 @@ Program tokenize(char* buff, int debug)
                             size = instructions[j][k].var.name_len;
                         else
                             size = instructions[i][1].var.name_len;
-                        if (!strncmp(instructions[j][k].var.name, instructions[i][1].var.name, size))
+                        if (!strncmp(instructions[j][k].var.name, instructions[i][1].var.name, size)
+                            && instructions[j][k].var.name_len == instructions[i][1].var.name_len
+                            && instructions[j][k+1].type == LEFT_PAR)
                         {
                             instructions[j][k].var.type = VAR_FUNCTION;
                         }
@@ -953,22 +955,36 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                 loop_id = 0;
                 int found_return = 0;
 
-                int func_argument_count = -1; // -1 då funktionens namn räknas som variabeltoken
+                int func_argument_count = 0;
+                int sig_paren = 0;
 
+                // Count only variables inside the function signature parentheses
+                for (j = 2; instructions[i][j].type != TERMINATOR; j++){
+                    if (instructions[i][j].type == LEFT_PAR){
+                        sig_paren = j;
+                        break;
+                    }
+                }
+                if (!sig_paren){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsdeklarationen saknar '('\n", i);
+                    exit(-1);
+                }
+                for (int k = sig_paren + 1; instructions[i][k].type != TERMINATOR; k++){
+                    if (instructions[i][k].type == RIGHT_PAR) break;
+                    if (instructions[i][k].type == VARIABLE) func_argument_count++;
+                }
+
+                int func_stop;
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
                         if (j >= 4) break;
                         printf("[BOUL]: ERR: Syntax error, instruktion %d\n", i);
                         exit(-1);
                     }
-                    int tok = instructions[i][j].type;
-                    if (tok == VARIABLE) func_argument_count++;
-                    int func_stop;
                     if (instructions[i][j].type == LOOP_MARKER) {
                         loop_id = instructions[i][j].loop_id;
                         // hitta loop marker
                         for (int k = i; k < instruction_amount; k++){
-
                             if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
                                 found_loop_id = 1;
                                 func_stop = k;
@@ -985,8 +1001,6 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                             }
                         }
                     }
-                    
-
                     j++;
                 }
                 
@@ -997,21 +1011,38 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                         Token tok = instructions[a][b];
                         if (tok.type == VARIABLE){
                             if (!strncmp(tok.var.name, instructions[i][1].var.name, tok.var.name_len) && tok.var.name_len == instructions[i][1].var.name_len) {
-                                // räkna dess argument
-                                int counted_args = 1; 
-                                for (int c = b+1; instructions[a][c].type != TERMINATOR; c++){
-                                    if (instructions[a][c].type == COMMA) counted_args++;
-                                    if (instructions[a][c].type == LEFT_PAR) {
-                                        // räkna antal argument i parentesen
-                                        for (int d = c+1; instructions[a][d].type != TERMINATOR; d++){
-                                            if (instructions[a][d].type == COMMA) counted_args++;
-                                            if (instructions[a][d].type == RIGHT_PAR) break;
+                                int counted_args = 0;
+                                int saw_arg = 0;
+                                int depth = 0;
+                                int c = b + 1;
+                                while (instructions[a][c].type != TERMINATOR && instructions[a][c].type != LEFT_PAR) c++;
+                                if (instructions[a][c].type != LEFT_PAR) continue;
+                                depth = 1;
+                                c++;
+                                while (instructions[a][c].type != TERMINATOR && depth > 0){
+                                    if (instructions[a][c].type == LEFT_PAR){
+                                        depth++;
+                                    } else if (instructions[a][c].type == RIGHT_PAR){
+                                        depth--;
+                                        if (depth == 0) break;
+                                    } else if (depth == 1){
+                                        if (instructions[a][c].type == COMMA){
+                                            counted_args++;
+                                            saw_arg = 0;
+                                        } else {
+                                            saw_arg = 1;
                                         }
-                                        break;
                                     }
+                                    c++;
                                 }
+                                if (depth != 0){
+                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, förväntade ')' efter funktionsanropet '%.*s'\n", a, instructions[i][1].var.name_len, instructions[i][1].var.name);
+                                    exit(-1);
+                                }
+                                if (saw_arg || counted_args > 0) counted_args++;
+
                                 if (counted_args != func_argument_count){
-                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsanropet har %d argument när funktionen kräver %d\n", a, counted_args, func_argument_count);
+                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsanropet har %d argument när funktionen '%.*s' kräver %d\n", a, counted_args, instructions[i][1].var.name_len, instructions[i][1].var.name, func_argument_count);
                                     exit(-1);
                                 }
 
@@ -1748,12 +1779,11 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     }
     loop_stack_top_id = 0;  // Clear loop stack for the nested function
     
-    // hitta antal argument
+    // räkna antal formella argument
     int amount_of_args = 1;
-    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+    for (int i = 2; instruction[i].type != TERMINATOR; i++){
         if (instruction[i].type == COMMA) amount_of_args++;
     }
-    //printf("FUNC_ARGS_AMOUNT: %d\n", amount_of_args);
 
     typedef struct {
         int start_index;
@@ -1767,6 +1797,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
     Arg arg_info[amount_of_args];
 
+    int arg_tokens_len = 0;
     for (int i = 2; instruction[i].type != TERMINATOR; i++) {
         if (instruction[i].type == LEFT_PAR) depth++;
         if (instruction[i].type == RIGHT_PAR) {
@@ -1774,8 +1805,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
                 // sista argumentet
                 arg_info[arg_count].start_index = start;
                 arg_info[arg_count].len = i - start;
-
                 arg_count++;
+                arg_tokens_len = i - 2 + 1;
                 break;
             }
             depth--;
@@ -1785,13 +1816,16 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
             arg_info[arg_count].start_index = start;
             arg_info[arg_count].len = i - start;
             arg_count++;
-
             start = i + 1;
         }
     }
 
+    if (arg_tokens_len == 0) {
+        printf("ERR: expected )\n");
+        exit(1);
+    }
 
-    cleanup_args(instruction+2, amount_of_args, instructions, instruction_amount, old_scope);
+    cleanup_args(instruction+2, arg_tokens_len, instructions, instruction_amount, old_scope);
 
 
     // skapa Dynamic_Var för varje värde
