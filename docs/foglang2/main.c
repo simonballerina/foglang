@@ -784,7 +784,6 @@ Program tokenize(char* buff, int debug)
 }
 
 void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
-    return;
     Token(*instructions)[128] = program->data;
     int instruction_amount = program->instruction_amount; 
 
@@ -820,7 +819,13 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                         if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
                             right_args = 1;
                         }
-                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                        if (instructions[i][j-1].type == NUMBER || 
+                            instructions[i][j-1].type == VARIABLE || 
+                            instructions[i][j-1].type == STRING || 
+                            instructions[i][j-1].type == FUNCTION || 
+                            instructions[i][j+1].type == RIGHT_PAR || 
+                            instructions[i][j-1].type == RIGHT_BRACKET)
+                        {
                             left_args = 1;
                         }
 
@@ -845,6 +850,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                     exit(-1);
                 }
                 if (!left_args || !right_args){
+                    printf("RIGHT: %d, left: %d\n", right_args, left_args);
                     printf("[NAER]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
                     exit(-1);
                 }
@@ -884,7 +890,13 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                         if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
                             right_args = 1;
                         }
-                        if (instructions[i][j-1].type == NUMBER || instructions[i][j-1].type == VARIABLE || instructions[i][j-1].type == STRING || instructions[i][j-1].type == FUNCTION || instructions[i][j+1].type == RIGHT_PAR){
+                        if (instructions[i][j-1].type == NUMBER || 
+                            instructions[i][j-1].type == VARIABLE || 
+                            instructions[i][j-1].type == STRING || 
+                            instructions[i][j-1].type == FUNCTION || 
+                            instructions[i][j+1].type == RIGHT_PAR || 
+                            instructions[i][j-1].type == RIGHT_BRACKET)
+                        {
                             left_args = 1;
                         }
 
@@ -941,6 +953,8 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                 loop_id = 0;
                 int found_return = 0;
 
+                int func_argument_count = -1; // -1 då funktionens namn räknas som variabeltoken
+
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
                         if (j >= 4) break;
@@ -948,7 +962,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                         exit(-1);
                     }
                     int tok = instructions[i][j].type;
-
+                    if (tok == VARIABLE) func_argument_count++;
                     int func_stop;
                     if (instructions[i][j].type == LOOP_MARKER) {
                         loop_id = instructions[i][j].loop_id;
@@ -974,6 +988,36 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                     
 
                     j++;
+                }
+                
+                // räkna antal argument för ALLA anrop av funktionen
+                for (int a = 0; a < instruction_amount; a++){
+                    if (instructions[a][0].type == FUNCTION) continue; // skippa funktionsdefinitioner
+                    for (int b = 0; instructions[a][b].type != TERMINATOR; b++){
+                        Token tok = instructions[a][b];
+                        if (tok.type == VARIABLE){
+                            if (!strncmp(tok.var.name, instructions[i][1].var.name, tok.var.name_len) && tok.var.name_len == instructions[i][1].var.name_len) {
+                                // räkna dess argument
+                                int counted_args = 1; 
+                                for (int c = b+1; instructions[a][c].type != TERMINATOR; c++){
+                                    if (instructions[a][c].type == COMMA) counted_args++;
+                                    if (instructions[a][c].type == LEFT_PAR) {
+                                        // räkna antal argument i parentesen
+                                        for (int d = c+1; instructions[a][d].type != TERMINATOR; d++){
+                                            if (instructions[a][d].type == COMMA) counted_args++;
+                                            if (instructions[a][d].type == RIGHT_PAR) break;
+                                        }
+                                        break;
+                                    }
+                                }
+                                if (counted_args != func_argument_count){
+                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsanropet har %d argument när funktionen kräver %d\n", a, counted_args, func_argument_count);
+                                    exit(-1);
+                                }
+
+                            }
+                        }
+                    }
                 }
                 
                 if (!found_loop_id || !loop_id){
