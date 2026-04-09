@@ -75,7 +75,7 @@ enum Tok_type
     VARIABLE,      // 11
     EQUALS,        // 12
     NUMBER,        // 13
-    LOOP_MARKER,   // 14
+    LOOP_MARKER,   // 14 OBS DEPRECATED PLEASE OVERWRITE
     PLUS,          // 15
     MINUS,         // 16
     MULTIPLIED,    // 17

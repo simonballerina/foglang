@@ -141,9 +141,6 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case LEFT_BRACKET:
                 printf("'['    ");
                 break;
-            case LOOP_MARKER:
-                printf("'{%c}'    ", instructions[i][j].loop_id);
-                break;
             case PLUS:
                 printf("'+'    ");
                 break;
@@ -1220,39 +1217,8 @@ void loop(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     }
 
-    /*int k = 0;
-    while (instruction[k].type != TERMINATOR && k < 128)
-        k++;
-    char loop_id = 0;
-    if (k > 0 && instruction[k - 1].type == LOOP_MARKER)
-        loop_id = instruction[k - 1].loop_id;*/
-    // printf("[DEBUG] NAER loop_id: %c\n", loop_id);
-
     if (!do_statement)
     {
-        // printf("[DEBUG] Condition false, jumping\n");
-        // printf("[DEBUG] Looking for loop_id: %c\n", loop_id);
-        /*
-        for (k = program_counter + 1; k < instruction_amount; k++)
-        {
-            int l = 0;
-            while (instructions[k][l].type != TERMINATOR)
-            {
-                if (instructions[k][l].type == LOOP_MARKER)
-                {
-                    if (instructions[k][l].loop_id == loop_id)
-                    {
-                        // printf(" -> MATCH! Jumping to instruction %d\n", k);
-                        program_counter = k;
-                        return;
-                    }
-                }
-                // printf("\n");
-                l++;
-            }
-        }*/
-        // printf("[DEBUG] Did not find matching loop_id!\n");
-        //printf("counter\n");
         program_counter = loop_links[program_counter];//instruction[1].loop_link;
         return;
     }
@@ -1458,17 +1424,6 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
     case TPOS:
         tpos(current, scope);
         break;
-    case LOOP_MARKER:
-        for (int i = 0; i < loop_stack_top_id; i++)
-        {
-            if (loop_id_stack[i] == current[0].loop_id)
-            {
-                program_counter = loop_program_counter_stack[i] - 1;
-                break;
-            }
-        }
-        break;
-    
     case CLOSE_LOOP:
         //printf("engign to %d\n", current[1].loop_link);
         program_counter = loop_links[program_counter]-1;//current[1].loop_link;
