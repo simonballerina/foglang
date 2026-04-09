@@ -1128,112 +1128,7 @@ void foug(Token *instruction, Scope *scope)
     }
 }
 
-void givet(Token *instruction, Program program, Scope *scope)
-{
-    // hitta ptr till argumenten
-
-    int i = 2;
-    Token *left_args = &instruction[i];
-    while (instruction[i].type != EQUALS && instruction[i].type != GREATER_THAN && instruction[i].type != LESS_THAN && instruction[i].type != NOT_EQUAL_TO)
-        i++;
-    int operation = instruction[i].type;
-    int left_len = i - 2;
-    i++;
-    Token *right_args = &instruction[i];
-    while (instruction[i].type != OPEN_LOOP)
-        i++;
-    int right_len = i - left_len - 4;
-
-
-    Dynamic_Var left_value = dynamic_eval(left_args, left_len, program.data, program.instruction_amount, scope);
-    Dynamic_Var right_value = dynamic_eval(right_args, right_len, program.data, program.instruction_amount, scope);
-
-    int type = VAR_NONE;
-    if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
-    else if (left_value.type == VAR_STRING && right_value.type == VAR_STRING) type = VAR_STRING;
-    if (type == VAR_NONE){
-        printf("ERR: Kan inte jämföra två olika datatyper\n");
-        exit(1);
-    }
-
-    int do_statement = 0;
-
-    if (type == VAR_NUMBER){
-        switch (operation)
-        {
-        case EQUALS:
-            if (left_value.value == right_value.value)
-                do_statement = 1;
-            break;
-
-        case GREATER_THAN:
-            if (left_value.value > right_value.value)
-                do_statement = 1;
-            break;
-
-        case LESS_THAN:
-            if (left_value.value < right_value.value)
-                do_statement = 1;
-            break;
-
-        case NOT_EQUAL_TO:
-            if (left_value.value != right_value.value)
-                do_statement = 1;
-            break;
-        }
-    } else if (type == VAR_STRING){
-        switch (operation)
-        {
-        case EQUALS:
-            if (!strncmp(left_value.string, right_value.string, left_value.str_len) && left_value.str_len == right_value.str_len)
-                do_statement = 1;
-            break;
-
-        case GREATER_THAN:
-            printf("ERR: Ogiltig jämförelse mellan strängar\n");
-            exit(1);
-            break;
-
-        case LESS_THAN:
-            printf("ERR: Ogiltig jämförelse mellan strängar\n");
-            exit(1);
-            break;
-
-        case NOT_EQUAL_TO:
-            if (strncmp(left_value.string, right_value.string, left_value.str_len) || left_value.str_len != right_value.str_len)
-                do_statement = 1;
-            break;
-        }
-
-    }
-
-
-    if (!do_statement)
-    {
-        /*
-        int k = 0;
-        while (instruction[k].type != TERMINATOR)
-            k++;
-        char givet_id = instruction[k - 1].loop_id;
-
-        for (int k = program_counter; k < program.instruction_amount; k++)
-        { // kolla varje rad
-            for (int l = 0; program.data[k][l].type != TERMINATOR; l++)
-            { // kolla varje token i raden
-                if (program.data[k][l].type == LOOP_MARKER && program.data[k][l].loop_id == givet_id)
-                {
-                    program_counter = k + 1;
-                    return;
-                }
-            }
-        }*/
-        program_counter = loop_links[program_counter]-1;//instruction[1].loop_link;
-    }
-}
-
-    
-
-void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
+void loop(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
     // printf("[DEBUG] Entered NAER, program_counter: %d\n", program_counter);
     int i = 1;
@@ -1553,12 +1448,11 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
 
     case GIVET:
-        //givet(current, (Program){instructions, instruction_amount}, scope);
-        naer(current, instructions, instruction_amount, scope);
+        loop(&(current[1]), &(instructions[1]), instruction_amount, scope);
         break;
 
     case NAER:
-        naer(current, instructions, instruction_amount, scope);
+        loop(current, instructions, instruction_amount, scope);
         break;
 
     case TPOS:
