@@ -1427,27 +1427,12 @@ void foug(Token *instruction, Scope *scope)
     }
 }
 
-void givet(Token *instruction, Program program, Scope *scope){
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count){
     int len = 0;
     while (instruction[len].type != OPEN_LOOP) len++;
-    len -=2;
-    int do_statement = logic_eval(instruction+2, len, program.data, program.instruction_amount, scope);
-    //printf("givet do statement: %d\n", do_statement);
-    
-    if (!do_statement)
-    {
-        program_counter = loop_links[program_counter];
-        return;
-    }
-}
-
-void naer(Token *instruction, Program program, Scope *scope){
-    int len = 0;
-    while (instruction[len].type != OPEN_LOOP) len++;
-    //printf("len is %d", len);
-    len -=1;
-    int do_statement = logic_eval(instruction+1, len, program.data, program.instruction_amount, scope);
-    //printf("givet do statement: %d\n", do_statement);
+    len -=keyword_count;
+    int do_statement = logic_eval(instruction+keyword_count, len, program.data, program.instruction_amount, scope);
+    //printf("loop do statement: %d\n", do_statement);
     
     if (!do_statement)
     {
@@ -1718,7 +1703,6 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
 void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
-    //printf("intep %d\n", program_counter);
     switch (current[0].type)
     {
     case FOUG:
@@ -1730,12 +1714,11 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
 
     case GIVET:
-        //loop(&(current[1]), &(instructions[1]), instruction_amount, scope);
-        givet(current, (Program){instructions, instruction_amount}, scope);
+        loop(current, (Program){instructions, instruction_amount}, scope, 2);
         break;
 
     case NAER:
-        naer(current, (Program){instructions, instruction_amount}, scope);
+        loop(current, (Program){instructions, instruction_amount}, scope, 1);
         break;
 
     case TPOS:
