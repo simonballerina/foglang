@@ -16,11 +16,10 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
-int loop_links[256];
+int *loop_links;
 
 #include "foglang_eval.c" 
 #include "foglang_var.c"
-#include "stack.c"
 
 
 double str_to_double(char *num)
@@ -508,8 +507,14 @@ Program tokenize(char* buff, int debug)
 
     int loop_type = 1;
 
+    //initialize stack
     Stack loops;
-    initialize(&loops); 
+    (&loops)->top = -1;
+    (&loops)->size = 1;
+    (&loops)->arr = malloc(1);
+
+    //loop links
+    loop_links = malloc(instruction_amount);
 
     while (i < buff_len)
     {
@@ -668,7 +673,9 @@ Program tokenize(char* buff, int debug)
         else if (buff[i] == '{')
         {
             tok.type = OPEN_LOOP;
-            push(&loops, instructions_OUTER_arr_index*loop_type);
+            //push stack
+            (&loops)->arr = realloc((&loops)->arr, (&loops)->size++);
+            (&loops)->arr[++(&loops)->top] = instructions_OUTER_arr_index*loop_type;
 
             if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
             Token next;
@@ -682,7 +689,10 @@ Program tokenize(char* buff, int debug)
         }
         else if (buff[i] == '}')
         {
-            int other = pop(&loops);
+            //pop stack
+            int other = (&loops)->arr[(&loops)->top];
+            (&loops)->top--;
+            (&loops)->size--;
             tok.type = CLOSE_LOOP;
             if (other > 0) {
                 loop_links[instructions_OUTER_arr_index] = other;
@@ -1079,7 +1089,7 @@ void check_syntax(Program* program){
     }
 
     if (openers != closers) {
-        printf("ERR: Syntax error, ostängda bracket, öppnar x%d men stänger x%d", openers, closers);
+        printf("ERR: Syntax error, ostängda bracket, öppnar x%d men stänger x%d\n", openers, closers);
         exit(-1);
     }
 }

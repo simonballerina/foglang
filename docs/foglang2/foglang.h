@@ -106,6 +106,12 @@ typedef struct
     int instruction_amount;
 } Program;
 
+typedef struct {
+    int* arr;
+    int size;
+    int top;        
+} Stack;
+
 // utils
 double str_to_double(char *num);
 char *read_file(const char *filename);
