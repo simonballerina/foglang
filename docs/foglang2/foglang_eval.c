@@ -260,7 +260,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
         { // hitta multiplikationer/divisioner
-            if (args[i].type == MULTIPLIED || args[i].type == DIVIDED)
+            if (args[i].type == MULTIPLIED || args[i].type == DIVIDED || args[i].type == MODULO)
             {
                 for (int j = i + 1; j < args_amount; j++)
                 {
@@ -285,8 +285,21 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 
                 if (args[i].type == MULTIPLIED)
                     args[i].value = first_arg * second_arg;
-                else
+                else if (args[i].type == DIVIDED) {
+                    if (second_arg == 0) {
+                        printf("ERR: Division med 0\n");
+                        exit(-1);
+                    }
                     args[i].value = first_arg / second_arg;
+                }
+                    
+                else if (args[i].type == MODULO) {
+                    if (second_arg == 0) {
+                        printf("ERR: Division med 0\n");
+                        exit(-1);
+                    }
+                    args[i].value = fmod(first_arg, second_arg);
+                }
                 args[i].type = NUMBER;
                 break;
             }
