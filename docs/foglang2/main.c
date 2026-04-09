@@ -1549,7 +1549,7 @@ void tpos(Token *instruction, Scope *scope)
     }
     int writer = 0;
     
-    if (instruction[1].type != SVETS)
+    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
     {
         if (instruction[1].type == STRING)
         {
@@ -1565,26 +1565,38 @@ void tpos(Token *instruction, Scope *scope)
                 }  
             }
         }
-        else if (instruction[1].type == VARIABLE)
+        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
         {
             // printf("VARIABLE I TPOS\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
-            if ((int)value == value){
-                call_len += sizeof(int);
+            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            if (value.type == VAR_NUMBER){
+                if ((int)(value.value) == (value.value)) {
+                    call_len += sizeof(int);
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%d", (int)value);
+                sprintf(call + writer, "%d", (int)value.value);
                 writer += strlen(call + writer);
-            } else {
-                call_len += sizeof(double);
+                } else {
+                    call_len += sizeof(double);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%lf", (double)value.value);
+                    writer += strlen(call + writer);
+                }
+            } else if (value.type == VAR_STRING) {
+                call_len += sizeof(char)*value.str_len;
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%lf", (double)value);
+                sprintf(call + writer, "%.*s", value.str_len, value.string);
                 writer += strlen(call + writer);
+            }
+            else
+            {
+                printf("[TPOS]: ERR: Syntax error\n");
+                exit(-1);
             }
                 
         }
         else
         {
-            printf("ERR: Tpos: Syntax error\n");
+            printf("[TPOS]: ERR: Syntax error\n");
             exit(-1);
         }
     } else { // svets-string
@@ -1607,16 +1619,23 @@ void tpos(Token *instruction, Scope *scope)
                     if (instruction[2].var.name[j] == '%') break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
-                if ((int)value == value) {
-                    call_len += sizeof(int);
+                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+                if (value.type == VAR_NUMBER){
+                    if ((int)(value.value) == (value.value)) {
+                        call_len += sizeof(int);
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%d", (int)value);
+                    sprintf(call + writer, "%d", (int)value.value);
                     writer += strlen(call + writer);
-                } else {
-                    call_len += sizeof(double);
+                    } else {
+                        call_len += sizeof(double);
+                        call = realloc(call, call_len);
+                        sprintf(call + writer, "%lf", (double)value.value);
+                        writer += strlen(call + writer);
+                    }
+                } else if (value.type == VAR_STRING) {
+                    call_len += sizeof(char)*value.str_len;
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%lf", (double)value);
+                    sprintf(call + writer, "%.*s", value.str_len, value.string);
                     writer += strlen(call + writer);
                 }
                 i+=len+1;    
