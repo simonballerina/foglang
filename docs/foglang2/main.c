@@ -678,6 +678,7 @@ Program tokenize(char* buff, int debug)
             (&loops)->arr[++(&loops)->top] = instructions_OUTER_arr_index*loop_type;
 
             if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            //add terminator after
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
@@ -694,6 +695,7 @@ Program tokenize(char* buff, int debug)
             (&loops)->top--;
             (&loops)->size--;
             tok.type = CLOSE_LOOP;
+            // positive means return to start
             if (other > 0) {
                 loop_links[instructions_OUTER_arr_index] = other;
             } else {
@@ -702,7 +704,7 @@ Program tokenize(char* buff, int debug)
             }
             loop_links[other]=instructions_OUTER_arr_index;
             if (debug) printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
-            
+            // add terminator after
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
