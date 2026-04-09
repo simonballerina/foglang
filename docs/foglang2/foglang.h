@@ -32,6 +32,7 @@ typedef struct // 12 bytes?
 typedef struct
 {
     char loop_id;
+    int loop_link;
     double value;
     int type;
     Tok_Variable var;
@@ -91,7 +92,9 @@ enum Tok_type
     LEFT_BRACKET,  // 28
     RIGHT_BRACKET, // 29
     COMMA,         // 30
-    TPOS           // 31
+    TPOS,          // 31
+    OPEN_LOOP,     // 32
+    CLOSE_LOOP     // 33
 };
 
 typedef struct
