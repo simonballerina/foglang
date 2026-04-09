@@ -137,11 +137,3 @@ boul arctan(x) {5};
     return result;
 {5};
 
-
-
-main;
-band PI = 3.14159265359;
-band ans = arctan(0.5);
-
-foug svets "ans: %ans%\n";
-

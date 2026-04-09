@@ -91,7 +91,11 @@ enum Tok_type
     RIGHT_BRACKET, // 29
     COMMA,         // 30
     TPOS,          // 31
-    SLIP           // 32
+    SLIP,          // 32
+    GRIP,          // 33
+    OCH,           // 34
+    ELLER,         // 35
+    INTE           // 36
 };
 
 typedef struct
