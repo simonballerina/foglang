@@ -575,14 +575,25 @@ int logic_eval(Token* args_old, int args_amount, Token (*instructions)[128], int
         }
 
         int eval_args_amount = i;
-        while (eval_args_amount < args_amount && args[eval_args_amount].type != OCH && args[eval_args_amount].type != ELLER) eval_args_amount++;
+        int depth = 0;
+        while (eval_args_amount < args_amount) {
+            if (args[eval_args_amount].type == LEFT_PAR) depth++;
+            else if (args[eval_args_amount].type == RIGHT_PAR) depth--;
+            if (depth == 0 && (args[eval_args_amount].type == OCH || args[eval_args_amount].type == ELLER))
+                break;
+            eval_args_amount++;
+        }
         eval_args_amount -= i;
         //printf("ARGSAMOUNT: %d\n", eval_args_amount);
         
         // räkna ut jämförelsen
         int op_type = -1;
         int op_index = -1;
+        int scan_depth = 0;
         for (int j = i; j < i+eval_args_amount; j++) {
+            if (args[j].type == LEFT_PAR) scan_depth++;
+            else if (args[j].type == RIGHT_PAR) scan_depth--;
+            if (scan_depth != 0) continue;
             switch (args[j].type){
                 case EQUALS:
                     op_type = EQUALS;
@@ -601,50 +612,61 @@ int logic_eval(Token* args_old, int args_amount, Token (*instructions)[128], int
                     op_index = j;
                     break;
             }
+            if (op_index != -1) break;
         }
 
-        if (op_index == -1) {
-            printf("ERR: Operatör saknas i logic_eval\n");
-            free(args);
-            free(bool_eval_arr);
-            exit(1);
-        }
-        
-        Dynamic_Var result_left = dynamic_eval(args+i, op_index-i, instructions, instruction_amount, scope);
-        
-        Dynamic_Var result_right = dynamic_eval(args+op_index+1, eval_args_amount-op_index+i-1, instructions, instruction_amount, scope);
-        
         int current_eval_result;
-
-        if (result_left.type == VAR_NUMBER && result_right.type == VAR_NUMBER){
-            switch (op_type){
-                case EQUALS:
-                    current_eval_result = result_left.value == result_right.value;
-                    break;
-                case GREATER_THAN:
-                    current_eval_result = result_left.value > result_right.value;
-                    break;
-                case NOT_EQUAL_TO:
-                    current_eval_result = result_left.value != result_right.value;
-                    break;
-                case LESS_THAN:
-                    current_eval_result = result_left.value < result_right.value;
-                    break;       
-            }
-        } else if (result_left.type == VAR_STRING && result_right.type == VAR_STRING){
-            switch (op_type){
-                case EQUALS:
-                    current_eval_result = (!strncmp(result_left.string, result_right.string, result_left.str_len)) && (result_left.str_len == result_right.str_len);
-                    break;
-                case NOT_EQUAL_TO:
-                    current_eval_result = (strncmp(result_left.string, result_right.string, result_left.str_len));
-                    break;
+        if (op_index == -1) {
+            if (args[i].type == LEFT_PAR && args[i + eval_args_amount - 1].type == RIGHT_PAR) {
+                int inner_len = eval_args_amount - 2;
+                if (inner_len < 0) {
+                    printf("ERR: Operatör saknas i logic_eval\n");
+                    free(args);
+                    free(bool_eval_arr);
+                    exit(1);
+                }
+                current_eval_result = logic_eval(args + i + 1, inner_len, instructions, instruction_amount, scope);
+            } else {
+                printf("ERR: Operatör saknas i logic_eval\n");
+                free(args);
+                free(bool_eval_arr);
+                exit(1);
             }
         } else {
-            printf("ERR: Kan inte jämföra två olika datatyper\n");
-            free(args);
-            free(bool_eval_arr);
-            exit(1);
+            Dynamic_Var result_left = dynamic_eval(args+i, op_index-i, instructions, instruction_amount, scope);
+            
+            Dynamic_Var result_right = dynamic_eval(args+op_index+1, eval_args_amount-op_index+i-1, instructions, instruction_amount, scope);
+            
+            if (result_left.type == VAR_NUMBER && result_right.type == VAR_NUMBER){
+                switch (op_type){
+                    case EQUALS:
+                        current_eval_result = result_left.value == result_right.value;
+                        break;
+                    case GREATER_THAN:
+                        current_eval_result = result_left.value > result_right.value;
+                        break;
+                    case NOT_EQUAL_TO:
+                        current_eval_result = result_left.value != result_right.value;
+                        break;
+                    case LESS_THAN:
+                        current_eval_result = result_left.value < result_right.value;
+                        break;       
+                }
+            } else if (result_left.type == VAR_STRING && result_right.type == VAR_STRING){
+                switch (op_type){
+                    case EQUALS:
+                        current_eval_result = (!strncmp(result_left.string, result_right.string, result_left.str_len)) && (result_left.str_len == result_right.str_len);
+                        break;
+                    case NOT_EQUAL_TO:
+                        current_eval_result = (strncmp(result_left.string, result_right.string, result_left.str_len));
+                        break;
+                }
+            } else {
+                printf("ERR: Kan inte jämföra två olika datatyper\n");
+                free(args);
+                free(bool_eval_arr);
+                exit(1);
+            }
         }
 
         if (negate) current_eval_result = !current_eval_result;
@@ -657,8 +679,11 @@ int logic_eval(Token* args_old, int args_amount, Token (*instructions)[128], int
         bool_eval_arr[bool_eval_top].value = current_eval_result;
         bool_eval_arr[bool_eval_top].type = NUMBER;
         int next_op = 0;
+        int depth2 = 0;
         for (int j = i+eval_args_amount; j < args_amount; j++){
-            if (args[j].type == OCH || args[j].type == ELLER){
+            if (args[j].type == LEFT_PAR) depth2++;
+            else if (args[j].type == RIGHT_PAR) depth2--;
+            if (depth2 == 0 && (args[j].type == OCH || args[j].type == ELLER)){
                 next_op = args[j].type;
                 break;
             }
