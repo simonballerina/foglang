@@ -117,11 +117,23 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case SLIP:
                 printf("'SLIP'    ");
                 break;
+            case GRIP:
+                printf("'GRIP'    ");
+                break;
             case GIVET:
                 printf("'GIVET'    ");
                 break;
             case ATT:
                 printf("'ATT'    ");
+                break;
+            case INTE:
+                printf("'INTE'    ");
+                break;
+            case ELLER:
+                printf("'ELLER'    ");
+                break;
+            case OCH:
+                printf("'OCH'    ");
                 break;
             case NAER:
                 printf("'NAER'    ");
@@ -368,6 +380,9 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
             case SLIP:
                 printf("'SLIP'    ");
                 break;
+            case GRIP:
+                printf("'GRIP'    ");
+                break;
             case GIVET:
                 printf("'GIVET'    ");
                 break;
@@ -568,6 +583,21 @@ Program tokenize(char* buff, int debug)
             tok.type = ATT;
             i += 4;
         }
+        else if (strncmp(&buff[i], "och ", 4) == 0)
+        {
+            tok.type = OCH;
+            i += 4;
+        }
+        else if (strncmp(&buff[i], "eller ", 6) == 0)
+        {
+            tok.type = ELLER;
+            i += 6;
+        }
+        else if (strncmp(&buff[i], "inte ", 5) == 0)
+        {
+            tok.type = INTE;
+            i += 5;
+        }
         else if (strncmp(&buff[i], "naer ", 5) == 0)
         {
             tok.type = NAER;
@@ -592,6 +622,11 @@ Program tokenize(char* buff, int debug)
         else if (strncmp(&buff[i], "main", 4) == 0)
         {
             tok.type = MAIN;
+            i += 4;
+        }
+        else if (strncmp(&buff[i], "grip", 4) == 0)
+        {
+            tok.type = GRIP;
             i += 4;
         }
         else if (buff[i] == '"')
@@ -800,7 +835,7 @@ Program tokenize(char* buff, int debug)
         
 }
 
-/*void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
+/*void check_syntax(Program* program){
     Token(*instructions)[128] = program->data;
     int instruction_amount = program->instruction_amount; 
 
@@ -857,8 +892,8 @@ Program tokenize(char* buff, int debug)
 
                     j++;
                 }
-                if (comp_amount != 1){
-                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                if (comp_amount < 1){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara minst 1\n", i, comp_amount);
                     exit(-1);
                 }
                 if (!left_args || !right_args){
@@ -926,8 +961,8 @@ Program tokenize(char* buff, int debug)
                     j++;
                 }
                 
-                if (comp_amount != 1){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara 1\n", i, comp_amount);
+                if (comp_amount < 1){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara minst 1\n", i, comp_amount);
                     exit(-1);
                 }
                 if (!left_args || !right_args){
@@ -1068,10 +1103,11 @@ Program tokenize(char* buff, int debug)
 
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
 {
+    int is_grip = 0;
     int is_slip = 0;
-    
     if (instruction[1].type == SLIP) is_slip = 1;
-    Token end_var = instruction[1+is_slip];
+    else if (instruction[1].type == GRIP) is_grip = 1;
+    Token end_var = instruction[1+is_slip+is_grip];
     // ta reda på vilken typ av variabler som används
     
     int start_eval = 0;
@@ -1088,7 +1124,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     // kolla om en lista skapas
     int type = VAR_NONE;
-    if (instruction[3+is_slip].type == LEFT_BRACKET){
+    if (instruction[3+is_slip+is_grip].type == LEFT_BRACKET){
         type = VAR_LIST;
     }
 
@@ -1109,9 +1145,9 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     
 
     // kolla om en lista ska uppdateras istället
-    if (instruction[2+is_slip].type == LEFT_BRACKET && type == VAR_STRING)
+    if (instruction[2+is_slip+is_grip].type == LEFT_BRACKET && type == VAR_STRING)
         type = VAR_LIST_STRING;
-    else if (instruction[2+is_slip].type == LEFT_BRACKET && type == VAR_NUMBER)
+    else if (instruction[2+is_slip+is_grip].type == LEFT_BRACKET && type == VAR_NUMBER)
         type = VAR_LIST_NUMBER;
     
 
@@ -1391,109 +1427,33 @@ void foug(Token *instruction, Scope *scope)
     }
 }
 
-void loop(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
-{
-    // printf("[DEBUG] Entered NAER, program_counter: %d\n", program_counter);
-    int i = 1;
-    while (instruction[i].type != EQUALS && instruction[i].type != GREATER_THAN && instruction[i].type != LESS_THAN && instruction[i].type != NOT_EQUAL_TO && i < 128)
-        i++;
-    int operation = instruction[i].type;
-    i++;
-  
-    int left_args_length = i - 2;
-    int j = i;
-    while (instruction[i].type != OPEN_LOOP && i < 128)
-        i++;
-    int right_args_length = i - j;
-
-    // printf("[DEBUG] left_args_length: %d, right_args_length: %d\n", left_args_length, right_args_length);
-
-    Token left_args[left_args_length];
-    Token right_args[right_args_length];
-
-    if (left_args_length > 0)
-        memcpy(left_args, instruction + 1, left_args_length * sizeof(Token));
-    if (right_args_length > 0)
-        memcpy(right_args, instruction + j, right_args_length * sizeof(Token));
-
-    // for (int k=0; k<left_args_length; k++) printf("[DEBUG] LEFT %d: %d\n", k, left_args[k].type);
-    // for (int k=0; k<right_args_length; k++) printf("[DEBUG] RIGHT %d: %d\n", k, right_args[k].type);
-
-    Dynamic_Var left_value = dynamic_eval(left_args, left_args_length, instructions, instruction_amount, scope);
-    Dynamic_Var right_value = dynamic_eval(right_args, right_args_length, instructions, instruction_amount, scope);
-
-    int type = VAR_NONE;
-    if (left_value.type == VAR_NUMBER && right_value.type == VAR_NUMBER) type = VAR_NUMBER;
-    else if (left_value.type == VAR_STRING && right_value.type == VAR_STRING) type = VAR_STRING;
-    if (type == VAR_NONE){
-        printf("ERR: Kan inte jämföra två olika datatyper\n");
-        exit(1);
-    }
-
-    //printf("NAER LEFT: %lf, NAER RIGHT %lf\n", left_value.value, right_value.value);
-
-    int do_statement = 0;
-
-    if (type == VAR_NUMBER){
-        switch (operation)
-        {
-        case EQUALS:
-            if (left_value.value == right_value.value)
-                do_statement = 1;
-            break;
-
-        case GREATER_THAN:
-            if (left_value.value > right_value.value)
-                do_statement = 1;
-            break;
-
-        case LESS_THAN:
-            if (left_value.value < right_value.value)
-                do_statement = 1;
-            break;
-
-        case NOT_EQUAL_TO:
-            if (left_value.value != right_value.value)
-                do_statement = 1;
-            break;
-        }
-    } else if (type == VAR_STRING){
-        switch (operation)
-        {
-        case EQUALS:
-            if (!strncmp(left_value.string, right_value.string, left_value.str_len) && left_value.str_len == right_value.str_len)
-                do_statement = 1;
-            break;
-
-        case GREATER_THAN:
-            printf("ERR: Ogiltig jämförelse mellan strängar\n");
-            exit(1);
-            break;
-
-        case LESS_THAN:
-            printf("ERR: Ogiltig jämförelse mellan strängar\n");
-            exit(1);
-            break;
-
-        case NOT_EQUAL_TO:
-            if (strncmp(left_value.string, right_value.string, left_value.str_len) || left_value.str_len != right_value.str_len)
-                do_statement = 1;
-            break;
-        }
-
-    }
-
+void givet(Token *instruction, Program program, Scope *scope){
+    int len = 0;
+    while (instruction[len].type != OPEN_LOOP) len++;
+    len -=2;
+    int do_statement = logic_eval(instruction+2, len, program.data, program.instruction_amount, scope);
+    //printf("givet do statement: %d\n", do_statement);
+    
     if (!do_statement)
     {
         program_counter = loop_links[program_counter];
         return;
     }
-    //printf("moving\n");
-    return;
+}
 
-    malloc_error:
-        printf("[NAER] ERR: Minnesallokering misslyckades\n");
-        exit(1);
+void naer(Token *instruction, Program program, Scope *scope){
+    int len = 0;
+    while (instruction[len].type != OPEN_LOOP) len++;
+    //printf("len is %d", len);
+    len -=1;
+    int do_statement = logic_eval(instruction+1, len, program.data, program.instruction_amount, scope);
+    //printf("givet do statement: %d\n", do_statement);
+    
+    if (!do_statement)
+    {
+        program_counter = loop_links[program_counter];
+        return;
+    }
 }
 
 void tpos(Token *instruction, Scope *scope)
@@ -1770,11 +1730,12 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
 
     case GIVET:
-        loop(&(current[1]), &(instructions[1]), instruction_amount, scope);
+        //loop(&(current[1]), &(instructions[1]), instruction_amount, scope);
+        givet(current, (Program){instructions, instruction_amount}, scope);
         break;
 
     case NAER:
-        loop(current, instructions, instruction_amount, scope);
+        naer(current, (Program){instructions, instruction_amount}, scope);
         break;
 
     case TPOS:

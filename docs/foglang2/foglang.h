@@ -93,7 +93,11 @@ enum Tok_type
     COMMA,         // 30
     TPOS,          // 31
     OPEN_LOOP,     // 32
-    CLOSE_LOOP     // 33
+    CLOSE_LOOP,    // 33
+    GRIP,          // 34
+    OCH,           // 35
+    ELLER,         // 36
+    INTE           // 37
 };
 
 typedef struct
