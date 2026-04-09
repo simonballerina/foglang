@@ -635,7 +635,7 @@ Program tokenize(char* buff, int debug)
             tok.type = OPEN_LOOP;
             push(&loops, instructions_OUTER_arr_index*loop_type);
 
-            printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
@@ -656,7 +656,7 @@ Program tokenize(char* buff, int debug)
                 loop_links[instructions_OUTER_arr_index] = instructions_OUTER_arr_index+1;
             }
             loop_links[other]=instructions_OUTER_arr_index;
-            printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            if (debug) printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
             
             Token next;
             next.type = TERMINATOR;
@@ -800,7 +800,7 @@ Program tokenize(char* buff, int debug)
         
 }
 
-void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
+/*void check_syntax(Program* program){ // TODO: kolla att function calls har samma mängd argument som funktionen vill ha
     Token(*instructions)[128] = program->data;
     int instruction_amount = program->instruction_amount; 
 
@@ -809,11 +809,6 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
         switch (instructions[i][0].type){
             
             case NAER: ;
-                /*
-                naer 14*2 = 10+18 {1};
-                    // gör något
-                {1};
-                */
                 int j = 1;
                 int comp_amount = 0;
                 int left_args = 0;
@@ -877,12 +872,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                 }
                 break;
 
-            case GIVET: 
-                /*
-                givet att 14*2 = 10+18 {1};
-                    // gör något
-                {1};
-                */
+            case GIVET: ;
                 j = 1;
                 comp_amount = 0;
                 left_args = 0;
@@ -959,12 +949,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
                 break;
             case BAND:
                 break;
-            case FUNCTION:
-                /*
-                boul func_name(a, b) {1};
-                    // gör skit
-                {1};
-                */
+            case FUNCTION: ;
                 j = 1;
                 found_loop_id = 0;
                 loop_id = 0;
@@ -1078,7 +1063,7 @@ void check_syntax(Program* program){ // TODO: kolla att function calls har samma
         }
     }
 
-}
+}*/
 
 
 void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
@@ -1620,15 +1605,6 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         .capacity = 128,
         .variables = malloc(128 * sizeof(Variable)),
     };
-    // Save loop stack state before executing nested function
-    int saved_loop_stack_top = loop_stack_top_id;
-    int saved_loop_stack[loop_stack_top_id];
-    int saved_loop_pc_stack[loop_stack_top_id];
-    for (int i = 0; i < loop_stack_top_id; i++) {
-        saved_loop_stack[i] = loop_id_stack[i];
-        saved_loop_pc_stack[i] = loop_program_counter_stack[i];
-    }
-    loop_stack_top_id = 0;  // Clear loop stack for the nested function
     
     // räkna antal formella argument
     int amount_of_args = 1;
