@@ -32,7 +32,6 @@ typedef struct // 12 bytes?
 typedef struct
 {
     char loop_id;
-    int loop_link;
     double value;
     int type;
     Tok_Variable var;

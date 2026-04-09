@@ -10,12 +10,6 @@
 // program counter
 int program_counter = -1;
 
-// loop stack
-char *loop_id_stack;
-int *loop_program_counter_stack;
-int loop_stack_top_id = 0;
-int loop_stack_capacity = 128;
-
 // function stack
 int *function_origin_program_counter_stack;
 Dynamic_Var *function_return_stack;
@@ -492,7 +486,6 @@ Program tokenize(char* buff)
         {
             tok.type = OPEN_LOOP;
             push(&loops, instructions_OUTER_arr_index*loop_type);
-            printf("stack is %d\n", instructions_OUTER_arr_index*loop_type);
 
             printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
             Token next;
@@ -507,31 +500,15 @@ Program tokenize(char* buff)
         else if (buff[i] == '}')
         {
             int other = pop(&loops);
-            printf("it is the t-%d-ing\n", other);
             tok.type = CLOSE_LOOP;
             if (other > 0) {
-                instructions[instructions_OUTER_arr_index][1].loop_link = other;
                 loop_links[instructions_OUTER_arr_index] = other;
             } else {
                 other = abs(other);
-                instructions[instructions_OUTER_arr_index][1].loop_link = instructions_OUTER_arr_index+1;
                 loop_links[instructions_OUTER_arr_index] = instructions_OUTER_arr_index+1;
             }
-            
-            printf("new ln %d at %d\n", instructions[instructions_OUTER_arr_index][1].loop_link, instructions_OUTER_arr_index);
-            //printf("link is %d\n", instructions[instructions_OUTER_arr_index][1].loop_link);
-            instructions[other][1].loop_link = instructions_OUTER_arr_index;
             loop_links[other]=instructions_OUTER_arr_index;
-            //printf("link is %d\n", instructions[other][1].loop_link);
-            printf("new ln %d at %d\n", instructions[other][1].loop_link, other);
-            //printf("top is %d\n", other);
-            printf("it is");
-            for (int i = 0; i < instruction_amount; i++)
-            {
-                printf("%d-", instructions[i][1].loop_link);
-            }
-            printf("\n");
-            printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", instructions[instructions_OUTER_arr_index][1].loop_link, instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
             
             Token next;
             next.type = TERMINATOR;
@@ -1219,7 +1196,7 @@ void loop(Token *instruction, Token (*instructions)[128], int instruction_amount
 
     if (!do_statement)
     {
-        program_counter = loop_links[program_counter];//instruction[1].loop_link;
+        program_counter = loop_links[program_counter];
         return;
     }
     //printf("moving\n");
@@ -1425,8 +1402,7 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         tpos(current, scope);
         break;
     case CLOSE_LOOP:
-        //printf("engign to %d\n", current[1].loop_link);
-        program_counter = loop_links[program_counter]-1;//current[1].loop_link;
+        program_counter = loop_links[program_counter]-1;
         break;
 
     case RETURN:
@@ -1483,16 +1459,11 @@ int main(int argc, char **argv)
         .variables = malloc(128 * sizeof(Variable))
     };
 
-    // loopstack
-    loop_id_stack = malloc(128 * sizeof(char));
-    loop_program_counter_stack = malloc(128 * sizeof(int));
     // function stack
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(double));
 
     if (scope.variables == NULL ||
-        loop_id_stack == NULL ||
-        loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
         function_return_stack == NULL)
         goto malloc_error;
