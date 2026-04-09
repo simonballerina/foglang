@@ -1,15 +1,19 @@
 
 
 void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
-
+    
     for (int i = 0; i < args_amount; i++){
+
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
             if (i+1 < args_amount && args[i+1].type == LEFT_BRACKET){
                 
                 int index_len = 0;
                 int j = i+2;
-                while (j < args_amount && args[j].type != RIGHT_BRACKET){ index_len++; j++; }
+                while (j < args_amount && args[j].type != RIGHT_BRACKET){ 
+                    index_len++; 
+                    j++; 
+                }
                 if (j >= args_amount){
                     printf("ERR: Slutklammer saknas i indexering\n");
                     exit(-1);
@@ -17,21 +21,52 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 cleanup_args(args + i + 2, index_len, instructions, instruction_amount, scope);
                 int index = (int)evaluate_expression(args + i + 2, index_len, instructions, instruction_amount, scope);
 
-                Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
+                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                //print_variables(scope);
+                //printf("----§§§§§§----\n");
+                
+                // ta reda på om det är en lista som indexeras eller en sträng som indexeras
+                Dynamic_Var str_var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
+                if (str_var.type == VAR_STRING){
 
-                for (int k = i+1; k <= j && k < args_amount; k++){
-                    args[k].type = NONE;
-                }
-
-                if (var.type == VAR_STRING){
+                    for (int k = i+1; k <= j && k < args_amount; k++){
+                        args[k].type = NONE;
+                    }
+                    
                     args[i].type = STRING;
-                    args[i].var.name = var.string;
-                    args[i].var.name_len = var.str_len;
-                } else if (var.type == VAR_NUMBER){
-                    args[i].type = NUMBER;
-                    args[i].value = var.value;
+                    // är index ok?
+                    if (index < 0) index = str_var.str_len+index;
+                    if (index >= str_var.str_len || index < 0){
+                        printf("ERR: Ogiltig indexing av lista\n");
+                        exit(-1);
+                    } 
+                    args[i].var.name = str_var.string+index;
+                    args[i].var.name_len = 1;
+                } else {
+                    Dynamic_Var list_var = get_var_value(args[i].var.name, args[i].var.name_len, VAR_LIST, index, scope);
+
+                    for (int k = i+1; k <= j && k < args_amount; k++){
+                        args[k].type = NONE;
+                    }
+
+                    if (list_var.type == VAR_STRING){
+                        args[i].type = STRING;
+                        args[i].var.name = list_var.string;
+                        args[i].var.name_len = list_var.str_len;
+                    } else if (list_var.type == VAR_NUMBER){
+                        args[i].type = NUMBER;
+                        args[i].value = list_var.value;
+                    }
+
                 }
+
+                
             } else {
+                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
+                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
+                //print_variables(scope);
+                //printf("----§§§§§§----\n");
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
@@ -48,18 +83,58 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
         
 
         }
+
+
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount);
-            if (value.type == VAR_NUMBER){
-                args[i].type = NUMBER;
+            
+
+            int start = i;
+            int depth = 0;
+            int end = i;
+
+            // hitta första (
+            while (end < args_amount && args[end].type != LEFT_PAR)
+                end++;
+
+            if (end == args_amount) {
+                printf("ERR: expected (\n");
+                exit(1);
+            }
+
+            depth = 1;
+            end++; // gå in i parentes
+
+            while (end < args_amount && depth > 0) {
+                if (args[end].type == LEFT_PAR) depth++;
+                else if (args[end].type == RIGHT_PAR) depth--;
+                end++;
+            }
+
+            end--; // backa till sista ')'
+
+
+            
+            int saved_pc = program_counter;
+            Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args+start, scope);
+            program_counter = saved_pc;
+
+            // ersätt hela token-strängen med returvärdet
+            args[i].type = (value.type == VAR_NUMBER) ? NUMBER : STRING;
+            if (value.type == VAR_NUMBER) {
                 args[i].value = value.value;
-            } else if (value.type == VAR_STRING){
-                args[i].type = STRING;
+            } else {
                 args[i].var.name = value.string;
                 args[i].var.name_len = value.str_len;
             }
+
+            // sätt resten till NONE
+            for (int j = i+1; j <= end && j < args_amount; j++) {
+                args[j].type = NONE;
+            }
         }
+
+
     }
 
 }
@@ -86,9 +161,20 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
+    // kolla efter negativa tal
+    for (int i = 1; i < args_amount; i++){ // i = 1 för att inte läsa utanför buffer
+        if (args[i].type == NUMBER && args[i-1].type == MINUS){
+            if (i <= 2 && args[i-2].type == NUMBER) continue;
+
+            args[i-1].type = NONE;
+            args[i].value = args[i].value*(-1);
+        }
+    }
+
 
     while (1)
     {
+
         // räkna mängden tokens med värden
         int valid_token_count = 0;
         for (int i = 0; i < args_amount; i++)
@@ -103,7 +189,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
             {
                 if (args[i].type == NUMBER)
                 {
-                    // printf("RETURNADE %lf\n", args[i].value);
+                    //printf("RETURNADE %lf\n", args[i].value);
                     return args[i].value;
                 }
             }
@@ -174,7 +260,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
         { // hitta multiplikationer/divisioner
-            if (args[i].type == MULTIPLIED || args[i].type == DIVIDED)
+            if (args[i].type == MULTIPLIED || args[i].type == DIVIDED || args[i].type == MODULO)
             {
                 for (int j = i + 1; j < args_amount; j++)
                 {
@@ -199,8 +285,21 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 
                 if (args[i].type == MULTIPLIED)
                     args[i].value = first_arg * second_arg;
-                else
+                else if (args[i].type == DIVIDED) {
+                    if (second_arg == 0) {
+                        printf("ERR: Division med 0\n");
+                        exit(-1);
+                    }
                     args[i].value = first_arg / second_arg;
+                }
+                    
+                else if (args[i].type == MODULO) {
+                    if (second_arg == 0) {
+                        printf("ERR: Division med 0\n");
+                        exit(-1);
+                    }
+                    args[i].value = fmod(first_arg, second_arg);
+                }
                 args[i].type = NUMBER;
                 break;
             }
@@ -252,11 +351,11 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
         }
         printf("\n");*/
     }
+
 }
 
 
 String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
-
 
     // konkatenera strängar. free:a gamla strängar!
     Token args[args_amount];
@@ -305,16 +404,25 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token (*instruc
 
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+    Token *args = malloc((args_amount+1) * sizeof(Token));
+    if (!args) goto malloc_error;
 
-    Token args[args_amount];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
-    
+    memcpy(args, args_old, (args_amount+1) * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
+    /*printf("EFTER CLEANUP:\n");
+    for (int i = 0; i < args_amount; i++) {
+        printf("TYPE: %d ", args[i].type);
+        if (args[i].type == NUMBER)
+            printf("VAL: %lf", args[i].value);
+        printf("\n");
+    }
+    printf("\n");*/
 
     int type = VAR_STRING;
 
-    for (int i = 0; args[i].type != TERMINATOR; i++){
+    for (int i = 0; i < args_amount; i++){
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
             break;
@@ -337,6 +445,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         ret.string = str_ret.string;
         ret.type = VAR_STRING;
         ret.value = 0;
+        free(args);
         return ret;
     } 
     else if (type == VAR_NUMBER)
@@ -346,9 +455,12 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         ret.string = 0;
         ret.type = VAR_NUMBER;
         ret.value = num_ret;
+        free(args);
         return ret;
     }
-
+    free(args);
     return ret;
-
+    malloc_error:
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
 }
