@@ -314,10 +314,16 @@ char* bult(char* file_name){
                 }
                 
                 int is_dupe = 1;
+                char import_file_name_prefix[name_len];
+                strcpy(import_file_name_prefix, "#");
+                import_file_name[name_len+7*!is_sax] = '\0';
+                strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
-                if (find_substring(imports, import_file_name) == -1) {
+                
+                
+                if (find_substring(imports, import_file_name_prefix) == -1) {
                     is_dupe = 0;
-                    imports_capacity += name_len+7*is_sax;
+                    imports_capacity += name_len+7*is_sax+1;
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
