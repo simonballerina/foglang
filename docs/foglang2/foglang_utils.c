@@ -110,9 +110,6 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case LEFT_BRACKET:
                 printf("'['    ");
                 break;
-            case LOOP_MARKER:
-                printf("'{%c}'    ", instructions[i][j].loop_id);
-                break;
             case PLUS:
                 printf("'+'    ");
                 break;
