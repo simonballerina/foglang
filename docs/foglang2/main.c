@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include "foglang.h"
 
 // konstanter och globala variabler
