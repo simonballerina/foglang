@@ -1503,11 +1503,12 @@ void foug(Token *instruction, Scope *scope)
             }
             else
             {
-                if (i < instruction[2+is_junk].var.name_len)
+                if (i < instruction[2+is_junk].var.name_len) {
                     if (is_junk) 
                         print_red(&instruction[2+is_junk].var.name[i], 1, 0);
-                    else
+                    else 
                         printf("%c", instruction[2+is_junk].var.name[i]);
+                }
             }
         }
     }

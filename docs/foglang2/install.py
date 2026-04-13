@@ -1,5 +1,6 @@
 import os
 import ctypes
+import subprocess
 
 
 def is_admin():
@@ -27,9 +28,9 @@ def main():
     if name == "nt":
 
         filepath = filepath.replace("/", "\\")
-        print("     Installerar för Windows i AppData\\Local\\Programs\\foglang2...")
+        print(f"     Installerar för Windows i {filepath}...")
 
-        status = os.system(f".\\make.bat {filepath}")
+        status = subprocess.run(f".\\make.bat {filepath}")
         exit_code = os.WEXITSTATUS(status)
 
         if exit_code != 0:
@@ -39,20 +40,20 @@ def main():
     elif name == "posix":
 
         if not filepath:
-            filepath = "/bin"
-        print(f"     Installerar för UNIX i {filepath}...")
+            filepath = "/usr/local/bin"
+        print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
 
         filepath += "/foglang2"
 
-
-        status1 = os.system(f"make clean TARGET={filepath}")
+        status1 = subprocess.run(["make", "clean", f"TARGET={filepath}"]).returncode
         exit_code1 = os.WEXITSTATUS(status1)
+
 
         if exit_code1 != 0:
             print("     Rensning misslyckades, installation avbruten")
             exit(-1)
 
-        status2 = os.system(f"make TARGET={filepath}")
+        status2 = subprocess.run(["make", f"TARGET={filepath}"]).returncode
         exit_code2 = os.WEXITSTATUS(status2)
 
         if exit_code2 != 0:
