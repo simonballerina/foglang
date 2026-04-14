@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'foglang'
+project = 'Foglang'
 copyright = '2026, STEM-klubben'
 author = 'malfredsson'
 

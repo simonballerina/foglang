@@ -8,6 +8,7 @@ Requirements
 There are a few requirements for your machine, in order to install Foglang. First of, you need the C compiler GCC. Check if you have it by running the following command in your terminal:
 ::
     gcc -v
+
 Secondly, you need a modern version of python, which you can get `here <https://www.python.org/downloads/>`_. To check if you already have it, run the following command:
 ::
     python3 -V
@@ -44,8 +45,7 @@ Once the command is installed you are free to run Foglang to your hearts content
 
 To learn more about our beautiful language, check out the :ref:`reference<theref>`.
 
-Fog Fog Fog Fog
----------------
+Fog Fog Fog Fog 
 
 .. figure:: ../img/foggy.avif
     :alt: Foggy landscape
