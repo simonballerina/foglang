@@ -19,7 +19,7 @@ The first step is to download the the Foglang repository, which you can do on ou
 If you have [git](https://git-scm.com/install/) installed, you can clone the official Foglang repository using:
 ```git clone https://github.com/simonballerina/foglang```
 
-> **_NOTE:_**  This guide is for Foglang2. If you wish to use Foglang1, compile it on your own after downloading the Foglang repo.
+> **_NOTE:_**  This guide is for Foglang2. If you wish to use Foglang1, compile it on your own after downloading the Foglang repo. We dont talk about Foglang0.
 
 ### Setting up Foglang command
 

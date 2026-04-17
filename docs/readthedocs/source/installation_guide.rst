@@ -26,7 +26,7 @@ If you have `git <https://git-scm.com/install/>`_ installed, you can clone the o
 
 .. note::
 
-    This guide is for Foglang2. If you wish to use Foglang1, compile it on your own after downloading the Foglang repo.
+    This guide is for Foglang2. If you wish to use Foglang1, compile it on your own after downloading the Foglang repo. We dont talk about Foglang0.
 
 Setting up Foglang command
 --------------------------
