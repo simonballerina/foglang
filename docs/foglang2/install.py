@@ -1,4 +1,5 @@
 import os
+import sys
 import ctypes
 import subprocess
 
@@ -17,7 +18,7 @@ def main():
 
     if not is_admin():
         print("     Du måste köra detta program som administratör/root för att installera Foglang2")
-        exit(-1)
+        sys.exit(-1)
 
 
     name = os.name
@@ -35,7 +36,7 @@ def main():
 
         if exit_code != 0:
             print("     Installation misslyckades, installation avbruten")
-            exit(-1)
+            sys.exit(-1)
 
     elif name == "posix":
 
@@ -51,23 +52,23 @@ def main():
 
         if exit_code1 != 0:
             print("     Rensning misslyckades, installation avbruten")
-            exit(-1)
+            sys.exit(-1)
 
         status2 = subprocess.run(["make", f"TARGET={filepath}"]).returncode
         exit_code2 = os.WEXITSTATUS(status2)
 
         if exit_code2 != 0:
             print("     Kompilering misslyckades, installation avbruten")
-            exit(-1)
+            sys.exit(-1)
 
         print("     Foglang2 installerat!")
     else:
         print("Okänt operativsystem, installation misslyckades")
-        exit(-1)
+        sys.exit(-1)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print("\n     Avbröt installationen")
-        exit(0)
+        sys.exit(0)
