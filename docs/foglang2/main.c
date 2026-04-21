@@ -526,7 +526,7 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] != '*'){
             while (i < buff_len && buff[i] != '\n') {
                 i++;
-                if (buff[i] == ';') {
+                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
                     instruction_amount--;
                     instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
                     if (instructions == NULL) goto malloc_error;
@@ -540,7 +540,7 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] == '*') {
             i += 2;
             while (i+1 < buff_len && !(buff[i] == '*' && buff[i+1] == '#')) {
-                if (buff[i] == ';') {
+                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
                     instruction_amount--;
                     instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
                     if (instructions == NULL) goto malloc_error;
