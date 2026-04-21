@@ -511,10 +511,11 @@ Program tokenize(char* buff, int debug)
     Stack loops;
     (&loops)->top = -1;
     (&loops)->size = 1;
-    (&loops)->arr = malloc(1);
+    (&loops)->max_size = 16;
+    (&loops)->arr = malloc((&loops)->max_size*sizeof(int));
 
     //loop links
-    loop_links = malloc(instruction_amount);
+    loop_links = malloc(instruction_amount*sizeof(int));
 
     while (i < buff_len)
     {
@@ -674,11 +675,16 @@ Program tokenize(char* buff, int debug)
         {
             tok.type = OPEN_LOOP;
             //push stack
-            (&loops)->arr = realloc((&loops)->arr, (&loops)->size++);
+            if ((&loops)->size >= (&loops)->max_size)
+            {
+                (&loops)->arr = realloc((&loops)->arr, ((&loops)->max_size + 64)*sizeof(int));
+                (&loops)->max_size += 64;
+                if ((&loops)->arr == NULL) goto malloc_error;
+            }
             (&loops)->arr[++(&loops)->top] = instructions_OUTER_arr_index*loop_type;
+            (&loops)->size++;
 
             if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
-            //add terminator after
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
@@ -695,7 +701,6 @@ Program tokenize(char* buff, int debug)
             (&loops)->top--;
             (&loops)->size--;
             tok.type = CLOSE_LOOP;
-            // positive means return to start
             if (other > 0) {
                 loop_links[instructions_OUTER_arr_index] = other;
             } else {
@@ -704,7 +709,7 @@ Program tokenize(char* buff, int debug)
             }
             loop_links[other]=instructions_OUTER_arr_index;
             if (debug) printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
-            // add terminator after
+            
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
@@ -1795,7 +1800,7 @@ int main(int argc, char **argv)
     
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
-    check_syntax(&program);
+    //check_syntax(&program);
     if (debug) print_tokens(instructions, instruction_amount);
 
     // hitta entry point (main)

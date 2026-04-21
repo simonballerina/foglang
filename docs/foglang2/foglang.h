@@ -109,7 +109,8 @@ typedef struct
 typedef struct {
     int* arr;
     int size;
-    int top;        
+    int top;
+    int max_size;        
 } Stack;
 
 // utils
