@@ -1086,10 +1086,11 @@ void check_syntax(Program* program){
                     printf("[BOUL]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid funktion\n", i);
                     exit(-1);
                 }
-                if (!found_return){
+                //TODO check not implemented
+                /*if (!found_return)){
                     printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta RETURN token\n", i);
                     exit(-1);
-                }
+                }*/
                 break;
             case CLOSE_LOOP:
                 closers++;
@@ -1806,7 +1807,7 @@ int main(int argc, char **argv)
     
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
-    //check_syntax(&program);
+    check_syntax(&program);
     if (debug) print_tokens(instructions, instruction_amount);
 
     // hitta entry point (main)
