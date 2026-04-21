@@ -536,9 +536,11 @@ Program tokenize(char* buff, int debug)
     (&loops)->size = 1;
     (&loops)->max_size = 16;
     (&loops)->arr = malloc((&loops)->max_size*sizeof(int));
+    if ((&loops)->arr == NULL) goto malloc_error;
 
     //loop links
     loop_links = malloc(instruction_amount*sizeof(int));
+    if (loop_links == NULL) goto malloc_error;
 
     while (i < buff_len)
     {
