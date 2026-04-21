@@ -97,7 +97,8 @@ enum Tok_type
     GRIP,          // 34
     OCH,           // 35
     ELLER,         // 36
-    INTE           // 37
+    INTE,          // 37
+    JUNK           // 38
 };
 
 typedef struct

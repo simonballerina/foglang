@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include "foglang.h"
 
 // konstanter och globala variabler
@@ -21,6 +24,20 @@ int *loop_links;
 #include "foglang_eval.c" 
 #include "foglang_var.c"
 
+void print_red(char* str, int len, int print_backslash) {
+
+    #ifdef _WIN32
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        fprintf(stderr, "%.*s", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+        SetConsoleTextAttribute(hConsole, 7);  // reset
+    #else
+        fprintf(stderr, "\033[31m%.*s\033[0m", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+    #endif
+
+}
 
 double str_to_double(char *num)
 {
@@ -109,6 +126,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             {
             case FOUG:
                 printf("'FOUG'    ");
+                break;
+            case JUNK:
+                printf("'JUNK'    ");
                 break;
             case BAND:
                 printf("'BAND'    ");
@@ -373,6 +393,9 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
             case FOUG:
                 printf("'FOUG'    ");
                 break;
+            case JUNK:
+                printf("'JUNK'    ");
+                break;
             case BAND:
                 printf("'BAND'    ");
                 break;
@@ -561,6 +584,11 @@ Program tokenize(char* buff, int debug)
         if (strncmp(&buff[i], "foug ", 5) == 0)
         {
             tok.type = FOUG;
+            i += 5;
+        }
+        else if (strncmp(&buff[i], "junk ", 5) == 0)
+        {
+            tok.type = JUNK;
             i += 5;
         }
         else if (strncmp(&buff[i], "svets ", 6) == 0)
@@ -1352,34 +1380,67 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
 void foug(Token *instruction, Scope *scope)
 {
+    int is_svets = 0;
+    int is_junk = 0;
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        if (instruction[i].type == SVETS) is_svets = 1;
+        else if (instruction[i].type == JUNK) is_junk = 1;
+    }
+    
     // printf("FOUG KALLAD PÅ\n");
-    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
+    if (!is_svets)
     {
-        if (instruction[1].type == STRING)
+        if (instruction[1+is_junk].type == STRING)
         {
             // printf("STRING I FOUG\n");
-            for (int i = 0; i < instruction[1].var.name_len; i++)
+            for (int i = 0; i < instruction[1+is_junk].var.name_len; i++)
             {
-                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
+                if (instruction[1+is_junk].var.name[i] == '\\' && i+1 < instruction[1+is_junk].var.name_len && instruction[1+is_junk].var.name[i + 1] == 'n')
                 {
                     printf("\n");
                     i += 2;
                 }
-                if (i < instruction[1].var.name_len)
-                    printf("%c", instruction[1].var.name[i]);
+                if (i < instruction[1+is_junk].var.name_len) {
+                    if (is_junk) 
+                        print_red(&instruction[1+is_junk].var.name[i], 1, 0);
+                    else 
+                        printf("%c", instruction[1+is_junk].var.name[i]);
+                }        
             }
         }
-        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
+        else if (instruction[1+is_junk].type == VARIABLE)
         {
             // printf("VARIABLE I FOUG\n");
-            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            // print variable info before lookup:
+            Dynamic_Var value = get_var_value(instruction[1+is_junk].var.name, instruction[1+is_junk].var.name_len, 0, 0, scope);
             if (value.type == VAR_NUMBER){
-                if ((int)(value.value) == (value.value))
-                    printf("%d\n", (int)(value.value));
-                else
-                    printf("%lf\n", value.value);
+                int is_int = 0;
+                if ((int)(value.value) == (value.value)) is_int = 1;
+                
+                if (is_junk) {                    
+                    int amount_of_digits = floor (log10(abs((int)(value.value)))) + 1;
+                    if (!is_int) amount_of_digits += 7;
+                    char num_str[amount_of_digits];
+
+                    if (is_int)
+                        sprintf(num_str, "%d", (int)(value.value));
+                    else
+                        sprintf(num_str, "%lf", value.value);
+            
+                    print_red(num_str, amount_of_digits, 1);
+
+                } else
+                    if (is_int)
+                        printf("%d\n", (int)(value.value));
+                    else 
+                        printf("%lf\n", value.value);
+
+
             } else if (value.type == VAR_STRING){
-                printf("%.*s\n", value.str_len, value.string);
+                if (is_junk) 
+                    print_red(value.string, value.str_len, 1);
+                else
+                    printf("%.*s\n", value.str_len, value.string);
             } 
         }
         else
@@ -1390,46 +1451,73 @@ void foug(Token *instruction, Scope *scope)
     }
     else
     { // svets-string
-        for (int i = 0; i < instruction[2].var.name_len; i++)
+        for (int i = 0; i < instruction[2+is_junk].var.name_len; i++)
         {
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
+            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == 'n') // printa \n
             {
                 printf("\n");
                 i += 2;
             }
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
             {
-                printf("%%");
+                if (is_junk)
+                    print_red("%", 1, 0);
+                else
+                    printf("%%");
                 i += 2;
             }
 
-            if (instruction[2].var.name[i] == '%')
+            if (instruction[2+is_junk].var.name[i] == '%')
             {
                 // kolla längden på den
                 int len = 0;
-                for (int j = i + 1; j < instruction[2].var.name_len; j++)
+                for (int j = i + 1; j < instruction[2+is_junk].var.name_len; j++)
                 {
-                    if (instruction[2].var.name[j] == '%')
+                    if (instruction[2+is_junk].var.name[j] == '%')
                         break;
                     len++;
                 }
-                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+                Dynamic_Var value_svets = get_var_value(instruction[2+is_junk].var.name+i+1, len, 0, 0, scope);
 
-                if (value.type == VAR_NUMBER){
-                    if ((int)(value.value) == (value.value))
-                        printf("%d", (int)(value.value));
+                if (value_svets.type == VAR_NUMBER){
+                    int is_int = 0;
+                    if ((int)(value_svets.value) == (value_svets.value)) is_int = 1;
+                    
+                    if (is_junk) {                    
+                        int amount_of_digits = floor (log10(abs((int)(value_svets.value)))) + 1;
+                        if (!is_int) amount_of_digits += 7;
+                        char num_str[amount_of_digits];
+
+                        if (is_int)
+                            sprintf(num_str, "%d", (int)(value_svets.value));
+                        else
+                            sprintf(num_str, "%lf", value_svets.value);
+                
+                        print_red(num_str, amount_of_digits, 0);
+
+                    } else
+                        if (is_int)
+                            printf("%d", (int)(value_svets.value));
+                        else 
+                            printf("%lf", value_svets.value);
+
+
+                } else if (value_svets.type == VAR_STRING){
+                    if (is_junk) 
+                        print_red(value_svets.string, value_svets.str_len, 0);
                     else
-                        printf("%lf", value.value);
-                } else if (value.type == VAR_STRING){
-                    printf("%.*s", value.str_len, value.string);
+                        printf("%.*s", value_svets.str_len, value_svets.string);
                 } 
-
                 i += len + 1;
             }
             else
             {
-                if (i < instruction[2].var.name_len)
-                    printf("%c", instruction[2].var.name[i]);
+                if (i < instruction[2+is_junk].var.name_len) {
+                    if (is_junk) 
+                        print_red(&instruction[2+is_junk].var.name[i], 1, 0);
+                    else 
+                        printf("%c", instruction[2+is_junk].var.name[i]);
+                }
             }
         }
     }
@@ -1462,7 +1550,7 @@ void tpos(Token *instruction, Scope *scope)
     }
     int writer = 0;
     
-    if (instruction[1].type != SVETS)
+    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
     {
         if (instruction[1].type == STRING)
         {
@@ -1478,26 +1566,38 @@ void tpos(Token *instruction, Scope *scope)
                 }  
             }
         }
-        else if (instruction[1].type == VARIABLE)
+        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
         {
             // printf("VARIABLE I TPOS\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
-            if ((int)value == value){
-                call_len += sizeof(int);
+            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            if (value.type == VAR_NUMBER){
+                if ((int)(value.value) == (value.value)) {
+                    call_len += sizeof(int);
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%d", (int)value);
+                sprintf(call + writer, "%d", (int)value.value);
                 writer += strlen(call + writer);
-            } else {
-                call_len += sizeof(double);
+                } else {
+                    call_len += sizeof(double);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%lf", (double)value.value);
+                    writer += strlen(call + writer);
+                }
+            } else if (value.type == VAR_STRING) {
+                call_len += sizeof(char)*value.str_len;
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%lf", (double)value);
+                sprintf(call + writer, "%.*s", value.str_len, value.string);
                 writer += strlen(call + writer);
+            }
+            else
+            {
+                printf("[TPOS]: ERR: Syntax error\n");
+                exit(-1);
             }
                 
         }
         else
         {
-            printf("ERR: Tpos: Syntax error\n");
+            printf("[TPOS]: ERR: Syntax error\n");
             exit(-1);
         }
     } else { // svets-string
@@ -1520,16 +1620,23 @@ void tpos(Token *instruction, Scope *scope)
                     if (instruction[2].var.name[j] == '%') break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
-                if ((int)value == value) {
-                    call_len += sizeof(int);
+                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+                if (value.type == VAR_NUMBER){
+                    if ((int)(value.value) == (value.value)) {
+                        call_len += sizeof(int);
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%d", (int)value);
+                    sprintf(call + writer, "%d", (int)value.value);
                     writer += strlen(call + writer);
-                } else {
-                    call_len += sizeof(double);
+                    } else {
+                        call_len += sizeof(double);
+                        call = realloc(call, call_len);
+                        sprintf(call + writer, "%lf", (double)value.value);
+                        writer += strlen(call + writer);
+                    }
+                } else if (value.type == VAR_STRING) {
+                    call_len += sizeof(char)*value.str_len;
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%lf", (double)value);
+                    sprintf(call + writer, "%.*s", value.str_len, value.string);
                     writer += strlen(call + writer);
                 }
                 i+=len+1;    

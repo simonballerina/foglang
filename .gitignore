@@ -3,3 +3,4 @@
 docs/readthedocs/build/*
 docs/foglang2/build/*
 .vscode/*
+docs/foglang2/test/*
