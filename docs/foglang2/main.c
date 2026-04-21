@@ -540,12 +540,12 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] == '*') {
             i += 2;
             while (i+1 < buff_len && !(buff[i] == '*' && buff[i+1] == '#')) {
-                i++;
                 if (buff[i] == ';') {
                     instruction_amount--;
                     instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
                     if (instructions == NULL) goto malloc_error;
                 }
+                i++;
             }
             i += 2;
             continue;
@@ -685,6 +685,7 @@ Program tokenize(char* buff, int debug)
             (&loops)->size++;
 
             if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            //add terminator after
             Token next;
             next.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
@@ -844,6 +845,11 @@ Program tokenize(char* buff, int debug)
 
     Program program = {instructions, instruction_amount};
     if (debug) printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
+
+    // free the grabb
+    free((&loops)->arr);
+    (&loops)->arr = NULL;
+    
     return program;
 
     malloc_error:
