@@ -22,9 +22,15 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
+#ifdef PATH_MAX
+    char path_diff[PATH_MAX];
+#else
+    printf("ERR: No PATH_MAX in enviroment\n");
+    exit(1);
+#endif
+
 #include "foglang_eval.c" 
 #include "foglang_var.c"
-
 
 
 double str_to_double(char *num)
@@ -285,6 +291,13 @@ char* bult(char* file_name){
     int len = strlen(buff);
     int found;
     int search = 1;
+
+    //move to relative position
+    char origin_wd[PATH_MAX];
+    getcwd(origin_wd, sizeof(origin_wd) != NULL);
+    chdir(path_diff);
+    printf("+%s\n", path_diff);
+
     while (search){
         found = 0;
         for (int i = 0; i < len; i++){
@@ -364,6 +377,9 @@ char* bult(char* file_name){
 
     free(imports);
     imports = NULL;
+
+    //move back
+    chdir(origin_wd);
 
     return buff; 
 
@@ -1900,6 +1916,14 @@ int main(int argc, char **argv)
         }
     }
     
+    //define the difference in path of file and cwd
+    strcpy(path_diff, argv[1]);
+    char* path_ptr = &path_diff[0];
+    while (strchr(path_ptr, '/') != NULL)
+    {
+        path_ptr++;
+    }
+    path_ptr[-1] = '\0';
 
     // skapa konstantarrays
     // variabler
