@@ -255,12 +255,44 @@ void print_tokens(Token instructions[][128], int instruction_amount)
     printf("-----------------------------------------------\n");
 }
 
+
+static void print_dynamic_items(Dynamic_Var *items, int len, int indent)
+{
+    for (int j = 0; j < len; j++)
+    {
+        for (int sp = 0; sp < indent; sp++)
+        {
+            printf("  ");
+        }
+
+        printf("%d: Type: %d    Value: %lf    List/String_len: %d   String: '",
+               j,
+               items[j].type,
+               items[j].value,
+               items[j].str_len);
+
+        if (items[j].type == VAR_STRING && items[j].string != NULL)
+        {
+            for (int k = 0; k < items[j].str_len; k++)
+            {
+                printf("%c", items[j].string[k]);
+            }
+        }
+
+        printf("'\n");
+
+        if (items[j].type == VAR_LIST)
+        {
+            print_dynamic_items(items[j].list_ptr, items[j].str_len, indent + 4);
+        }
+    }
+}
+
 void print_variables(Scope *scope)
 {
     for (int i = 0; i < (*scope).index; i++)
     {
         printf("%i: Type: %d    Name: ", i, (*scope).variables[i].type);
-        // printa namn
         if ((*scope).variables[i].name != NULL)
         {
             for (int j = 0; j < (*scope).variables[i].name_len; j++)
@@ -268,7 +300,10 @@ void print_variables(Scope *scope)
                 printf("%c", (*scope).variables[i].name[j]);
             }
         }
-        printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
+
+        printf("    Value: %lf    List/String_len: %d   String: '",
+               (*scope).variables[i].value,
+               (*scope).variables[i].len);
 
         if ((*scope).variables[i].str_ptr != 0)
         {
@@ -279,6 +314,11 @@ void print_variables(Scope *scope)
         }
 
         printf("'\n");
+
+        if ((*scope).variables[i].type == VAR_LIST)
+        {
+            print_dynamic_items((*scope).variables[i].list_ptr, (*scope).variables[i].len, 4);
+        }
     }
 }
 

@@ -11,7 +11,16 @@ enum Var_type
     VAR_LIST_STRING
 };
 
-typedef struct
+typedef struct Variable Variable;
+typedef struct Dynamic_Var Dynamic_Var;
+
+typedef struct List
+{
+    int len;
+    Dynamic_Var* items;
+} List;
+
+typedef struct Variable
 {
     int type;
     char *name;
@@ -19,6 +28,7 @@ typedef struct
     double value;
     int len;     // längden på listan / strängen
     char *str_ptr;
+    Dynamic_Var* list_ptr;
 } Variable;
 
 typedef struct // 12 bytes?
@@ -43,12 +53,13 @@ typedef struct
     int len;
 } String;
 
-typedef struct 
+typedef struct Dynamic_Var
 {
     char* string;
     int str_len;
     double value;
     int type;
+    struct Dynamic_Var* list_ptr;
 } Dynamic_Var;
 
 typedef struct Scope {
