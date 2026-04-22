@@ -318,7 +318,7 @@ char* bult(char* file_name, char* user){
     #endif
     
     #ifdef _WIN32
-        exit(1)
+        char lib[] = "C:\\Program Files\\foglang2\\lib\\";
     #endif
 
     #ifdef __linux__
