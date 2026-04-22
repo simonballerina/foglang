@@ -1,5 +1,5 @@
 
-void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     
     for (int i = 0; i < args_amount; i++){
 
@@ -81,19 +81,15 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                     args[i].type = NUMBER;
                     args[i].value = current.value;
                 } else if (current.type == VAR_LIST) {
-                    // infoga listan i args på formen [item, item, item] realloc maxxing.
-                    int list_len = current.str_len;
-                    int insert_pos = i;
-                    int shift_amount = list_len - 1; // eftersom args[i] ersätt
-                    // realloca om d behövs
-                    // TODO: KOMMER INTE FUNGERA SÅ LÄNGE LÄNGDEN ÄR BESTÄMD TILL 128 TOKENS
-                    
-                    if (shift_amount > 0) {
-                        // shift right
-                        for (int k = args_amount - 1; k > insert_pos && k - shift_amount >= insert_pos; k--) {
-                            args[k] = args[k - shift_amount];
-                        }
+                    // token.list_ptr finns!
+                    args[i].type = LIST;
+                    args[i].list_ptr = malloc(sizeof(List));
+                    if (!args[i].list_ptr) {
+                        printf("ERR: Memory allocation failed for list\n");
+                        exit(-1);
                     }
+                    args[i].list_ptr->items = current.list_ptr;
+                    args[i].list_ptr->len = current.str_len;
                 }
             } else {
                 //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
@@ -109,6 +105,13 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
                 } else if (var.type == VAR_NUMBER){
                     args[i].type = NUMBER;
                     args[i].value = var.value;
+                } else if (var.type == VAR_LIST){
+                    args[i].type = LIST;
+                    args[i].list_ptr = malloc(sizeof(List));
+                    if (!args[i].list_ptr) goto malloc_error;
+                    
+                    args[i].list_ptr->items = var.list_ptr;
+                    args[i].list_ptr->len = var.str_len;
                 }
             }
 
@@ -120,8 +123,6 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
 
         if (args[i].type == VARIABLE && args[i].var.type == VAR_FUNCTION)
         {
-            
-
             int start = i;
             int depth = 0;
             int end = i;
@@ -153,12 +154,20 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
             program_counter = saved_pc;
 
             // ersätt hela token-strängen med returvärdet
-            args[i].type = (value.type == VAR_NUMBER) ? NUMBER : STRING;
             if (value.type == VAR_NUMBER) {
+                args[i].type = NUMBER;
                 args[i].value = value.value;
-            } else {
+            } else if (value.type == VAR_STRING) {
+                args[i].type = STRING;
                 args[i].var.name = value.string;
                 args[i].var.name_len = value.str_len;
+            } else if (value.type == VAR_LIST) {
+                args[i].type = LIST;
+                args[i].list_ptr = malloc(sizeof(List));
+                if (!args[i].list_ptr) goto malloc_error;
+
+                args[i].list_ptr->items = value.list_ptr;
+                args[i].list_ptr->len = value.str_len;
             }
 
             // sätt resten till NONE
@@ -170,10 +179,18 @@ void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int 
 
     }
 
+    // printa efter cleanup with indents based on list depth
+
+    return;
+
+    malloc_error:
+        printf("ERR: Minnesallokering misslyckades\n");
+        exit(1);
+
 }
 
 
-double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope)
+double evaluate_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope)
 {
     /*for (int i = 0; i < args_amount; i++)
     {
@@ -467,7 +484,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token (*instruction
 }
 
 
-String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+String evaluate_str_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
 
     // konkatenera strängar. free:a gamla strängar!
     Token args[args_amount];
@@ -536,7 +553,7 @@ static int is_top_level_list_literal(Token *args, int args_amount)
     return 0;
 }
 
-List evaluate_list_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // denna tuffa funktion syftar till att skapa en lista i formatet [värde, värde, värde], så det inte är massa aritmetiska operationer som ska hanteras
 
     Token args[args_amount];
@@ -612,7 +629,7 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token (*instruct
         exit(1);
 }
 
-Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     Token *args = malloc((args_amount+1) * sizeof(Token));
     if (!args) goto malloc_error;
 
@@ -633,15 +650,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
         return ret;
     }
 
-    /*printf("EFTER CLEANUP:\n");
-    for (int i = 0; i < args_amount; i++) {
-        printf("TYPE: %d ", args[i].type);
-        if (args[i].type == NUMBER)
-            printf("VAL: %lf", args[i].value);
-        printf("\n");
-    }
-    printf("\n");*/
-
     int type = VAR_STRING;
 
     for (int i = 0; i < args_amount; i++){
@@ -657,6 +665,20 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
                 return var_ret;
             }
             if (var_ret.type == VAR_STRING) type = VAR_STRING;
+        }
+        if (args[i].type == LIST) {
+            // anta att man konkatenerar i framtiden, så att [1,2] + [3,4] blir [1,2,3,4]
+            if (args_amount == 1 || 1==1) {
+                ret.type = VAR_LIST;
+                ret.list_ptr = args[i].list_ptr->items;
+                ret.str_len = args[i].list_ptr->len;
+                ret.value = 0;
+                ret.string = NULL;
+                free(args);
+                return ret;
+            }
+            
+
         }
     }
     String str_ret;
@@ -690,7 +712,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token (*instructions)
 }
 
 
-int logic_eval(Token* args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope){
+int logic_eval(Token* args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // x*2 < 8 och x+1 = 2
     //printf("LOGIC EVAL, ARGS AMOUNT :%d\n", args_amount);
     Token* args = malloc((args_amount+1) * sizeof(Token));

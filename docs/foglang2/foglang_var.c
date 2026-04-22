@@ -70,23 +70,18 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 }
 
 
-void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount, Scope *scope)
+
+void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope)
 {
-    // räkna ut hur många element den ska ha i listan (notera att man inte kan räkna kommatecken för listor kan finnas i andra listor)
-    int len = 0;
-    int depth = 0;
-
-    for (int i = 0; values[i].type != RIGHT_BRACKET || depth != 0; i++){
-        if (values[i].type == LEFT_BRACKET) depth++;
-        if (values[i].type == RIGHT_BRACKET) depth--;
-        if (values[i].type == COMMA && depth == 0) len++;
-    }
-    len++; // antal element är antal kommatecken + 1
-
-    int args_amount = 0;
-    for (int i = 0; values[i].type != TERMINATOR; i++){
-        args_amount++;
-    }
+    Variable var = {
+        .len = value.str_len,
+        .name = name,
+        .name_len = name_len,
+        .type = VAR_LIST,
+        .value = 0,
+        .str_ptr = 0,
+        .list_ptr = value.list_ptr
+    };
 
     if ((*scope).index >= (*scope).capacity)
     {
@@ -98,98 +93,13 @@ void create_list_var(char *name, int name_len, Token *values, Token (*instructio
             exit(1);
         }
     }
-
-    Dynamic_Var *items = malloc(len * sizeof(Dynamic_Var));
-    if (items == NULL)
-    {
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
-    }
-
-    int start_index = 0;
-    if (args_amount > 0 && values[0].type == LEFT_BRACKET) {
-        start_index = 1;
-    }
-
-    int i = start_index;
-    int item_index = 0;
-    while (i < args_amount && values[i].type != RIGHT_BRACKET) {
-        if (values[i].type == COMMA) {
-            i++;
-            continue;
-        }
-
-        int item_len = 0;
-        int item_depth = 0;
-        for (int j = i; j < args_amount; j++) {
-            if (values[j].type == LEFT_BRACKET) {
-                item_depth++;
-                item_len++;
-            } else if (values[j].type == RIGHT_BRACKET) {
-                if (item_depth == 0) break;
-                item_depth--;
-                item_len++;
-            } else if (values[j].type == COMMA && item_depth == 0) {
-                break;
-            } else {
-                item_len++;
-            }
-        }
-
-        Dynamic_Var value = dynamic_eval(values+i, item_len, instructions, instruction_amount, scope);
-        Dynamic_Var list_item = {
-            .string = NULL,
-            .str_len = 0,
-            .value = 0,
-            .type = VAR_NONE,
-            .list_ptr = NULL
-        };
-
-        if (value.type == VAR_NUMBER) {
-            list_item.type = VAR_NUMBER;
-            list_item.value = value.value;
-        } else if (value.type == VAR_STRING) {
-            list_item.type = VAR_STRING;
-            list_item.str_len = value.str_len;
-            list_item.string = value.string;
-        } else if (value.type == VAR_LIST) {
-            list_item.type = VAR_LIST;
-            list_item.str_len = value.str_len;
-            list_item.list_ptr = value.list_ptr;
-        } else {
-            printf("ERR: Okänd datatyp i lista\n");
-            exit(1);
-        }
-
-        items[item_index++] = list_item;
-        i += item_len;
-        if (i < args_amount && values[i].type == COMMA) {
-            i++;
-        }
-    }
-
-    if (item_index != len) {
-        printf("ERR: Felaktig lista, antal element stämmer inte\n");
-        exit(1);
-    }
-
-    Variable list_var = {
-        .name = name,
-        .name_len = name_len,
-        .type = VAR_LIST,
-        .value = 0,
-        .len = len,
-        .str_ptr = 0,
-        .list_ptr = items
-    };
-
-    (*scope).variables[(*scope).index++] = list_var;
+    (*scope).variables[(*scope).index++] = var;
 }
 
 
 void create_num_var(char *name, int name_len, double value, Scope *scope)
 {
-    Variable var = {// init var
+    Variable var = { // init var
                     .len = 0,
                     .name = name,
                     .name_len = name_len,

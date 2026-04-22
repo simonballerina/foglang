@@ -25,6 +25,9 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
+// håller värde för storlek på varje rad
+int* row_lengths;
+
 #include "foglang_eval.c" 
 #include "foglang_var.c"
 
@@ -107,7 +110,7 @@ char *read_file(const char *filename)
     return buffer;
 }
 
-void print_tokens(Token instructions[][128], int instruction_amount)
+void print_tokens(Token **instructions, int instruction_amount)
 {
     printf("Printing tokens...\n");
     printf("Instruction amount: %d\n", instruction_amount);
@@ -563,8 +566,14 @@ Program tokenize(char* buff, int debug)
     if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
 
     // skapa instruktionsarray
-    Token(*instructions)[128] = calloc(instruction_amount, sizeof(*instructions));
+    Token **instructions = malloc(instruction_amount * sizeof(Token *));
     if (instructions == NULL) goto malloc_error;
+    // grischallokera varje instruktions rad
+    for (int i = 0; i < instruction_amount; i++) { // i framtiden bör räkna ut storleken istället för hardcodade 128
+        instructions[i] = malloc(128 * sizeof(Token));
+        if (instructions[i] == NULL) goto malloc_error;
+    }
+
   
     if (debug) printf("[DEBUG] instructions ptr: %p\n", instructions);
 
@@ -888,7 +897,7 @@ Program tokenize(char* buff, int debug)
 }
 
 void check_syntax(Program* program){ 
-    Token(*instructions)[128] = program->data;
+    Token **instructions = program->data;
     int instruction_amount = program->instruction_amount; 
 
     for (int i = 0; i < instruction_amount; i++){
@@ -1168,7 +1177,7 @@ void check_syntax(Program* program){
 }
 
 
-void band(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope)
+void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
 {
     int is_grip = 0;
     int is_slip = 0;
@@ -1189,27 +1198,10 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     while (instruction[start_eval + args_count].type != TERMINATOR)
         args_count++;
 
-    // kolla om en lista skapas
-    int type = VAR_NONE;
-    if (instruction[3+is_slip+is_grip].type == LEFT_BRACKET){
-        type = VAR_LIST;
-    }
+    Dynamic_Var eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
 
-    Dynamic_Var eval_result;
-    if (type != VAR_LIST){
-        //printf("KOMMER FRÅN BAND: start_eval: %d args_count: %d\n", start_eval, args_count);
-        //print_token_row(instruction);
-        eval_result = dynamic_eval(instruction+start_eval, args_count, instructions, instruction_amount, scope);
-                //printf("==================================\n");
+    int type = eval_result.type;
 
-        //print_token_row(instruction);
-        //printf("\n\n\n\n");
-
-        type = eval_result.type;
-    }
-        
-
-    
 
     // kolla om en lista ska uppdateras istället
     if (instruction[2+is_slip+is_grip].type == LEFT_BRACKET && type == VAR_STRING)
@@ -1236,8 +1228,6 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
     }
     
     int index = 0;
-
-    
 
     if (type == VAR_LIST_NUMBER)
     {
@@ -1282,7 +1272,7 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
         }
         else if (type == VAR_LIST)
         {
-            create_list_var(end_var.var.name, end_var.var.name_len, instruction + 4, instructions, instruction_amount, scope);
+            create_list_var(end_var.var.name, end_var.var.name_len, eval_result, scope);
         }
         else if (type == VAR_STRING && is_slip == 0)
         {
@@ -1376,6 +1366,18 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
             }
 
             
+        } else if (type == VAR_LIST){
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL)
+                    continue;
+                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                    (*scope).variables[i].type = VAR_LIST;
+                    (*scope).variables[i].list_ptr = eval_result.list_ptr;
+                    (*scope).variables[i].len = eval_result.str_len;
+                    (*scope).variables[i].str_ptr = NULL;
+                    (*scope).variables[i].value = 0;
+                }
+            }
         } else if (is_slip){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
@@ -1472,7 +1474,36 @@ void foug(Token *instruction, Scope *scope)
                     print_red(value.string, value.str_len, 1);
                 else
                     printf("%.*s\n", value.str_len, value.string);
-            } 
+            } else if (value.type == VAR_LIST){
+                if (is_junk) {
+                    // printa inte rött i listor för jag orkar inte implementera det ordentligt
+                    printf("[");
+                    for (int j = 0; j < value.str_len; j++) {
+                        if (j > 0) printf(", ");
+                        if (value.list_ptr[j].type == VAR_STRING) {
+                            printf("\"%.*s\"", value.list_ptr[j].str_len, value.list_ptr[j].string);
+                        } else if (value.list_ptr[j].type == VAR_NUMBER) {
+                            printf("%.0f", value.list_ptr[j].value);
+                        } else if (value.list_ptr[j].type == VAR_LIST) {
+                            printf("[...]");
+                        }
+                    }
+                    printf("]\n");
+                } else {
+                    printf("[");
+                    for (int j = 0; j < value.str_len; j++) {
+                        if (j > 0) printf(", ");
+                        if (value.list_ptr[j].type == VAR_STRING) {
+                            printf("\"%.*s\"", value.list_ptr[j].str_len, value.list_ptr[j].string);
+                        } else if (value.list_ptr[j].type == VAR_NUMBER) {
+                            printf("%.0f", value.list_ptr[j].value);
+                        } else if (value.list_ptr[j].type == VAR_LIST) {
+                            printf("[...]");
+                        }
+                    }
+                    printf("]\n");
+                }
+            }
         }
         else
         {
@@ -1582,14 +1613,14 @@ void givet(Token *instruction, Program program, Scope *scope){
     }
 }
 
-void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope){
+void naer(Token *instruction, Token **instructions, int instruction_amount, Scope *scope){
     int len = 0;
     while (instruction[len].type != LOOP_MARKER) len++;
     len -=1;
     int do_statement = logic_eval(instruction+1, len, instructions, instruction_amount, scope);
     //printf("naer do statement: %d\n", do_statement);
     int k = 0;
-    while (instruction[k].type != TERMINATOR && k < 128)
+    while (instruction[k].type != TERMINATOR)
         k++;
     char loop_id = 0;
     if (k > 0 && instruction[k - 1].type == LOOP_MARKER)
@@ -1781,7 +1812,7 @@ void tpos(Token *instruction, Scope *scope)
     
 }
 
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope)
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope)
 {
     // börja med att hitta argument
     // städa upp instruction
@@ -1896,6 +1927,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
                 int str_len = arg_info[arg_number].info.str_len;
                 char* string = arg_info[arg_number].info.string;
                 create_str_var(current.var.name, current.var.name_len, str_len, string, &scope);
+            } else if (type == VAR_LIST){
+                create_list_var(current.var.name, current.var.name_len, arg_info[arg_number].info, &scope);
             }
 
             arg_number++;
@@ -1959,7 +1992,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         
 }
 
-void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope)
+void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope)
 {
     switch (current[0].type)
     {
@@ -2056,19 +2089,25 @@ int main(int argc, char **argv)
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(Dynamic_Var));
 
+    // row stack
+    row_lengths = malloc(128 * sizeof(int));
+    // fyll row_lengths med 128 i varje position
+    for (int i = 0; i < 128; i++) row_lengths[i] = 128;
+
+
+
     if (scope.variables == NULL ||
         loop_id_stack == NULL ||
         loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
-        function_return_stack == NULL)
+        function_return_stack == NULL || row_lengths == NULL)
         goto malloc_error;
 
-    
 
     char* buff = bult(argv[1]);
     Program program = tokenize(buff, debug);
     
-    Token(*instructions)[128] = program.data;
+    Token **instructions = program.data;
     int instruction_amount = program.instruction_amount;
     if (debug) print_tokens(instructions, instruction_amount);
     check_syntax(&program);
