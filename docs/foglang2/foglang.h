@@ -11,7 +11,16 @@ enum Var_type
     VAR_LIST_STRING
 };
 
-typedef struct
+typedef struct Variable Variable;
+typedef struct Dynamic_Var Dynamic_Var;
+
+typedef struct List
+{
+    int len;
+    Dynamic_Var* items;
+} List;
+
+typedef struct Variable
 {
     int type;
     char *name;
@@ -19,6 +28,7 @@ typedef struct
     double value;
     int len;     // längden på listan / strängen
     char *str_ptr;
+    Dynamic_Var* list_ptr;
 } Variable;
 
 typedef struct // 12 bytes?
@@ -35,6 +45,7 @@ typedef struct
     double value;
     int type;
     Tok_Variable var;
+    List* list_ptr;
 } Token;
 
 typedef struct
@@ -43,12 +54,13 @@ typedef struct
     int len;
 } String;
 
-typedef struct 
+typedef struct Dynamic_Var
 {
     char* string;
     int str_len;
     double value;
     int type;
+    struct Dynamic_Var* list_ptr;
 } Dynamic_Var;
 
 typedef struct
@@ -103,7 +115,7 @@ enum Tok_type
 
 typedef struct
 {
-    Token (*data)[128];
+    Token** data;
     int instruction_amount;
 } Program;
 
@@ -117,21 +129,21 @@ typedef struct {
 // utils
 double str_to_double(char *num);
 char *read_file(const char *filename);
-void print_tokens(Token instructions[][128], int instruction_amount);
+void print_tokens(Token **instructions, int instruction_amount);
 void debug_print_var(char *name, int len);
 void print_variables(Scope *scope);
 int find_substring(char *txt, char *pat);
 
-double evaluate_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
-String evaluate_str_expression(Token *args_old, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
-void cleanup_args(Token* args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
-Dynamic_Var dynamic_eval(Token *args, int args_amount, Token (*instructions)[128], int instruction_amount, Scope *scope);
+double evaluate_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
+String evaluate_str_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
+void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
+Dynamic_Var dynamic_eval(Token *args, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
 
 
 
 void create_str_var(char *name, int name_len, int len, char *string, Scope *scope);
 void create_num_var(char *name, int name_len, double value, Scope *scope);
-void create_list_var(char *name, int name_len, Token *values, Token (*instructions)[128], int instruction_amount, Scope *scope);
+void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope);
 
 /*
 name: char* till variabelnamn. 
@@ -140,9 +152,11 @@ type: VAR_LIST om du indexerar en lista, annars 0.
 index: indexeringen på listan, annars 0
 */
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
-void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope);
+void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);
+
+static void print_dynamic_items(Dynamic_Var *items, int len, int indent);
 
 // declarations som inte är i foglang_var.c eller foglang_eval.c
-Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token (*instructions)[128], int instruction_amount, Token* instruction, Scope* old_scope);
-void interpret_instruction(Token *current, Token (*instructions)[128], int instruction_amount, Scope *scope);
+Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
+void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
 
