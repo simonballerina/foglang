@@ -852,13 +852,8 @@ Program tokenize(char* buff, int debug)
                 { // token-loop
                     if (instructions[j][k].type == VARIABLE)
                     {
-                        int size;
-                        if (instructions[j][k].var.name_len >= instructions[i][1].var.name_len)
-                            size = instructions[j][k].var.name_len;
-                        else
-                            size = instructions[i][1].var.name_len;
-                        if (!strncmp(instructions[j][k].var.name, instructions[i][1].var.name, size)
-                            && instructions[j][k].var.name_len == instructions[i][1].var.name_len
+                        if (instructions[j][k].var.name_len == instructions[i][1].var.name_len
+                            && !strncmp(instructions[j][k].var.name, instructions[i][1].var.name, instructions[j][k].var.name_len)
                             && instructions[j][k+1].type == LEFT_PAR)
                         {
                             instructions[j][k].var.type = VAR_FUNCTION;
@@ -1203,14 +1198,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     int type = eval_result.type;
 
 
-    // kolla om en lista ska uppdateras istället
-    if (instruction[2+is_slip+is_grip].type == LEFT_BRACKET && type == VAR_STRING)
-        type = VAR_LIST_STRING;
-    else if (instruction[2+is_slip+is_grip].type == LEFT_BRACKET && type == VAR_NUMBER)
-        type = VAR_LIST_NUMBER;
-    
-
-
     //printf("BAND_TYPE: %d\n", type);
 
 
@@ -1221,48 +1208,63 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         // skippa list elements som inte har namn
         if ((*scope).variables[i].name == NULL)
             continue;
-        if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len)
+        if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len))
         {
             create_new = 0;
         }
     }
-    
     int index = 0;
+    int modify_list_item = 0;
+    int* indicies = NULL;
+    int depth = 0;
+    int index_amount = 0;
+    if (instruction[2+is_grip+is_slip].type == LEFT_BRACKET) {
+        modify_list_item = 1;
+        for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
+            // hitta alla index som används i list indexering
+            if (instruction[i].type == EQUALS) break;
 
-    if (type == VAR_LIST_NUMBER)
-    {
-        //printf("BAND SPARAR ETT VÄRDE I EN LISTNUMMERVARIABEL\n");
-        // hitta hur mycket som ska evaluatas i indexet
-        int index_args_count = 0;
-        for (int i = 0; instruction[i].type != TERMINATOR; i++){
-            if (instruction[i].type == LEFT_BRACKET){
-                for (int j = i+1; instruction[j].type != TERMINATOR; j++){
-                    if (instruction[j].type == RIGHT_BRACKET) break;
-                    index_args_count++;
-                }  
-                break;
+            if (instruction[i].type == LEFT_BRACKET) {
+                depth++;
+            } else if (instruction[i].type == RIGHT_BRACKET) {
+                depth--;
+            } else if (depth == 0) {
+                index_amount++;
             }
-        }
-        
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
-    }
-    else if (type == VAR_LIST_STRING){
+            
 
-        //printf("BAND SPARAR ETT VÄRDE I EN LISTSTRÄNGVARIABEL\n");
-            // hitta hur mycket som ska evaluatas i indexet
-        int index_args_count = 0;
-        for (int i = 0; instruction[i].type != TERMINATOR; i++){
-            if (instruction[i].type == LEFT_BRACKET){
-                for (int j = i+1; instruction[j].type != TERMINATOR; j++){
-                    if (instruction[j].type == RIGHT_BRACKET) break;
-                    index_args_count++;
-                }  
-                break;
-            }
         }
-        index = evaluate_expression(instruction + 3, index_args_count, instructions, instruction_amount, scope);
+        indicies = malloc(index_amount*sizeof(int));
+        if (indicies == NULL) goto malloc_error;
+        // lägg till alla index (int) i indices, med eval expr
+        int index_top = 0;
+        depth = 0;
+        for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
+            if (instruction[i].type == EQUALS) break;
+            if (instruction[i].type == LEFT_BRACKET) {
+                depth++;
+            } else if (instruction[i].type == RIGHT_BRACKET) {
+                depth--;
+            } else if (depth == 0) {
+                Dynamic_Var index_eval = dynamic_eval(&instruction[i], 1, instructions, instruction_amount, scope);
+                if (index_eval.type != VAR_NUMBER) {
+                    printf("ERR: List index måste vara av typen number\n");
+                    exit(-1);
+                }
+                indicies[index_top++] = index_eval.value;
+            }
+            
+        }
     }
-    
+    printf("MODIFY_LIST_ITEM: %d\n", modify_list_item);
+    printf("INDEX_AMOUNT: %d\n", index_amount);
+    printf("CREATE_NEW: %d\n", create_new);
+    printf("BAND TYPE: %d\n", type);
+    printf("    INDEX ARR: ");
+    for (int i = 0; i < index_amount; i++) {
+        printf("%d ", indicies[i]);
+    }
+    printf("\n");
 
     if (create_new)
     {
@@ -1298,11 +1300,11 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         }
 
     } else { // uppdatera istället
-        if (type == VAR_NUMBER){
+        if (type == VAR_NUMBER && !modify_list_item){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL) // hoppa över de som inte har namn!!!
                     continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, (*scope).variables[i].name_len) && (*scope).variables[i].name_len == end_var.var.name_len){
+                if ((*scope).variables[i].name_len == end_var.var.name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     (*scope).variables[i].value = eval_result.value;
                     (*scope).variables[i].type = VAR_NUMBER;
                     (*scope).variables[i].str_ptr = 0;
@@ -1310,11 +1312,11 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 }
             }
         }
-        else if (type == VAR_STRING && is_slip == 0){
+        else if (type == VAR_STRING && is_slip == 0 && !modify_list_item){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
                     continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     free((*scope).variables[i].str_ptr);
                     (*scope).variables[i].value = 0;
                     (*scope).variables[i].str_ptr = eval_result.string;
@@ -1322,55 +1324,28 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                     (*scope).variables[i].type = VAR_STRING;
                 }
             }
-        } else if (type == VAR_LIST_NUMBER){
+        } else if (modify_list_item){
             Variable new_list_item = {
-                .len = 0,
-                .name = 0,
-                .name_len = 0,
-                .str_ptr = 0,
-                .type = VAR_LIST_NUMBER,
-                .value = eval_result.value
+                .len = eval_result.str_len,
+                .name = eval_result.string,
+                .name_len = eval_result.str_len,
+                .str_ptr = eval_result.string,
+                .type = eval_result.type,
+                .value = eval_result.value,
+                .list_ptr = eval_result.list_ptr
             };
-            change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
-
-        } else if (type == VAR_LIST_STRING){
-            Dynamic_Var ret = get_var_value(end_var.var.name, end_var.var.name_len, 0, 0, scope);
-            if (ret.type == VAR_STRING){
-
-                for (int i = 0; i < (*scope).index; i++){
-                    if ((*scope).variables[i].name == NULL)
-                        continue;
-                    if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
-                        if (index < 0) index = ret.str_len+index;
-                        if (index >= (*scope).variables[i].len || index < 0){
-                            printf("ERR: Ogiltig indexing av lista\n");
-                            exit(-1);
-                        }
-                        (*scope).variables[i].value = 0;
-                        ((*scope).variables[i].str_ptr)[index] = *(eval_result.string);
-                        (*scope).variables[i].type = VAR_STRING;
-                    }
-                }
-
-
-            } else {
-                Variable new_list_item = {
-                    .len = eval_result.str_len,
-                    .name = 0,
-                    .name_len = 0,
-                    .str_ptr = eval_result.string,
-                    .type = VAR_LIST_STRING,
-                    .value = 0
-                };
-                change_list_item(end_var.var.name, end_var.var.name_len, index, new_list_item, scope);
+            printf("ÄNDRA LISTITEM: %lf PÅ INDICIES: ", new_list_item.value);
+            for (int i = 0; i < index_amount; i++){
+                printf("%d ", indicies[i]);
             }
-
-            
+            printf("\n");
+            change_list_item2(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
+  
         } else if (type == VAR_LIST){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
                     continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     (*scope).variables[i].type = VAR_LIST;
                     (*scope).variables[i].list_ptr = eval_result.list_ptr;
                     (*scope).variables[i].len = eval_result.str_len;
@@ -1382,7 +1357,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
                     continue;
-                if (!strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len) && end_var.var.name_len == (*scope).variables[i].name_len){
+                if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     free((*scope).variables[i].str_ptr);
                     (*scope).variables[i].value = 0;
                     // kopiera eval_result.string for att kunna null terminata den för read_file:s skull

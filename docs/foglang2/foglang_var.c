@@ -235,3 +235,81 @@ void create_str_var(char *name, int name_len, int len, char *string, Scope *scop
     }
     (*scope).variables[(*scope).index++] = var;
 }
+
+
+void change_list_item2(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount){
+    
+    for (int i = 0; i < (*scope).index; i++){
+        if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
+            if ((*scope).variables[i].type != VAR_LIST){
+                printf("ERR: Försöker ändra listitem i icke-list-variabel\n");
+                exit(1);
+            }
+
+            Variable *parent = &(*scope).variables[i];
+            int index = indices[0];
+            if (index < 0) index = parent->len + index;
+            
+            if (index == parent->len){
+                // append
+                Dynamic_Var *new_ptr = realloc(parent->list_ptr, sizeof(Dynamic_Var) * (parent->len + 1));
+                if (new_ptr == NULL){
+                    printf("ERR: Minnesallokering misslyckades\n");
+                    exit(1);
+                }
+                parent->list_ptr = new_ptr;
+                parent->len++;
+            }
+            else if (index > parent->len){
+                printf("ERR: Ogiltig indexering vid list-uppdatering\n");
+                exit(1);
+            }
+            
+            Dynamic_Var *current_item = &parent->list_ptr[index];
+            for (int j = 1; j < index_amount; j++){
+                if (current_item->type != VAR_LIST){
+                    printf("ERR: Försöker indexera en icke-list-variabel\n");
+                    exit(1);
+                }
+                index = indices[j];
+                if (index < 0) index = current_item->str_len + index;
+                if (index >= current_item->str_len || index < 0){
+                    printf("ERR: Ogiltig indexing av lista\n");
+                    exit(1);
+                 }
+                current_item = &current_item->list_ptr[index];
+            }
+            if (current_item->type == VAR_STRING) free(current_item->string);
+            Dynamic_Var new_item = {
+                .string = NULL,
+                .str_len = 0,
+                .value = 0,
+                .type = VAR_NONE,
+                .list_ptr = NULL
+            };
+            printf("new_var: \n");
+            printf("    type: %d\n", new_var.type);
+            printf("    value: %lf\n", new_var.value);
+            printf("    str_len: %d\n", new_var.len);   
+            printf("    string: %.*s\n", new_var.len, new_var.str_ptr);
+                    
+            if (new_var.type == VAR_STRING){
+                    
+                new_item.type = VAR_STRING;
+                new_item.string = new_var.str_ptr;
+                new_item.str_len = new_var.len;
+            } else if (new_var.type == VAR_NUMBER){
+                new_item.type = VAR_NUMBER;
+                new_item.value = new_var.value;
+            } else if (new_var.type == VAR_LIST){
+                new_item.type = VAR_LIST;
+                new_item.str_len = new_var.len;
+                new_item.list_ptr = new_var.list_ptr;
+            } else {
+                printf("ERR: Ogiltig lista-uppdateringstyp\n");
+                exit(1);
+            }
+            *current_item = new_item;
+        }
+    }
+}
