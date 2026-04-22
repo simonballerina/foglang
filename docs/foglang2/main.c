@@ -25,8 +25,8 @@ int function_stack_capacity = 128;
 #ifdef PATH_MAX
     char path_diff[PATH_MAX];
 #else
-    printf("ERR: No PATH_MAX in enviroment\n");
-    exit(1);
+    #define PATH_MAX 1024
+    char path_diff[PATH_MAX];
 #endif
 
 #include "foglang_eval.c" 
@@ -294,7 +294,7 @@ char* bult(char* file_name){
 
     //move to relative position
     char origin_wd[PATH_MAX];
-    getcwd(origin_wd, sizeof(origin_wd) != NULL);
+    getcwd(origin_wd, PATH_MAX);
     chdir(path_diff);
     printf("+%s\n", path_diff);
 
