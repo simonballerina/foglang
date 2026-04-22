@@ -1256,15 +1256,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             
         }
     }
-    printf("MODIFY_LIST_ITEM: %d\n", modify_list_item);
-    printf("INDEX_AMOUNT: %d\n", index_amount);
-    printf("CREATE_NEW: %d\n", create_new);
-    printf("BAND TYPE: %d\n", type);
-    printf("    INDEX ARR: ");
-    for (int i = 0; i < index_amount; i++) {
-        printf("%d ", indicies[i]);
-    }
-    printf("\n");
+
 
     if (create_new)
     {
@@ -1334,12 +1326,8 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 .value = eval_result.value,
                 .list_ptr = eval_result.list_ptr
             };
-            printf("ÄNDRA LISTITEM: %lf PÅ INDICIES: ", new_list_item.value);
-            for (int i = 0; i < index_amount; i++){
-                printf("%d ", indicies[i]);
-            }
-            printf("\n");
-            change_list_item2(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
+
+            change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
   
         } else if (type == VAR_LIST){
             for (int i = 0; i < (*scope).index; i++){

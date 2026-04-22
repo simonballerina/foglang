@@ -144,7 +144,9 @@ type: VAR_LIST om du indexerar en lista, annars 0.
 index: indexeringen på listan, annars 0
 */
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
-void change_list_item(char* name, int name_len, int index, Variable new_var, Scope *scope);
+void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);
+
+static void print_dynamic_items(Dynamic_Var *items, int len, int indent);
 
 // declarations som inte är i foglang_var.c eller foglang_eval.c
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
