@@ -27,11 +27,13 @@ def main():
     #windows
     if name == "nt":
 
-        print("     Jag har inte fixat än för windows")
-        exit(-1)
+        lib_path: str = "C:\\Program Files\\foglang2\\lib"
 
         filepath = filepath.replace("/", "\\")
         print(f"     Installerar för Windows i {filepath}...")
+
+        print(f"     Installerar Library i {lib_path}")
+        subprocess.call(f"sudo cp -r lib {lib_path}", shell=True)
 
         status = subprocess.run(f".\\make.bat {filepath}")
         exit_code = os.WEXITSTATUS(status)
