@@ -19,6 +19,13 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
+#ifdef PATH_MAX
+    char path_diff[PATH_MAX];
+#else
+    #define PATH_MAX 1024
+    char path_diff[PATH_MAX];
+#endif
+
 int *loop_links;
 
 #include "foglang_eval.c" 
@@ -291,7 +298,7 @@ void debug_print_var(char *name, int len)
     printf("§\n");
 }
 
-char* bult(char* file_name){
+char* bult(char* file_name, char* user){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -303,6 +310,21 @@ char* bult(char* file_name){
     int len = strlen(buff);
     int found;
     int search = 1;
+    #ifdef __APPLE__
+        char pre_user[] = "/Users/";
+        char post_user[] = "/Library/foglang2/";
+        char lib[strlen(pre_user)+strlen(user)+strlen(post_user)];
+        sprintf(lib, "%s%s%s", pre_user, user, post_user);
+    #endif
+    
+    #ifdef _WIN32
+        exit(1)
+    #endif
+
+    #ifdef __linux__
+        char lib[] = "/usr/local/lib/foglang2/";
+    #endif
+
     while (search){
         found = 0;
         for (int i = 0; i < len; i++){
@@ -328,14 +350,15 @@ char* bult(char* file_name){
                 if (is_sax) {
                     memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
                 } else {
-                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                    sprintf(import_file_name, "%s%s.fg", lib, buff+i+5);
                 }
                 
                 int is_dupe = 1;
+                printf("opening %s\n", import_file_name);
                 char* import_buff = read_file(import_file_name);
                 if (find_substring(imports, import_file_name) == -1) {
                     is_dupe = 0;
-                    imports_capacity += name_len+7*is_sax;
+                    imports_capacity += name_len+((3+strlen(lib))*(!is_sax));
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
@@ -1891,6 +1914,8 @@ int main(int argc, char **argv)
         }
     }
     
+    char* user = malloc(PATH_MAX);
+    user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
 
     // skapa konstantarrays
     // variabler
@@ -1911,7 +1936,7 @@ int main(int argc, char **argv)
 
     
 
-    char* buff = bult(argv[1]);
+    char* buff = bult(argv[1], user);
     Program program = tokenize(buff, debug);
     
     Token(*instructions)[128] = program.data;
