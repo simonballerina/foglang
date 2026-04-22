@@ -3,18 +3,15 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include "foglang.h"
 
 // konstanter och globala variabler
 
 // program counter
 int program_counter = -1;
-
-// loop stack
-char *loop_id_stack;
-int *loop_program_counter_stack;
-int loop_stack_top_id = 0;
-int loop_stack_capacity = 128;
 
 // function stack
 int *function_origin_program_counter_stack;
@@ -29,9 +26,25 @@ int function_stack_capacity = 128;
     char path_diff[PATH_MAX];
 #endif
 
+int *loop_links;
+
 #include "foglang_eval.c" 
 #include "foglang_var.c"
 
+void print_red(char* str, int len, int print_backslash) {
+
+    #ifdef _WIN32
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        fprintf(stderr, "%.*s", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+        SetConsoleTextAttribute(hConsole, 7);  // reset
+    #else
+        fprintf(stderr, "\033[31m%.*s\033[0m", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+    #endif
+
+}
 
 double str_to_double(char *num)
 {
@@ -121,6 +134,9 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case FOUG:
                 printf("'FOUG'    ");
                 break;
+            case JUNK:
+                printf("'JUNK'    ");
+                break;
             case BAND:
                 printf("'BAND'    ");
                 break;
@@ -159,9 +175,6 @@ void print_tokens(Token instructions[][128], int instruction_amount)
                 break;
             case LEFT_BRACKET:
                 printf("'['    ");
-                break;
-            case LOOP_MARKER:
-                printf("'{%c}'    ", instructions[i][j].loop_id);
                 break;
             case PLUS:
                 printf("'+'    ");
@@ -235,6 +248,12 @@ void print_tokens(Token instructions[][128], int instruction_amount)
             case COMMA:
                 printf("','    ");
                 break;
+            case OPEN_LOOP:
+                printf("'OPEN'    ");
+                break;
+            case CLOSE_LOOP:
+                printf("'CLOSE'    ");
+                break;
             }
         }
         printf("\n");
@@ -279,7 +298,7 @@ void debug_print_var(char *name, int len)
     printf("§\n");
 }
 
-char* bult(char* file_name){
+char* bult(char* file_name, char* user){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -297,6 +316,21 @@ char* bult(char* file_name){
     getcwd(origin_wd, PATH_MAX);
     chdir(path_diff);
     printf("+%s\n", path_diff);
+    
+    #ifdef __APPLE__
+        char pre_user[] = "/Users/";
+        char post_user[] = "/Library/foglang2/";
+        char lib[strlen(pre_user)+strlen(user)+strlen(post_user)];
+        sprintf(lib, "%s%s%s", pre_user, user, post_user);
+    #endif
+    
+    #ifdef _WIN32
+        char lib[] = "C:\\Program Files\\foglang2\\lib\\";
+    #endif
+
+    #ifdef __linux__
+        char lib[] = "/usr/local/lib/foglang2/";
+    #endif
 
     while (search){
         found = 0;
@@ -323,7 +357,7 @@ char* bult(char* file_name){
                 if (is_sax) {
                     memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
                 } else {
-                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                    sprintf(import_file_name, "%s%s.fg", lib, buff+i+5);
                 }
                 
                 int is_dupe = 1;
@@ -331,12 +365,13 @@ char* bult(char* file_name){
                 strcpy(import_file_name_prefix, "#");
                 import_file_name[name_len+7*!is_sax] = '\0';
                 strcat(import_file_name_prefix, import_file_name);
+                printf("opening %s\n", import_file_name);
                 char* import_buff = read_file(import_file_name);
                 
                 
                 if (find_substring(imports, import_file_name_prefix) == -1) {
                     is_dupe = 0;
-                    imports_capacity += name_len+7*is_sax+1;
+                    imports_capacity += name_len+((3+strlen(lib))*(!is_sax))+1;
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
@@ -397,6 +432,9 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
             case FOUG:
                 printf("'FOUG'    ");
                 break;
+            case JUNK:
+                printf("'JUNK'    ");
+                break;
             case BAND:
                 printf("'BAND'    ");
                 break;
@@ -426,9 +464,6 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
                 break;
             case LEFT_BRACKET:
                 printf("'['    ");
-                break;
-            case LOOP_MARKER:
-                printf("'{%c}'    ", args[j].loop_id);
                 break;
             case PLUS:
                 printf("'+'    ");
@@ -517,7 +552,7 @@ Program tokenize(char* buff, int debug)
     int instruction_amount = 0;
     for (int i = 0; i < buff_len; i++)
     {
-        if (buff[i] == ';')
+        if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}')
             instruction_amount++;
     }
     if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
@@ -532,6 +567,20 @@ Program tokenize(char* buff, int debug)
     int instructions_OUTER_arr_index = 0;
     int instructions_INNER_arr_index = 0;
 
+    int loop_type = 1;
+
+    //initialize stack
+    Stack loops;
+    (&loops)->top = -1;
+    (&loops)->size = 1;
+    (&loops)->max_size = 16;
+    (&loops)->arr = malloc((&loops)->max_size*sizeof(int));
+    if ((&loops)->arr == NULL) goto malloc_error;
+
+    //loop links
+    loop_links = malloc(instruction_amount*sizeof(int));
+    if (loop_links == NULL) goto malloc_error;
+
     while (i < buff_len)
     {
         while (i < buff_len && (buff[i] == ' ' || buff[i] == '\n' || buff[i] == '\r' || buff[i] == '\t'))
@@ -541,7 +590,7 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] != '*'){
             while (i < buff_len && buff[i] != '\n') {
                 i++;
-                if (buff[i] == ';') {
+                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
                     instruction_amount--;
                     instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
                     if (instructions == NULL) goto malloc_error;
@@ -555,12 +604,12 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] == '*') {
             i += 2;
             while (i+1 < buff_len && !(buff[i] == '*' && buff[i+1] == '#')) {
-                i++;
-                if (buff[i] == ';') {
+                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
                     instruction_amount--;
                     instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
                     if (instructions == NULL) goto malloc_error;
                 }
+                i++;
             }
             i += 2;
             continue;
@@ -576,6 +625,11 @@ Program tokenize(char* buff, int debug)
         if (strncmp(&buff[i], "foug ", 5) == 0)
         {
             tok.type = FOUG;
+            i += 5;
+        }
+        else if (strncmp(&buff[i], "junk ", 5) == 0)
+        {
+            tok.type = JUNK;
             i += 5;
         }
         else if (strncmp(&buff[i], "svets ", 6) == 0)
@@ -597,6 +651,7 @@ Program tokenize(char* buff, int debug)
         {
             tok.type = GIVET;
             i += 6;
+            loop_type = -1;
         }
         else if (strncmp(&buff[i], "att ", 4) == 0)
         {
@@ -622,6 +677,7 @@ Program tokenize(char* buff, int debug)
         {
             tok.type = NAER;
             i += 5;
+            loop_type = 1;
         }
         else if (strncmp(&buff[i], "boul ", 5) == 0)
         {
@@ -684,13 +740,54 @@ Program tokenize(char* buff, int debug)
             tok.type = COMMA;
             i++;
         }
-        else if (i + 2 < buff_len && buff[i] == '{' && buff[i + 2] == '}')
+        else if (buff[i] == '{')
         {
-            tok.type = LOOP_MARKER;
-            tok.loop_id = buff[i + 1];
+            tok.type = OPEN_LOOP;
+            //push stack
+            if ((&loops)->size >= (&loops)->max_size)
+            {
+                (&loops)->arr = realloc((&loops)->arr, ((&loops)->max_size + 64)*sizeof(int));
+                (&loops)->max_size += 64;
+                if ((&loops)->arr == NULL) goto malloc_error;
+            }
+            (&loops)->arr[++(&loops)->top] = instructions_OUTER_arr_index*loop_type;
+            (&loops)->size++;
 
-            if (debug) printf("[DEBUG] Found LOOP_MARKER: {%c} at instructions[%d][%d]\n", tok.loop_id, instructions_OUTER_arr_index, instructions_INNER_arr_index);
-            i += 3;
+            if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            //add terminator after
+            Token next;
+            next.type = TERMINATOR;
+            instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
+            instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = next;
+            i += 1;
+            instructions_INNER_arr_index = 0;
+            instructions_OUTER_arr_index++;
+            continue;
+        }
+        else if (buff[i] == '}')
+        {
+            //pop stack
+            int other = (&loops)->arr[(&loops)->top];
+            (&loops)->top--;
+            (&loops)->size--;
+            tok.type = CLOSE_LOOP;
+            if (other > 0) {
+                loop_links[instructions_OUTER_arr_index] = other;
+            } else {
+                other = abs(other);
+                loop_links[instructions_OUTER_arr_index] = instructions_OUTER_arr_index+1;
+            }
+            loop_links[other]=instructions_OUTER_arr_index;
+            if (debug) printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
+            
+            Token next;
+            next.type = TERMINATOR;
+            instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
+            instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = next;
+            i += 1;
+            instructions_INNER_arr_index = 0;
+            instructions_OUTER_arr_index++;
+            continue;
         }
         else if (buff[i] == '=')
         {
@@ -813,27 +910,15 @@ Program tokenize(char* buff, int debug)
                 }
             }
         }
-        else if (instructions[i][0].type == LOOP_MARKER){ // använd tok.value som parent program counter
-            for (int j = i; j >= 0; j--){
-                int type = instructions[j][0].type;
-                if (type == NAER || type == GIVET) { 
-                    // hitta id
-                    int found = 0;
-                    for (int k = 0; instructions[j][k].type != TERMINATOR; k++){
-                        if (instructions[j][k].type == LOOP_MARKER && instructions[j][k].loop_id == instructions[i][0].loop_id){
-                            instructions[i][0].value = j;
-                            found = 1;
-                        }
-                    }
-                    if (found) break;
-
-                }
-            }
-        }
     }
 
     Program program = {instructions, instruction_amount};
     if (debug) printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
+
+    // free the grabb
+    free((&loops)->arr);
+    (&loops)->arr = NULL;
+    
     return program;
 
     malloc_error:
@@ -842,26 +927,25 @@ Program tokenize(char* buff, int debug)
         
 }
 
-void check_syntax(Program* program){ 
+void check_syntax(Program* program){
     Token(*instructions)[128] = program->data;
-    int instruction_amount = program->instruction_amount; 
+    int instruction_amount = program->instruction_amount;
+
+    //checking bracket count
+    int openers = 0;
+    int closers = 0;
+    int opens_loop = 0;
 
     for (int i = 0; i < instruction_amount; i++){
         
         switch (instructions[i][0].type){
             
             case NAER: ;
-                /*
-                naer 14*2 = 10+18 {1};
-                    // gör något
-                {1};
-                */
                 int j = 1;
                 int comp_amount = 0;
                 int left_args = 0;
                 int right_args = 0;
-                char loop_id = 0;
-                int found_loop_id = 0;
+                opens_loop = 0;
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
@@ -891,15 +975,9 @@ void check_syntax(Program* program){
                         comp_amount++;
                     }
 
-                    if (tok == LOOP_MARKER){
-                        loop_id = instructions[i][j].loop_id;
-                    }
-                    // kolla om den hittar en matchande loop marker
-                    for (int k = i; k < instruction_amount; k++){
-                        if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
-                            found_loop_id = 1;
-                            break;
-                        }
+                    if (tok == OPEN_LOOP){
+                        opens_loop = 1;
+                        openers++;
                     }
 
                     j++;
@@ -913,25 +991,19 @@ void check_syntax(Program* program){
                     printf("[NAER]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
                     exit(-1);
                 }
-                if (!found_loop_id || !loop_id){
-                    printf("[NAER]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                if (!opens_loop){
+                    printf("[NAER]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid naer\n", i);
                     exit(-1);
                 }
                 break;
 
-            case GIVET: 
-                /*
-                givet att 14*2 = 10+18 {1};
-                    // gör något
-                {1};
-                */
+            case GIVET: ;
                 j = 1;
                 comp_amount = 0;
                 left_args = 0;
                 right_args = 0;
                 int att_exists = 0;
-                loop_id = 0;
-                found_loop_id = 0;
+                opens_loop = 0;
 
                 if (instructions[i][1].type == ATT) att_exists = 1;
 
@@ -962,16 +1034,9 @@ void check_syntax(Program* program){
                         comp_amount++;
                     }
 
-                    if (tok == LOOP_MARKER){
-                        loop_id = instructions[i][j].loop_id;
-                        // kolla om den hittar en matchande loop marker
-                        for (int k = i; k < instruction_amount; k++){
-
-                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
-                                found_loop_id = 1;
-                                break;
-                            }
-                        }
+                    if (tok == OPEN_LOOP){
+                        opens_loop = 1;
+                        openers++;
                     }
 
 
@@ -986,8 +1051,8 @@ void check_syntax(Program* program){
                     printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
                     exit(-1);
                 }
-                if (!found_loop_id || !loop_id){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                if (!opens_loop){
+                    printf("[GIVET]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid givet\n", i);
                     exit(-1);
                 }
                 if (!att_exists){
@@ -1001,15 +1066,9 @@ void check_syntax(Program* program){
                 break;
             case BAND:
                 break;
-            case FUNCTION:
-                /*
-                boul func_name(a, b) {1};
-                    // gör skit
-                {1};
-                */
+            case FUNCTION: ;
                 j = 1;
-                found_loop_id = 0;
-                loop_id = 0;
+                opens_loop = 0;
                 int found_return = 0;
 
                 int func_argument_count = 0;
@@ -1038,25 +1097,9 @@ void check_syntax(Program* program){
                         printf("[BOUL]: ERR: Syntax error, instruktion %d\n", i);
                         exit(-1);
                     }
-                    if (instructions[i][j].type == LOOP_MARKER) {
-                        loop_id = instructions[i][j].loop_id;
-                        // hitta loop marker
-                        for (int k = i; k < instruction_amount; k++){
-                            if (instructions[k][0].type == LOOP_MARKER && instructions[k][0].loop_id == loop_id) {
-                                found_loop_id = 1;
-                                func_stop = k;
-                                break;
-                            }
-                        }
-                        // hitta ret
-                        if (!found_return){
-                            for (int k = i; k < func_stop; k++){
-                                if (instructions[k][0].type == RETURN){
-                                    found_return = 1;
-                                    break;
-                                }
-                            }
-                        }
+                    if (instructions[i][j].type == OPEN_LOOP) {
+                        opens_loop = 1;
+                        openers++;
                     }
                     j++;
                 }
@@ -1108,18 +1151,30 @@ void check_syntax(Program* program){
                     }
                 }
                 
-                if (!found_loop_id || !loop_id){
-                    printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta första LOOP_MARKER token eller sista LOOP_MARKER token\n", i);
+                if (!opens_loop){
+                    printf("[BOUL]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid funktion\n", i);
                     exit(-1);
                 }
-                if (!found_return){
+                //TODO check not implemented
+                /*if (!found_return)){
                     printf("[BOUL]: ERR: Syntax error, instruktion %d, kunde inte hitta RETURN token\n", i);
                     exit(-1);
-                }
+                }*/
                 break;
+            case CLOSE_LOOP:
+                closers++;
+                break;
+        }
+        if (openers < closers) {
+        printf("[CLOSE]: ERR: Syntax error, instruktion %d, ensamt stängande bracket\n", i);
+        exit(-1);
         }
     }
 
+    if (openers != closers) {
+        printf("ERR: Syntax error, ostängda bracket, öppnar x%d men stänger x%d\n", openers, closers);
+        exit(-1);
+    }
 }
 
 
@@ -1366,34 +1421,67 @@ void band(Token *instruction, Token (*instructions)[128], int instruction_amount
 
 void foug(Token *instruction, Scope *scope)
 {
+    int is_svets = 0;
+    int is_junk = 0;
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        if (instruction[i].type == SVETS) is_svets = 1;
+        else if (instruction[i].type == JUNK) is_junk = 1;
+    }
+    
     // printf("FOUG KALLAD PÅ\n");
-    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
+    if (!is_svets)
     {
-        if (instruction[1].type == STRING)
+        if (instruction[1+is_junk].type == STRING)
         {
             // printf("STRING I FOUG\n");
-            for (int i = 0; i < instruction[1].var.name_len; i++)
+            for (int i = 0; i < instruction[1+is_junk].var.name_len; i++)
             {
-                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
+                if (instruction[1+is_junk].var.name[i] == '\\' && i+1 < instruction[1+is_junk].var.name_len && instruction[1+is_junk].var.name[i + 1] == 'n')
                 {
                     printf("\n");
                     i += 2;
                 }
-                if (i < instruction[1].var.name_len)
-                    printf("%c", instruction[1].var.name[i]);
+                if (i < instruction[1+is_junk].var.name_len) {
+                    if (is_junk) 
+                        print_red(&instruction[1+is_junk].var.name[i], 1, 0);
+                    else 
+                        printf("%c", instruction[1+is_junk].var.name[i]);
+                }        
             }
         }
-        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
+        else if (instruction[1+is_junk].type == VARIABLE)
         {
             // printf("VARIABLE I FOUG\n");
-            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            // print variable info before lookup:
+            Dynamic_Var value = get_var_value(instruction[1+is_junk].var.name, instruction[1+is_junk].var.name_len, 0, 0, scope);
             if (value.type == VAR_NUMBER){
-                if ((int)(value.value) == (value.value))
-                    printf("%d\n", (int)(value.value));
-                else
-                    printf("%lf\n", value.value);
+                int is_int = 0;
+                if ((int)(value.value) == (value.value)) is_int = 1;
+                
+                if (is_junk) {                    
+                    int amount_of_digits = floor (log10(abs((int)(value.value)))) + 1;
+                    if (!is_int) amount_of_digits += 7;
+                    char num_str[amount_of_digits];
+
+                    if (is_int)
+                        sprintf(num_str, "%d", (int)(value.value));
+                    else
+                        sprintf(num_str, "%lf", value.value);
+            
+                    print_red(num_str, amount_of_digits, 1);
+
+                } else
+                    if (is_int)
+                        printf("%d\n", (int)(value.value));
+                    else 
+                        printf("%lf\n", value.value);
+
+
             } else if (value.type == VAR_STRING){
-                printf("%.*s\n", value.str_len, value.string);
+                if (is_junk) 
+                    print_red(value.string, value.str_len, 1);
+                else
+                    printf("%.*s\n", value.str_len, value.string);
             } 
         }
         else
@@ -1404,158 +1492,90 @@ void foug(Token *instruction, Scope *scope)
     }
     else
     { // svets-string
-        for (int i = 0; i < instruction[2].var.name_len; i++)
+        for (int i = 0; i < instruction[2+is_junk].var.name_len; i++)
         {
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
+            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == 'n') // printa \n
             {
                 printf("\n");
                 i += 2;
             }
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
+            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
             {
-                printf("%%");
+                if (is_junk)
+                    print_red("%", 1, 0);
+                else
+                    printf("%%");
                 i += 2;
             }
 
-            if (instruction[2].var.name[i] == '%')
+            if (instruction[2+is_junk].var.name[i] == '%')
             {
                 // kolla längden på den
                 int len = 0;
-                for (int j = i + 1; j < instruction[2].var.name_len; j++)
+                for (int j = i + 1; j < instruction[2+is_junk].var.name_len; j++)
                 {
-                    if (instruction[2].var.name[j] == '%')
+                    if (instruction[2+is_junk].var.name[j] == '%')
                         break;
                     len++;
                 }
-                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+                Dynamic_Var value_svets = get_var_value(instruction[2+is_junk].var.name+i+1, len, 0, 0, scope);
 
-                if (value.type == VAR_NUMBER){
-                    if ((int)(value.value) == (value.value))
-                        printf("%d", (int)(value.value));
+                if (value_svets.type == VAR_NUMBER){
+                    int is_int = 0;
+                    if ((int)(value_svets.value) == (value_svets.value)) is_int = 1;
+                    
+                    if (is_junk) {                    
+                        int amount_of_digits = floor (log10(abs((int)(value_svets.value)))) + 1;
+                        if (!is_int) amount_of_digits += 7;
+                        char num_str[amount_of_digits];
+
+                        if (is_int)
+                            sprintf(num_str, "%d", (int)(value_svets.value));
+                        else
+                            sprintf(num_str, "%lf", value_svets.value);
+                
+                        print_red(num_str, amount_of_digits, 0);
+
+                    } else
+                        if (is_int)
+                            printf("%d", (int)(value_svets.value));
+                        else 
+                            printf("%lf", value_svets.value);
+
+
+                } else if (value_svets.type == VAR_STRING){
+                    if (is_junk) 
+                        print_red(value_svets.string, value_svets.str_len, 0);
                     else
-                        printf("%lf", value.value);
-                } else if (value.type == VAR_STRING){
-                    printf("%.*s", value.str_len, value.string);
+                        printf("%.*s", value_svets.str_len, value_svets.string);
                 } 
-
                 i += len + 1;
             }
             else
             {
-                if (i < instruction[2].var.name_len)
-                    printf("%c", instruction[2].var.name[i]);
+                if (i < instruction[2+is_junk].var.name_len) {
+                    if (is_junk) 
+                        print_red(&instruction[2+is_junk].var.name[i], 1, 0);
+                    else 
+                        printf("%c", instruction[2+is_junk].var.name[i]);
+                }
             }
         }
     }
 }
 
-void givet(Token *instruction, Program program, Scope *scope){
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count){
     int len = 0;
-    while (instruction[len].type != LOOP_MARKER) len++;
-    len -=2;
-    int do_statement = logic_eval(instruction+2, len, program.data, program.instruction_amount, scope);
-    //printf("givet do statement: %d\n", do_statement);
+    while (instruction[len].type != OPEN_LOOP) len++;
+    len -=keyword_count;
+    int do_statement = logic_eval(instruction+keyword_count, len, program.data, program.instruction_amount, scope);
+    //printf("loop do statement: %d\n", do_statement);
     
     if (!do_statement)
     {
-        int k = 0;
-        while (instruction[k].type != TERMINATOR)
-            k++;
-        char givet_id = instruction[k - 1].loop_id;
-
-        for (int k = program_counter + 1; k < program.instruction_amount; k++)
-        { // kolla varje rad - hopp över egen marker
-            for (int l = 0; program.data[k][l].type != TERMINATOR; l++)
-            { // kolla varje token i raden
-                if (program.data[k][l].type == LOOP_MARKER && program.data[k][l].loop_id == givet_id)
-                {
-                    program_counter = k;
-                    return;
-                }
-            }
-        }
+        program_counter = loop_links[program_counter];
+        return;
     }
-}
-
-void naer(Token *instruction, Token (*instructions)[128], int instruction_amount, Scope *scope){
-    int len = 0;
-    while (instruction[len].type != LOOP_MARKER) len++;
-    len -=1;
-    int do_statement = logic_eval(instruction+1, len, instructions, instruction_amount, scope);
-    //printf("naer do statement: %d\n", do_statement);
-    int k = 0;
-    while (instruction[k].type != TERMINATOR && k < 128)
-        k++;
-    char loop_id = 0;
-    if (k > 0 && instruction[k - 1].type == LOOP_MARKER)
-        loop_id = instruction[k - 1].loop_id;
-
-    if (!do_statement)
-    {
-        // ta bort id från stack!!
-        for (int m = 0; m < loop_stack_top_id; m++)
-        {
-            if (loop_id_stack[m] == loop_id)
-            {
-                for (int n = m; n < loop_stack_top_id - 1; n++)
-                {
-                    loop_id_stack[n] = loop_id_stack[n + 1];
-                    loop_program_counter_stack[n] = loop_program_counter_stack[n + 1];
-                }
-                loop_stack_top_id--;
-                break;
-            }
-        }
-
-        // printf("[DEBUG] Condition false, jumping\n");
-        // printf("[DEBUG] Looking for loop_id: %c\n", loop_id);
-
-        for (k = program_counter + 1; k < instruction_amount; k++)
-        {
-            int l = 0;
-            while (instructions[k][l].type != TERMINATOR)
-            {
-                if (instructions[k][l].type == LOOP_MARKER)
-                {
-                    if (instructions[k][l].loop_id == loop_id)
-                    {
-                        // printf("jumping to instruction %d\n", k);
-                        program_counter = k;
-                        return;
-                    }
-                }
-                // printf("\n");
-                l++;
-            }
-        }
-        // printf("[DEBUG] Did not find matching loop_id!\n");
-    }
-    else
-    {
-        // printf("[DEBUG] Condition true, pushing loop\n");
-        int loop_already_exists = 0;
-        for (int l = 0; l < loop_stack_top_id; l++)
-            if (loop_id_stack[l] == loop_id)
-                loop_already_exists = 1;
-        if (!loop_already_exists)
-        {
-            if (loop_stack_top_id >= loop_stack_capacity)
-            {
-                loop_id_stack = realloc(loop_id_stack, loop_stack_capacity + 64);
-                loop_program_counter_stack = realloc(loop_program_counter_stack, loop_stack_capacity + 64);
-                loop_stack_capacity += 64;
-                if (loop_id_stack == NULL || loop_program_counter_stack == NULL) goto malloc_error;
-            }
-            loop_id_stack[loop_stack_top_id] = loop_id;
-            loop_program_counter_stack[loop_stack_top_id++] = program_counter;
-        }
-    }
-    return;
-
-    malloc_error:
-        printf("[NAER] ERR: Minnesallokering misslyckades\n");
-        exit(1);
-
 }
 
 void tpos(Token *instruction, Scope *scope)
@@ -1571,7 +1591,7 @@ void tpos(Token *instruction, Scope *scope)
     }
     int writer = 0;
     
-    if (instruction[1].type != SVETS)
+    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
     {
         if (instruction[1].type == STRING)
         {
@@ -1587,26 +1607,38 @@ void tpos(Token *instruction, Scope *scope)
                 }  
             }
         }
-        else if (instruction[1].type == VARIABLE)
+        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
         {
             // printf("VARIABLE I TPOS\n");
-            double value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope).value;
-            if ((int)value == value){
-                call_len += sizeof(int);
+            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            if (value.type == VAR_NUMBER){
+                if ((int)(value.value) == (value.value)) {
+                    call_len += sizeof(int);
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%d", (int)value);
+                sprintf(call + writer, "%d", (int)value.value);
                 writer += strlen(call + writer);
-            } else {
-                call_len += sizeof(double);
+                } else {
+                    call_len += sizeof(double);
+                    call = realloc(call, call_len);
+                    sprintf(call + writer, "%lf", (double)value.value);
+                    writer += strlen(call + writer);
+                }
+            } else if (value.type == VAR_STRING) {
+                call_len += sizeof(char)*value.str_len;
                 call = realloc(call, call_len);
-                sprintf(call + writer, "%lf", (double)value);
+                sprintf(call + writer, "%.*s", value.str_len, value.string);
                 writer += strlen(call + writer);
+            }
+            else
+            {
+                printf("[TPOS]: ERR: Syntax error\n");
+                exit(-1);
             }
                 
         }
         else
         {
-            printf("ERR: Tpos: Syntax error\n");
+            printf("[TPOS]: ERR: Syntax error\n");
             exit(-1);
         }
     } else { // svets-string
@@ -1629,16 +1661,23 @@ void tpos(Token *instruction, Scope *scope)
                     if (instruction[2].var.name[j] == '%') break;
                     len++;
                 }
-                double value = get_var_value(instruction[2].var.name+i+1, len, 0, 0, scope).value;
-                if ((int)value == value) {
-                    call_len += sizeof(int);
+                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
+                if (value.type == VAR_NUMBER){
+                    if ((int)(value.value) == (value.value)) {
+                        call_len += sizeof(int);
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%d", (int)value);
+                    sprintf(call + writer, "%d", (int)value.value);
                     writer += strlen(call + writer);
-                } else {
-                    call_len += sizeof(double);
+                    } else {
+                        call_len += sizeof(double);
+                        call = realloc(call, call_len);
+                        sprintf(call + writer, "%lf", (double)value.value);
+                        writer += strlen(call + writer);
+                    }
+                } else if (value.type == VAR_STRING) {
+                    call_len += sizeof(char)*value.str_len;
                     call = realloc(call, call_len);
-                    sprintf(call + writer, "%lf", (double)value);
+                    sprintf(call + writer, "%.*s", value.str_len, value.string);
                     writer += strlen(call + writer);
                 }
                 i+=len+1;    
@@ -1667,15 +1706,6 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         .capacity = 128,
         .variables = malloc(128 * sizeof(Variable)),
     };
-    // Save loop stack state before executing nested function
-    int saved_loop_stack_top = loop_stack_top_id;
-    int saved_loop_stack[loop_stack_top_id];
-    int saved_loop_pc_stack[loop_stack_top_id];
-    for (int i = 0; i < loop_stack_top_id; i++) {
-        saved_loop_stack[i] = loop_id_stack[i];
-        saved_loop_pc_stack[i] = loop_program_counter_stack[i];
-    }
-    loop_stack_top_id = 0;  // Clear loop stack for the nested function
     
     // räkna antal formella argument
     int amount_of_args = 1;
@@ -1818,14 +1848,6 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     free(scope.variables);
     scope.variables = NULL;
 
-    // Restore loop stack after function completion
-    loop_stack_top_id = saved_loop_stack_top;
-    for (int i = 0; i < saved_loop_stack_top; i++) {
-        loop_id_stack[i] = saved_loop_stack[i];
-        loop_program_counter_stack[i] = saved_loop_pc_stack[i];
-    }
-
-
     Dynamic_Var ret = function_return_stack[call_stack_level];
     return ret;
 
@@ -1848,26 +1870,18 @@ void interpret_instruction(Token *current, Token (*instructions)[128], int instr
         break;
 
     case GIVET:
-        givet(current, (Program){instructions, instruction_amount}, scope);
+        loop(current, (Program){instructions, instruction_amount}, scope, 2);
         break;
 
     case NAER:
-        naer(current, instructions, instruction_amount, scope);
+        loop(current, (Program){instructions, instruction_amount}, scope, 1);
         break;
 
     case TPOS:
         tpos(current, scope);
         break;
-    case LOOP_MARKER:
-        for (int i = 0; i < loop_stack_top_id; i++)
-        {
-            if (loop_id_stack[i] == current[0].loop_id)
-            {
-                program_counter = (int)(current->value)-1;
-                //sleep(1);
-                break;
-            }
-        }
+    case CLOSE_LOOP:
+        program_counter = loop_links[program_counter]-1;
         break;
 
     case RETURN:
@@ -1924,6 +1938,8 @@ int main(int argc, char **argv)
         path_ptr++;
     }
     path_ptr[-1] = '\0';
+    char* user = malloc(PATH_MAX);
+    user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
 
     // skapa konstantarrays
     // variabler
@@ -1933,29 +1949,24 @@ int main(int argc, char **argv)
         .variables = malloc(128 * sizeof(Variable))
     };
 
-    // loopstack
-    loop_id_stack = malloc(128 * sizeof(char));
-    loop_program_counter_stack = malloc(128 * sizeof(int));
     // function stack
     function_origin_program_counter_stack = malloc(128 * sizeof(int));
     function_return_stack = malloc(128 * sizeof(Dynamic_Var));
 
     if (scope.variables == NULL ||
-        loop_id_stack == NULL ||
-        loop_program_counter_stack == NULL ||
         function_origin_program_counter_stack == NULL ||
         function_return_stack == NULL)
         goto malloc_error;
 
     
 
-    char* buff = bult(argv[1]);
+    char* buff = bult(argv[1], user);
     Program program = tokenize(buff, debug);
     
     Token(*instructions)[128] = program.data;
     int instruction_amount = program.instruction_amount;
-    if (debug) print_tokens(instructions, instruction_amount);
     check_syntax(&program);
+    if (debug) print_tokens(instructions, instruction_amount);
 
     // hitta entry point (main)
     for (int i = 0; i < instruction_amount; i++)

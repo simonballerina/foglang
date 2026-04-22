@@ -51,7 +51,8 @@ typedef struct
     int type;
 } Dynamic_Var;
 
-typedef struct Scope {
+typedef struct
+{
     Variable *variables;
     int index;
     int capacity;
@@ -73,7 +74,7 @@ enum Tok_type
     VARIABLE,      // 11
     EQUALS,        // 12
     NUMBER,        // 13
-    LOOP_MARKER,   // 14
+    SLIP,          // 14
     PLUS,          // 15
     MINUS,         // 16
     MULTIPLIED,    // 17
@@ -91,11 +92,13 @@ enum Tok_type
     RIGHT_BRACKET, // 29
     COMMA,         // 30
     TPOS,          // 31
-    SLIP,          // 32
-    GRIP,          // 33
-    OCH,           // 34
-    ELLER,         // 35
-    INTE           // 36
+    OPEN_LOOP,     // 32
+    CLOSE_LOOP,    // 33
+    GRIP,          // 34
+    OCH,           // 35
+    ELLER,         // 36
+    INTE,          // 37
+    JUNK           // 38
 };
 
 typedef struct
@@ -103,6 +106,13 @@ typedef struct
     Token (*data)[128];
     int instruction_amount;
 } Program;
+
+typedef struct {
+    int* arr;
+    int size;
+    int top;
+    int max_size;        
+} Stack;
 
 // utils
 double str_to_double(char *num);
