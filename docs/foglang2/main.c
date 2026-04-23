@@ -310,12 +310,6 @@ char* bult(char* file_name, char* user){
     int len = strlen(buff);
     int found;
     int search = 1;
-
-    //move to relative position
-    char origin_wd[PATH_MAX];
-    getcwd(origin_wd, PATH_MAX);
-    chdir(path_diff);
-    printf("+%s\n", path_diff);
     
     #ifdef __APPLE__
         char pre_user[] = "/Users/";
@@ -339,10 +333,14 @@ char* bult(char* file_name, char* user){
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
                 int is_sax = 0;
+                char origin_wd[PATH_MAX];
                 if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
                 {
                     is_sax = 1;
                     i += 4;
+                    //move to relative position
+                    getcwd(origin_wd, PATH_MAX);
+                    chdir(path_diff);
                 }
                 int name_len = 0;
                 // hitta längden på importnamnet
@@ -351,7 +349,7 @@ char* bult(char* file_name, char* user){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1+5+4*is_sax)*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax+strlen(lib))*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
                 buff[i + name_len + 5] = '\0';
                 if (is_sax) {
@@ -363,7 +361,7 @@ char* bult(char* file_name, char* user){
                 int is_dupe = 1;
                 char import_file_name_prefix[name_len];
                 strcpy(import_file_name_prefix, "#");
-                import_file_name[name_len+7*!is_sax] = '\0';
+                import_file_name[name_len+7*!is_sax+strlen(lib)*(!is_sax)] = '\0';
                 strcat(import_file_name_prefix, import_file_name);
                 printf("opening %s\n", import_file_name);
                 char* import_buff = read_file(import_file_name);
@@ -401,6 +399,11 @@ char* bult(char* file_name, char* user){
                 free(old_buff);
                 free(import_buff);
 
+                //move back
+                if (is_sax) {
+                    chdir(origin_wd);
+                }
+
                 break;
             }
         }
@@ -413,11 +416,7 @@ char* bult(char* file_name, char* user){
     free(imports);
     imports = NULL;
 
-    //move back
-    chdir(origin_wd);
-
     return buff; 
-
 
     malloc_error:
         printf("[BULT] ERR: Minnesallokering misslyckades\n");
