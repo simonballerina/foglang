@@ -64,7 +64,7 @@ char *read_file(const char *filename)
 }
 
 
-void print_tokens(Token instructions[][128], int instruction_amount)
+void print_tokens(Token** instructions, int instruction_amount)
 {
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -211,17 +211,26 @@ void print_variables(Scope *scope)
                 printf("%c", (*scope).variables[i].name[j]);
             }
         }
-        printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
 
-        if ((*scope).variables[i].str_ptr != 0)
+        if ((*scope).variables[i].type == VAR_LIST)
         {
-            for (int j = 0; j < (*scope).variables[i].len; j++)
-            {
-                printf("%c", (*scope).variables[i].str_ptr[j]);
-            }
+            printf("    Lista (len: %d):\n", (*scope).variables[i].len);
+            print_dynamic_items((*scope).variables[i].list_ptr, (*scope).variables[i].len, 2);
         }
+        else
+        {
+            printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
 
-        printf("'\n");
+            if ((*scope).variables[i].str_ptr != 0)
+            {
+                for (int j = 0; j < (*scope).variables[i].len; j++)
+                {
+                    printf("%c", (*scope).variables[i].str_ptr[j]);
+                }
+            }
+
+            printf("'\n");
+        }
     }
 }
 

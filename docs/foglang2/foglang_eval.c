@@ -179,28 +179,6 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
 
     }
 
-    // printa efter cleanup with indents based on list depth
-    printf("Tokens after cleanup:\n");
-    for (int i = 0; i < args_amount; i++) {
-        if (args[i].type == NUMBER) {
-            printf("NUMBER: %lf\n", args[i].value);
-        } else if (args[i].type == STRING) {
-            printf("STRING: %.*s\n", args[i].var.name_len, args[i].var.name);
-        } else if (args[i].type == LIST) {
-            printf("LIST: [");
-            for (int j = 0; j < args[i].list_ptr->len; j++) {
-                if (j > 0) printf(", ");
-                Dynamic_Var value = args[i].list_ptr->items[j];
-                if (value.type == VAR_NUMBER) {
-                    printf("NUMBER: %lf", value.value);
-                } else if (value.type == VAR_STRING) {
-                    printf("STRING: %.*s", value.str_len, value.string);
-                }
-            }
-            printf("]\n");
-        }
-    }
-    
     return;
 
     malloc_error:
@@ -551,27 +529,6 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
     return ret;
 }
 
-static int is_top_level_list_literal(Token *args, int args_amount)
-{
-    int start = 0;
-    while (start < args_amount && args[start].type == NONE) start++;
-    if (start >= args_amount || args[start].type != LEFT_BRACKET) return 0;
-
-    int depth = 0;
-    for (int i = start; i < args_amount; i++) {
-        if (args[i].type == LEFT_BRACKET) {
-            depth++;
-        } else if (args[i].type == RIGHT_BRACKET) {
-            depth--;
-            if (depth == 0) {
-                int j = i + 1;
-                while (j < args_amount && args[j].type == NONE) j++;
-                return j == args_amount;
-            }
-        }
-    }
-    return 0;
-}
 
 List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // denna tuffa funktion syftar till att skapa en lista i formatet [värde, värde, värde], så det inte är massa aritmetiska operationer som ska hanteras
@@ -672,11 +629,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
     int type = VAR_STRING;
 
-    printf("AA1\n");
-
     for (int i = 0; i < args_amount; i++){
-        printf("AA2, type: %d\n", args[i].type);
-
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
             break;
@@ -699,10 +652,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
                 ret.value = 0;
                 ret.string = NULL;
                 free(args);
-                printf("ret: list with length %d\n", ret.str_len);
-                for (int j = 0; j < ret.str_len; j++) {
-                    printf("item %d: type %d\n", j, ret.list_ptr[j].type);
-                }
                 return ret;
             }
             
