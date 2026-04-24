@@ -180,7 +180,27 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
     }
 
     // printa efter cleanup with indents based on list depth
-
+    printf("Tokens after cleanup:\n");
+    for (int i = 0; i < args_amount; i++) {
+        if (args[i].type == NUMBER) {
+            printf("NUMBER: %lf\n", args[i].value);
+        } else if (args[i].type == STRING) {
+            printf("STRING: %.*s\n", args[i].var.name_len, args[i].var.name);
+        } else if (args[i].type == LIST) {
+            printf("LIST: [");
+            for (int j = 0; j < args[i].list_ptr->len; j++) {
+                if (j > 0) printf(", ");
+                Dynamic_Var value = args[i].list_ptr->items[j];
+                if (value.type == VAR_NUMBER) {
+                    printf("NUMBER: %lf", value.value);
+                } else if (value.type == VAR_STRING) {
+                    printf("STRING: %.*s", value.str_len, value.string);
+                }
+            }
+            printf("]\n");
+        }
+    }
+    
     return;
 
     malloc_error:
@@ -652,7 +672,11 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
     int type = VAR_STRING;
 
+    printf("AA1\n");
+
     for (int i = 0; i < args_amount; i++){
+        printf("AA2, type: %d\n", args[i].type);
+
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
             break;
@@ -675,6 +699,10 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
                 ret.value = 0;
                 ret.string = NULL;
                 free(args);
+                printf("ret: list with length %d\n", ret.str_len);
+                for (int j = 0; j < ret.str_len; j++) {
+                    printf("item %d: type %d\n", j, ret.list_ptr[j].type);
+                }
                 return ret;
             }
             

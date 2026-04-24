@@ -23,6 +23,7 @@ int function_stack_capacity = 128;
 int* row_lengths;
 int *loop_links;
 
+
 #include "foglang_eval.c" 
 #include "foglang_var.c"
 
@@ -1119,6 +1120,7 @@ void check_syntax(Program* program){
                                 int saw_arg = 0;
                                 int depth = 0;
                                 int c = b + 1;
+                                int list_depth = 0;
                                 while (instructions[a][c].type != TERMINATOR && instructions[a][c].type != LEFT_PAR) c++;
                                 if (instructions[a][c].type != LEFT_PAR) continue;
                                 depth = 1;
@@ -1129,8 +1131,12 @@ void check_syntax(Program* program){
                                     } else if (instructions[a][c].type == RIGHT_PAR){
                                         depth--;
                                         if (depth == 0) break;
+                                    } else if (instructions[a][c].type == LEFT_BRACKET) {
+                                        list_depth++;
+                                    } else if (instructions[a][c].type == RIGHT_BRACKET) {
+                                        list_depth--;
                                     } else if (depth == 1){
-                                        if (instructions[a][c].type == COMMA){
+                                        if (instructions[a][c].type == COMMA && list_depth == 0){
                                             counted_args++;
                                             saw_arg = 0;
                                         } else {
@@ -1179,6 +1185,7 @@ void check_syntax(Program* program){
         printf("ERR: Syntax error, ostängda bracket, öppnar x%d men stänger x%d\n", openers, closers);
         exit(-1);
     }
+    printf("Syntax check passed, %d instructions, %d loops\n", instruction_amount, openers);
 }
 
 
@@ -1742,6 +1749,8 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         }
     }
 
+    printf("ch1\n");
+
     if (arg_tokens_len == 0) {
         printf("ERR: expected )\n");
         exit(1);
@@ -1749,18 +1758,23 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
     cleanup_args(instruction+2, arg_tokens_len, instructions, instruction_amount, old_scope);
 
-
+    printf("ch2\n");
     // skapa Dynamic_Var för varje värde
     for (int i = 0; i < arg_count; i++){
         //printf("KOMMER FRÅN CALL_FUNCTION\n");
         //print_token_row(instruction);
+        printf("evaling token row:\n");
+        print_token_row(instruction+arg_info[i].start_index);
+        printf("\n");
+        
         Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
+        printf("ch3\n");
         //printf("==================================\n");
         //print_token_row(instruction);
         //printf("\n\n\n");
         arg_info[i].info = eval_ret;
     }
-
+    printf("ch4\n");
     // hitta index dit den ska hoppa
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
@@ -1855,6 +1869,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope)
 {
+    printf("PROGRAM_COUNTER: %d\n", program_counter);
     switch (current[0].type)
     {
     case FOUG:
@@ -1900,7 +1915,9 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
 
     case VARIABLE: // anta att det är en funktion
         if (current[0].var.type == VAR_FUNCTION) {
+            printf("FUNKTION CALLED: %.*s\n", current[0].var.name_len, current[0].var.name);
             call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount, current, scope);
+            printf("RETURNED FROM FUNCTION: %.*s\n", current[0].var.name_len, current[0].var.name);
         }
             
         break;

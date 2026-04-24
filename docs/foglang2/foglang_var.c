@@ -70,7 +70,6 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 }
 
 
-
 void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope)
 {
     Variable var = {
