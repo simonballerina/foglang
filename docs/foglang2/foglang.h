@@ -110,7 +110,8 @@ enum Tok_type
     OCH,           // 35
     ELLER,         // 36
     INTE,          // 37
-    JUNK           // 38
+    JUNK,          // 38
+    LIST           // 39    
 };
 
 typedef struct
@@ -126,20 +127,25 @@ typedef struct {
     int max_size;        
 } Stack;
 
-// utils
+// utils, ex hjälpfunktioner
 double str_to_double(char *num);
 char *read_file(const char *filename);
 void print_tokens(Token **instructions, int instruction_amount);
 void debug_print_var(char *name, int len);
 void print_variables(Scope *scope);
 int find_substring(char *txt, char *pat);
+void print_red(char* str, int len, int print_backslash);
+static void print_dynamic_items(Dynamic_Var *items, int len, int indent);
+void print_token_row(Token* args);
+static int is_top_level_list_literal(Token *args, int args_amount);
 
+// Evals
 double evaluate_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
 String evaluate_str_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
 void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
 Dynamic_Var dynamic_eval(Token *args, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
-
-
+List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
+int logic_eval(Token* args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);
 
 void create_str_var(char *name, int name_len, int len, char *string, Scope *scope);
 void create_num_var(char *name, int name_len, double value, Scope *scope);
@@ -154,9 +160,14 @@ index: indexeringen på listan, annars 0
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);
 
-static void print_dynamic_items(Dynamic_Var *items, int len, int indent);
+Program tokenize(char* buff, int debug);
+void check_syntax(Program* program);
 
-// declarations som inte är i foglang_var.c eller foglang_eval.c
+
+void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope);
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
-
+void foug(Token *instruction, Scope *scope);
+char* bult(char* file_name);
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count);
+void tpos(Token *instruction, Scope *scope);

@@ -179,8 +179,6 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
 
     }
 
-    // printa efter cleanup with indents based on list depth
-
     return;
 
     malloc_error:
@@ -531,27 +529,6 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
     return ret;
 }
 
-static int is_top_level_list_literal(Token *args, int args_amount)
-{
-    int start = 0;
-    while (start < args_amount && args[start].type == NONE) start++;
-    if (start >= args_amount || args[start].type != LEFT_BRACKET) return 0;
-
-    int depth = 0;
-    for (int i = start; i < args_amount; i++) {
-        if (args[i].type == LEFT_BRACKET) {
-            depth++;
-        } else if (args[i].type == RIGHT_BRACKET) {
-            depth--;
-            if (depth == 0) {
-                int j = i + 1;
-                while (j < args_amount && args[j].type == NONE) j++;
-                return j == args_amount;
-            }
-        }
-    }
-    return 0;
-}
 
 List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // denna tuffa funktion syftar till att skapa en lista i formatet [värde, värde, värde], så det inte är massa aritmetiska operationer som ska hanteras

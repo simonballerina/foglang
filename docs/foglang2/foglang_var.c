@@ -70,7 +70,6 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 }
 
 
-
 void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope)
 {
     Variable var = {
@@ -211,11 +210,6 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 .type = VAR_NONE,
                 .list_ptr = NULL
             };
-            printf("new_var: \n");
-            printf("    type: %d\n", new_var.type);
-            printf("    value: %lf\n", new_var.value);
-            printf("    str_len: %d\n", new_var.len);   
-            printf("    string: %.*s\n", new_var.len, new_var.str_ptr);
                     
             if (new_var.type == VAR_STRING){
                     
