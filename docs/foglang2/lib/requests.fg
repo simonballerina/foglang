@@ -35,7 +35,3 @@ boul requests_call(api_link) {
     return ans;
 
 }
-
-main;
-band t = requests_call("https://localcampus.tabyenskilda.se/lunch.php");
-foug t;
