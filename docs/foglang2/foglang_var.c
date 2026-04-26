@@ -12,13 +12,11 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
                 int ret_type = VAR_STRING;
                 Variable list_var = (*scope).variables[i];
                 if (list_var.type != VAR_LIST){
-                    printf("ERR: Försöker indexera en icke-list-variabel\n");
-                    exit(-1);
+                    throw_error(ERR_TYPE, (String){"Trying to index a non-list variable", strlen("Trying to index a non-list variable")}, NULL);
                 }
                 if (index < 0) index = list_var.len+index;
                 if (index >= list_var.len || index < 0){
-                    printf("ERR: Ogiltig indexing av lista\n");
-                    exit(-1);
+                    throw_error(ERR_INDEX, (String){list_var.name, list_var.name_len}, NULL);
                 }
                 Dynamic_Var found_var = list_var.list_ptr[(int)index];
                 
@@ -48,8 +46,7 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
                     ret_value.type = VAR_LIST;
                     ret_value.list_ptr = found_var.list_ptr;
                 } else {
-                    printf("ERR: Kunde inte framställe ett variabelvärde för en ogiltig datatyp\n");
-                    exit(-1);
+                    throw_error(ERR_TYPE, (String){"Unknown variable type", strlen("Unknown variable type")}, NULL);
                 }
 
                 return ret_value;
@@ -65,8 +62,7 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
         }
 
     }
-    printf("ERR: Kunde inte framställa ett variabelvärde\n");
-    exit(-1);
+    throw_error(ERR_NAME, (String){name, length}, NULL);
 }
 
 
@@ -88,8 +84,7 @@ void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope)
         (*scope).capacity += 1 + 64;
         if ((*scope).variables == NULL)
         {
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
+            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         }
     }
     (*scope).variables[(*scope).index++] = var;
@@ -112,8 +107,7 @@ void create_num_var(char *name, int name_len, double value, Scope *scope)
         (*scope).capacity += 1 + 64;
         if ((*scope).variables == NULL)
         {
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
+            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         }
     }
     (*scope).variables[(*scope).index++] = var;
@@ -137,8 +131,7 @@ void create_str_var(char *name, int name_len, int len, char *string, Scope *scop
     char *string_ptr = malloc(len * sizeof(char));
     if (string_ptr == NULL)
     {
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);    
     }
 
     // spara inputsträngen i nyreserverade området
@@ -152,8 +145,7 @@ void create_str_var(char *name, int name_len, int len, char *string, Scope *scop
         (*scope).capacity += 1 + 64;
         if ((*scope).variables == NULL)
         {
-            printf("ERR: Minnesallokering misslyckades\n");
-            exit(1);
+            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         }
     }
     (*scope).variables[(*scope).index++] = var;
@@ -165,8 +157,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
     for (int i = 0; i < (*scope).index; i++){
         if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
             if ((*scope).variables[i].type != VAR_LIST){
-                printf("ERR: Försöker ändra listitem i icke-list-variabel\n");
-                exit(1);
+                throw_error(ERR_TYPE, (String){"Cannot change list item in non-list variable", strlen("Cannot change list item in non-list variable")}, NULL);
             }
 
             Variable *parent = &(*scope).variables[i];
@@ -177,27 +168,27 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 // append
                 Dynamic_Var *new_ptr = realloc(parent->list_ptr, sizeof(Dynamic_Var) * (parent->len + 1));
                 if (new_ptr == NULL){
-                    printf("ERR: Minnesallokering misslyckades\n");
+                    throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
                     exit(1);
                 }
                 parent->list_ptr = new_ptr;
                 parent->len++;
             }
             else if (index > parent->len){
-                printf("ERR: Ogiltig indexering vid list-uppdatering\n");
+                throw_error(ERR_INDEX, (String){"Invalid indexing for list update", strlen("Invalid indexing for list update")}, NULL);
                 exit(1);
             }
 
             Dynamic_Var *current_item = &parent->list_ptr[index];
             for (int j = 1; j < index_amount; j++){
                 if (current_item->type != VAR_LIST){
-                    printf("ERR: Försöker indexera en icke-list-variabel\n");
+                    throw_error(ERR_TYPE, (String){"Cannot index into non-list variable", strlen("Cannot index into non-list variable")}, NULL);
                     exit(1);
                 }
                 index = indices[j];
                 if (index < 0) index = current_item->str_len + index;
                 if (index >= current_item->str_len || index < 0){
-                    printf("ERR: Ogiltig indexing av lista\n");
+                    throw_error(ERR_INDEX, (String){"Invalid indexing for list update", strlen("Invalid indexing for list update")}, NULL);
                     exit(1);
                  }
                 current_item = &current_item->list_ptr[index];
@@ -224,7 +215,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 new_item.str_len = new_var.len;
                 new_item.list_ptr = new_var.list_ptr;
             } else {
-                printf("ERR: Ogiltig lista-uppdateringstyp\n");
+                throw_error(ERR_TYPE, (String){"Unknown variable type", strlen("Unknown variable type")}, NULL);
                 exit(1);
             }
             *current_item = new_item;
