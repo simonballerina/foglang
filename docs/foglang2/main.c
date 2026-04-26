@@ -12,6 +12,7 @@
 
 // program counter
 int program_counter = -1;
+int* pc_to_line;
 
 // function stack
 int *function_origin_program_counter_stack;
@@ -119,8 +120,8 @@ char* bult(char* file_name){
 
 
     malloc_error:
-        printf("[BULT] ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+        
 }
 
 
@@ -138,6 +139,27 @@ Program tokenize(char* buff, int debug)
             instruction_amount++;
     }
     if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
+
+    // räkna ut storleken på pc_to_line
+
+    pc_to_line = malloc(instruction_amount*sizeof(int));
+    if (!pc_to_line) goto malloc_error;
+
+    // fyll pc_to_line
+    int line = 1;
+    int instruction_index = 0;
+    for (int i = 0; i < buff_len; i++)
+    {
+        if (buff[i] == '\n')
+            line++;
+        if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}')
+            pc_to_line[instruction_index++] = line;
+    }
+    if (debug) {
+        printf("[DEBUG] pc_to_line: ");
+        for (int i = 0; i < instruction_amount; i++)
+            printf("%d\n", pc_to_line[i]);
+    }
 
     // skapa instruktionsarray
     Token **instructions = malloc(instruction_amount * sizeof(Token *));
@@ -505,7 +527,7 @@ Program tokenize(char* buff, int debug)
     return program;
 
     malloc_error:
-        printf("[LEXER] ERR: Minnesallokering misslyckades\n");
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         exit(1);
         
 }
@@ -765,6 +787,59 @@ void check_syntax(Program* program){
     }
 }
 
+void throw_error(int type, String err_str, Token *instruction){
+    char tick = '\'';  
+    char colon = ':';
+    print_red("Error at line ", strlen("Error at line "), 0);
+    int number_of_digits = floor(log10(abs(pc_to_line[program_counter]))) + 1;
+    char str[number_of_digits];
+    
+
+    sprintf(str, "%d", pc_to_line[program_counter]);
+    print_red(str, number_of_digits, 0);
+
+    print_red(&colon, 1, 1);
+    if (instruction != NULL)
+        print_token_row(instruction);
+
+    switch (type) {
+
+
+        case ERR_MALLOC:
+
+            print_red("ERR_MALLOC: Could not allocate memory\n", strlen("ERR_MALLOC: Could not allocate memory\n"), 0);
+            print_red(err_str.string, err_str.len, 1);     // err_str is a description of the malloc error
+
+            break;
+        case ERR_INDEX:
+            print_red("ERR_INDEX: Index out of range\n", strlen("ERR_INDEX: Index out of range\n"), 0);
+            print_red("Could not index item '", strlen("Could not index item '"), 0);
+            print_red(err_str.string, err_str.len, 0);     // err_str is the name of the variable that was attempted to be indexed
+            print_red(&tick, 1, 1);
+
+            break;
+        case ERR_MATH:
+            print_red("ERR_MATH: Invalid math operation\n", strlen("ERR_MATH: Invalid math operation\n"), 0);
+            print_red(err_str.string, err_str.len, 1);     // err_str is a description of the math error
+
+            break;
+        case ERR_NAME:
+            print_red("ERR_NAME: Variable not recognized:\n", strlen("ERR_NAME: Variable not recognized:\n"), 0);
+            print_red("Name: '", strlen("Name: '"), 0);
+            print_red(err_str.string, err_str.len, 0);     // err_str is the name of the variable that was not recognized
+            print_red(&tick, 1, 1);
+            break;
+        case ERR_SYNTAX:
+            print_red("ERR_SYNTAX: Syntax error\n", strlen("ERR_SYNTAX: Syntax error\n"), 0);
+            print_red(err_str.string, err_str.len, 1);     // err_str is a description of the syntax error
+            break;
+        case ERR_TYPE:
+            print_red("ERR_TYPE: Invalid type\n", strlen("ERR_TYPE: Invalid type\n"), 0);
+            print_red(err_str.string, err_str.len, 1);     // err_str is a description of the type error
+            break;
+    }
+    exit(type);
+}
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
 {
@@ -841,10 +916,9 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 depth--;
             } else if (depth == 0) {
                 Dynamic_Var index_eval = dynamic_eval(&instruction[i], 1, instructions, instruction_amount, scope);
-                if (index_eval.type != VAR_NUMBER) {
-                    printf("ERR: List index måste vara av typen number\n");
-                    exit(-1);
-                }
+                if (index_eval.type != VAR_NUMBER)
+                    throw_error(ERR_TYPE, (String){.string = "List index must be a number", .len = strlen("List index must be a number")}, instruction);
+                
                 indicies[index_top++] = index_eval.value;
             }
             
@@ -881,7 +955,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         
         else 
         {
-            printf("ERR: Felaktig variabeltyp\n");
+            throw_error(ERR_TYPE, (String){.string = "Invalid type for variable creation", .len = strlen("Invalid type for variable creation")}, instruction);
             exit(-1);
         }
 
@@ -963,13 +1037,11 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     return;
 
     malloc_error:
-        printf("[BAND] ERR: Minnesallokering misslyckades, eller kunde inte läsa fil\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
 
 }
 
-void foug(Token *instruction, Scope *scope)
-{
+void foug(Token *instruction, Scope *scope) {
     int is_svets = 0;
     int is_junk = 0;
     for (int i = 0; instruction[i].type != TERMINATOR; i++){
@@ -1064,8 +1136,7 @@ void foug(Token *instruction, Scope *scope)
         }
         else
         {
-            printf("[FOUG]: ERR: Syntax error\n");
-            exit(-1);
+            throw_error(ERR_TYPE, (String){"Invalid type for output", strlen("Invalid type for output")}, instruction);
         }
     }
     else
@@ -1164,8 +1235,7 @@ void tpos(Token *instruction, Scope *scope)
     strcpy(call, "");
     if (call == NULL)
     {
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
     }
     int writer = 0;
     
@@ -1209,14 +1279,13 @@ void tpos(Token *instruction, Scope *scope)
             }
             else
             {
-                printf("[TPOS]: ERR: Syntax error\n");
-                exit(-1);
+                throw_error(ERR_TYPE, (String){"Invalid type for output", strlen("Invalid type for output")}, instruction);
             }
                 
         }
         else
         {
-            printf("[TPOS]: ERR: Syntax error\n");
+            throw_error(ERR_SYNTAX, (String){"Expected string or variable", strlen("Expected string or variable")}, instruction);
             exit(-1);
         }
     } else { // svets-string
@@ -1327,8 +1396,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     }
 
     if (arg_tokens_len == 0) {
-        printf("ERR: expected )\n");
-        exit(1);
+        throw_error(ERR_SYNTAX, (String){"Syntax error in function call: missing closing parenthesis", strlen("Syntax error in function call: missing closing parenthesis")}, instruction);
     }
     cleanup_args(instruction+2, arg_tokens_len, instructions, instruction_amount, old_scope);
     // skapa Dynamic_Var för varje värde
@@ -1357,8 +1425,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     }
     if (func_index == -1)
     {
-        printf("ERR: Ofärdig funktion\n");
-        exit(-1);
+        throw_error(ERR_SYNTAX, (String){"Function not found", strlen("Function not found")}, instruction);
     }
 
     // skapa variabler
@@ -1411,8 +1478,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     {
         if (program_counter >= instruction_amount)
         {
-            printf("ERR: Funktion nådde filslut utan return\n");
-            exit(-1);
+            throw_error(ERR_SYNTAX, (String){"Function reached end of file without return", strlen("Function reached end of file without return")}, NULL);
         }
         Token *current = instructions[program_counter];
         interpret_instruction(current, instructions, instruction_amount, &scope);
@@ -1428,7 +1494,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     return ret;
 
     malloc_error:
-        printf("[FUNCTION CALL] ERR: Minnesallokering misslyckades\n");
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         exit(1);
         
 }
@@ -1526,6 +1592,8 @@ int main(int argc, char **argv)
 
 
 
+
+
     if (scope.variables == NULL ||
         function_origin_program_counter_stack == NULL ||
         function_return_stack == NULL || row_lengths == NULL)
@@ -1540,6 +1608,7 @@ int main(int argc, char **argv)
     check_syntax(&program);
     if (debug) print_tokens(instructions, instruction_amount);
 
+
     // hitta entry point (main)
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1548,9 +1617,9 @@ int main(int argc, char **argv)
     }
     if (program_counter == -1)
     {
-        printf("[MAIN] ERR: main inte hittad\n");
-        exit(-1);
+        throw_error(ERR_SYNTAX, (String){"Main token not found", strlen("Main token not found")}, NULL);
     }
+
 
     while (program_counter < instruction_amount)
     {
@@ -1565,6 +1634,8 @@ int main(int argc, char **argv)
     return 0;
 
     malloc_error:
-        printf("[MAIN] ERR: Minnesallokering misslyckades\n");
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
         exit(1);
 }
+
+

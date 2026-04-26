@@ -1,6 +1,6 @@
 
 
-enum Var_type
+enum Var_Type
 {
     VAR_NONE,
     VAR_NUMBER,
@@ -70,7 +70,7 @@ typedef struct
     int capacity;
 } Scope;
 
-enum Tok_type
+enum Tok_Type
 {
     NONE,          // 0
     TERMINATOR,    // 1
@@ -127,6 +127,16 @@ typedef struct {
     int max_size;        
 } Stack;
 
+enum Err_Type  {
+    
+    ERR_MALLOC = 1,             // Out of memory
+    ERR_SYNTAX,             // Syntax error
+    ERR_MATH,               // Ex division med noll
+    ERR_INDEX,              // Indexeringserror
+    ERR_NAME,               // Okänt värde hittas ej
+    ERR_TYPE,               // Felaktig användning av värde. Ex indexering av NUMBER
+};
+
 // utils, ex hjälpfunktioner
 double str_to_double(char *num);
 char *read_file(const char *filename);
@@ -163,6 +173,14 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
 Program tokenize(char* buff, int debug);
 void check_syntax(Program* program);
 
+/*
+type: se enum Err_Type.
+
+err_str: generellt en beskrivning av felet. se main.c för exempel. Kan också innehålla mer specifik info, ex namnet på en variabel som inte hittades.
+
+instruction: nuvarande instruktionen som orsakade felet
+*/
+void throw_error(int type, String err_str, Token *instruction);
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope);
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);

@@ -34,8 +34,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                         end++;
                     }
                     if (end >= args_amount) {
-                        printf("ERR: Slutklammer saknas i indexering\n");
-                        exit(-1);
+                        throw_error(ERR_SYNTAX, (String){"Missing closing bracket in indexing", strlen("Missing closing bracket in indexing")}, NULL);
                     }
                     int index_expr_start = pos + 1;
                     int index_expr_len = end - index_expr_start;
@@ -45,15 +44,13 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     if (current.type == VAR_LIST) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
-                            printf("ERR: Ogiltig indexing av lista\n");
-                            exit(-1);
+                            throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }
                         current = current.list_ptr[index];
                     } else if (current.type == VAR_STRING) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
-                            printf("ERR: Ogiltig indexing av lista\n");
-                            exit(-1);
+                            throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }
                         // for string, create a string with the char
                         char *char_str = malloc(2);
@@ -63,8 +60,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                         current.str_len = 1;
                         current.type = VAR_STRING;
                     } else {
-                        printf("ERR: Försöker indexera en icke-indexerbar typ\n");
-                        exit(-1);
+                        throw_error(ERR_TYPE, (String){"Cannot index non-list and non-string variable", strlen("Cannot index non-list and non-string variable")}, NULL);
                     }
                     // set the bracket tokens to NONE
                     for (int k = pos; k <= end && k < args_amount; k++) {
@@ -85,8 +81,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     args[i].type = LIST;
                     args[i].list_ptr = malloc(sizeof(List));
                     if (!args[i].list_ptr) {
-                        printf("ERR: Memory allocation failed for list\n");
-                        exit(-1);
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed for list", strlen("Memory allocation failed for list")}, NULL);
                     }
                     args[i].list_ptr->items = current.list_ptr;
                     args[i].list_ptr->len = current.str_len;
@@ -132,8 +127,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                 end++;
 
             if (end == args_amount) {
-                printf("ERR: expected (\n");
-                exit(1);
+                throw_error(ERR_SYNTAX, (String){"Expected '('", strlen("Expected '('")}, NULL);
             }
 
             depth = 1;
@@ -182,8 +176,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
     return;
 
     malloc_error:
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
 
 }
 
@@ -256,8 +249,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
                 }
                 if (i >= args_amount)
                 {
-                    printf("ERR: Slutparantes hittades inte\n");
-                    exit(-1);
+                    throw_error(ERR_SYNTAX, (String){"Expected ')'", strlen("Expected ')'")}, NULL);
                 }
 
                 stop_par_index = i;
@@ -336,16 +328,14 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
                     args[i].value = first_arg * second_arg;
                 else if (args[i].type == DIVIDED) {
                     if (second_arg == 0) {
-                        printf("ERR: Division med 0\n");
-                        exit(-1);
+                        throw_error(ERR_MATH, (String){"Division by zero", strlen("Division by zero")}, NULL);
                     }
                     args[i].value = first_arg / second_arg;
                 }
                     
                 else if (args[i].type == MODULO) {
                     if (second_arg == 0) {
-                        printf("ERR: Division med 0\n");
-                        exit(-1);
+                        throw_error(ERR_MATH, (String){"Division by zero", strlen("Division by zero")}, NULL);
                     }
                     args[i].value = fmod(first_arg, second_arg);
                 }
@@ -541,8 +531,7 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
     int start = 0;
     while (start < args_amount && args[start].type != LEFT_BRACKET) start++;
     if (start >= args_amount) {
-        printf("ERR: Förväntade '[' för listuttryck\n");
-        exit(1);
+        throw_error(ERR_SYNTAX, (String){"Expected '[' for list expression", strlen("Expected '[' for list expression")}, NULL);
     }
 
     int end = start;
@@ -556,8 +545,7 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
     }
 
     if (end >= args_amount || depth != 0) {
-        printf("ERR: Felaktigt listuttryck\n");
-        exit(1);
+        throw_error(ERR_SYNTAX, (String){"Expected ']' for list expression", strlen("Expected ']' for list expression")}, NULL);
     }
 
     if (start + 1 >= end) {
@@ -602,8 +590,7 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
     return ret;
 
     malloc_error:
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed for list", strlen("Memory allocation failed for list")}, NULL);
 }
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
@@ -684,8 +671,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
     free(args);
     return ret;
     malloc_error:
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
 }
 
 
@@ -711,7 +697,7 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
             negate = 1;
             i++;
             if (i >= args_amount){
-                printf("ERR: INTE saknar operand\n");
+                throw_error(ERR_SYNTAX, (String){"INTE lacks operand", strlen("INTE lacks operand")}, NULL);
                 free(args);
                 free(bool_eval_arr);
                 exit(1);
@@ -764,14 +750,14 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
             if (args[i].type == LEFT_PAR && args[i + eval_args_amount - 1].type == RIGHT_PAR) {
                 int inner_len = eval_args_amount - 2;
                 if (inner_len < 0) {
-                    printf("ERR: Operatör saknas i logic_eval\n");
+                    throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
                     free(args);
                     free(bool_eval_arr);
                     exit(1);
                 }
                 current_eval_result = logic_eval(args + i + 1, inner_len, instructions, instruction_amount, scope);
             } else {
-                printf("ERR: Operatör saknas i logic_eval\n");
+                throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
                 free(args);
                 free(bool_eval_arr);
                 exit(1);
@@ -806,7 +792,7 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
                         break;
                 }
             } else {
-                printf("ERR: Kan inte jämföra två olika datatyper\n");
+                throw_error(ERR_TYPE, (String){"Cannot compare two different data types", strlen("Cannot compare two different data types")}, NULL);
                 free(args);
                 free(bool_eval_arr);
                 exit(1);
@@ -854,6 +840,5 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
     return res;
 
     malloc_error:
-        printf("ERR: Minnesallokering misslyckades\n");
-        exit(1);
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
 }
