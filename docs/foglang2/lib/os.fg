@@ -1,0 +1,13 @@
+boul os_get_kernel() {
+    tpos "touch foglang_temp_api.txt";
+    tpos "printf %s $(uname) > foglang_temp_api.txt";
+
+    band slip kernel = "foglang_temp_api.txt";
+
+
+    givet att kernel = "Linux" eller kernel = "Darwin" eller kernel = "FreeBSD" {
+        return kernel;
+    }
+
+    return "NT";
+}

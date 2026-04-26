@@ -44,12 +44,15 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     if (current.type == VAR_LIST) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
+                            printf("Index: %d, List length: %d\n", index, current.str_len);
                             throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }
                         current = current.list_ptr[index];
                     } else if (current.type == VAR_STRING) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
+                            printf("Index: %d, String length: %d\n", index, current.str_len);
+                            print_variables(scope);
                             throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }
                         // for string, create a string with the char
@@ -496,7 +499,13 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
     }
 
 
-    char* result_str = malloc(final_len*sizeof(char));
+    if (final_len < 0 || final_len > 10*1024*1024) {
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+    }
+    char* result_str = malloc((final_len + 1) * sizeof(char));
+    if (!result_str) {
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+    }
     int copied_chars = 0;
 
     // konkatenera samtliga strängar
@@ -515,6 +524,8 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
         .len = copied_chars,
         .string = result_str
     };
+
+    result_str[copied_chars] = '\0';
 
     return ret;
 }
@@ -594,10 +605,9 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
 }
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
-    Token *args = malloc((args_amount+1) * sizeof(Token));
-    if (!args) goto malloc_error;
-
-    memcpy(args, args_old, (args_amount+1) * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+    Token args[args_amount + 1];
+    memcpy(args, args_old, args_amount * sizeof(Token)); // lokal kopia av de faktiska token
+    args[args_amount].type = TERMINATOR;
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
@@ -610,7 +620,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
         ret.str_len = list_ret.len;
         ret.value = 0;
         ret.list_ptr = list_ret.items;
-        free(args);
         return ret;
     }
 
@@ -625,7 +634,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
         if (args[i].type == VARIABLE){
             Dynamic_Var var_ret = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
             if (var_ret.type == VAR_LIST && args_amount == 1) {
-                free(args);
                 return var_ret;
             }
             if (var_ret.type == VAR_STRING) type = VAR_STRING;
@@ -638,7 +646,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
                 ret.str_len = args[i].list_ptr->len;
                 ret.value = 0;
                 ret.string = NULL;
-                free(args);
                 return ret;
             }
             
@@ -655,7 +662,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
         ret.string = str_ret.string;
         ret.type = VAR_STRING;
         ret.value = 0;
-        free(args);
         return ret;
     } 
     else if (type == VAR_NUMBER)
@@ -665,10 +671,8 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
         ret.string = 0;
         ret.type = VAR_NUMBER;
         ret.value = num_ret;
-        free(args);
         return ret;
     }
-    free(args);
     return ret;
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
@@ -678,10 +682,9 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 int logic_eval(Token* args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // x*2 < 8 och x+1 = 2
     //printf("LOGIC EVAL, ARGS AMOUNT :%d\n", args_amount);
-    Token* args = malloc((args_amount+1) * sizeof(Token));
-    if (!args) goto malloc_error;
-
-    memcpy(args, args_old, (args_amount+1) * sizeof(Token)); // lokal kopia
+    Token args[args_amount + 1];
+    memcpy(args, args_old, args_amount * sizeof(Token)); // lokal kopia av de faktiska token
+    args[args_amount].type = TERMINATOR;
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
     int arr_tok_count = 6;
@@ -698,7 +701,6 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
             i++;
             if (i >= args_amount){
                 throw_error(ERR_SYNTAX, (String){"INTE lacks operand", strlen("INTE lacks operand")}, NULL);
-                free(args);
                 free(bool_eval_arr);
                 exit(1);
             }
@@ -751,14 +753,12 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
                 int inner_len = eval_args_amount - 2;
                 if (inner_len < 0) {
                     throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
-                    free(args);
                     free(bool_eval_arr);
                     exit(1);
                 }
                 current_eval_result = logic_eval(args + i + 1, inner_len, instructions, instruction_amount, scope);
             } else {
                 throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
-                free(args);
                 free(bool_eval_arr);
                 exit(1);
             }
@@ -793,7 +793,6 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
                 }
             } else {
                 throw_error(ERR_TYPE, (String){"Cannot compare two different data types", strlen("Cannot compare two different data types")}, NULL);
-                free(args);
                 free(bool_eval_arr);
                 exit(1);
             }
@@ -835,7 +834,6 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
     double res = evaluate_expression(bool_eval_arr, bool_eval_top, instructions, instruction_amount, scope);
     //printf("RES: %lf\n", res);
     res = (int)res;
-    free(args);
     free(bool_eval_arr);
     return res;
 

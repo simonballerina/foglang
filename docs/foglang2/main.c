@@ -1229,24 +1229,20 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count){
 
 void tpos(Token *instruction, Scope *scope)
 {
-    //allocation
-    int call_len = sizeof(char)*instruction[1 + (instruction[1].type == SVETS)].var.name_len;
-    char *call = malloc(call_len);
-    strcpy(call, "");
+    // allocation: reserve space for NUL
+    int call_len = instruction[1 + (instruction[1].type == SVETS)].var.name_len + 1;
+    char *call = malloc(call_len * sizeof(char));
     if (call == NULL)
     {
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
     }
+    call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
     int writer = 0;
     
-    if (instruction[1].type != SVETS && instruction[2].type != SVETS)
-    {
-        if (instruction[1].type == STRING)
-        {
-            for (int i = 0; i < instruction[1].var.name_len; i++)
-            {
-                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n')
-                {
+    if (instruction[1].type != SVETS && instruction[2].type != SVETS) {
+        if (instruction[1].type == STRING) {
+            for (int i = 0; i < instruction[1].var.name_len; i++) {
+                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n') {
                     i += 2;
                 }
                 if (i < instruction[1].var.name_len) {
@@ -1259,24 +1255,39 @@ void tpos(Token *instruction, Scope *scope)
         {
             // printf("VARIABLE I TPOS\n");
             Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
-            if (value.type == VAR_NUMBER){
-                if ((int)(value.value) == (value.value)) {
-                    call_len += sizeof(int);
-                call = realloc(call, call_len);
-                sprintf(call + writer, "%d", (int)value.value);
-                writer += strlen(call + writer);
-                } else {
-                    call_len += sizeof(double);
-                    call = realloc(call, call_len);
-                    sprintf(call + writer, "%lf", (double)value.value);
-                    writer += strlen(call + writer);
+                if (value.type == VAR_NUMBER){
+                    if ((int)(value.value) == (value.value)) {
+                        call_len += 32; // extra biffigt utrymme
+                        char *tmp = realloc(call, call_len);
+                        if (!tmp) { 
+                            free(call); 
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                        }
+                        call = tmp;
+                        int n = snprintf(call + writer, call_len-writer, "%d", (int)value.value);
+                        if (n > 0) writer += n;
+                    } else {
+                        call_len += 64;
+                        char *tmp = realloc(call, call_len);
+                        if (!tmp) { 
+                            free(call); 
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                        }
+                        call = tmp;
+                        int n = snprintf(call + writer, call_len - writer, "%lf", (double)value.value);
+                        if (n > 0) writer += n;
+                    }
+                } else if (value.type == VAR_STRING) {
+                    call_len += value.str_len + 1;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                    int n = snprintf(call + writer, call_len - writer, "%.*s", value.str_len, value.string);
+                    if (n > 0) writer += n;
                 }
-            } else if (value.type == VAR_STRING) {
-                call_len += sizeof(char)*value.str_len;
-                call = realloc(call, call_len);
-                sprintf(call + writer, "%.*s", value.str_len, value.string);
-                writer += strlen(call + writer);
-            }
             else
             {
                 throw_error(ERR_TYPE, (String){"Invalid type for output", strlen("Invalid type for output")}, instruction);
@@ -1292,12 +1303,33 @@ void tpos(Token *instruction, Scope *scope)
         for (int i = 0; i < instruction[2].var.name_len; i++){
             if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
             {
-                strcat(call, "\n");
+                if (writer + 1 >= call_len) {
+                    call_len += 16;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                }
+                call[writer++] = '\n';
+                call[writer] = '\0';
                 i += 2;
             }
             if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
             {
-                strcat(call, "%%");
+                if (writer + 2 >= call_len) {
+                    call_len += 16;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                }
+                call[writer++] = '%';
+                call[writer++] = '%';
+                call[writer] = '\0';
                 i += 2;
             }
 
@@ -1311,21 +1343,36 @@ void tpos(Token *instruction, Scope *scope)
                 Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
                 if (value.type == VAR_NUMBER){
                     if ((int)(value.value) == (value.value)) {
-                        call_len += sizeof(int);
-                    call = realloc(call, call_len);
-                    sprintf(call + writer, "%d", (int)value.value);
-                    writer += strlen(call + writer);
+                        call_len += 32;
+                        char *tmp = realloc(call, call_len);
+                        if (!tmp) { 
+                            free(call); 
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                        }
+                        call = tmp;
+                        int n = snprintf(call + writer, call_len - writer, "%d", (int)value.value);
+                        if (n > 0) writer += n;
                     } else {
-                        call_len += sizeof(double);
-                        call = realloc(call, call_len);
-                        sprintf(call + writer, "%lf", (double)value.value);
-                        writer += strlen(call + writer);
+                        call_len += 64;
+                        char *tmp = realloc(call, call_len);
+                        if (!tmp) { 
+                            free(call); 
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                        }
+                        call = tmp;
+                        int n = snprintf(call + writer, call_len - writer, "%lf", (double)value.value);
+                        if (n > 0) writer += n;
                     }
                 } else if (value.type == VAR_STRING) {
-                    call_len += sizeof(char)*value.str_len;
-                    call = realloc(call, call_len);
-                    sprintf(call + writer, "%.*s", value.str_len, value.string);
-                    writer += strlen(call + writer);
+                    call_len += value.str_len + 1;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                    int n = snprintf(call + writer, call_len - writer, "%.*s", value.str_len, value.string);
+                    if (n > 0) writer += n;
                 }
                 i+=len+1;    
             } else if (i < instruction[2].var.name_len) {
