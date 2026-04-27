@@ -102,7 +102,6 @@ char* bult(char* file_name, char* user){
                 strcpy(import_file_name_prefix, "#");
                 import_file_name[name_len+7*!is_sax+strlen(lib)*(!is_sax)] = '\0';
                 strcat(import_file_name_prefix, import_file_name);
-                printf("opening %s\n", import_file_name);
                 char* import_buff = read_file(import_file_name);
                 
                 
