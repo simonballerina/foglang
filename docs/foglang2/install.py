@@ -27,15 +27,17 @@ def main():
     #windows
     if name == "nt":
 
-        lib_path: str = "C:\\Program Files\\foglang2\\lib"
+        lib_path: str = "'C:\\Program Files\\foglang2\\lib'"
+
+        if not filepath:
+            filepath = "C:\\Program Files\\foglang2\\build"
 
         filepath = filepath.replace("/", "\\")
         print(f"     Installerar för Windows i {filepath}...")
 
         print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"sudo cp -r lib {lib_path}", shell=True)
-
-        status = subprocess.run(f".\\make.bat {filepath}")
+        subprocess.call(f"powershell -Command xcopy lib {lib_path} /s /y /i", shell=True)
+        print("TODO: Lägg in följande miljövariabel \"C:\\Program Files\\foglang2\\build\"")
         exit_code = os.WEXITSTATUS(status)
 
         if exit_code != 0:
@@ -59,7 +61,7 @@ def main():
         print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
 
         print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"sudo cp -r lib {lib_path}", shell=True)
+        subprocess.call(f"cp -r lib {lib_path}", shell=True)
 
         filepath += "/foglang2"
 
