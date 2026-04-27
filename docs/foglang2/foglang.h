@@ -129,12 +129,12 @@ typedef struct {
 
 enum Err_Type  {
     
-    ERR_MALLOC = 1,         // Out of memory
-    ERR_SYNTAX,             // Syntax error
-    ERR_MATH,               // Ex division med noll
-    ERR_INDEX,              // Indexeringserror
-    ERR_NAME,               // Okänt värde hittas ej
-    ERR_TYPE,               // Felaktig användning av värde. Ex indexering av NUMBER
+    ERR_MALLOC = 1,         // 1 - Out of memory
+    ERR_SYNTAX,             // 2 - Syntax error
+    ERR_MATH,               // 3 - Ex division med noll
+    ERR_INDEX,              // 4 - Indexeringserror
+    ERR_NAME,               // 5 - Okänt värde hittas ej
+    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
 };
 
 // utils, ex hjälpfunktioner

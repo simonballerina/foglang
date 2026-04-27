@@ -73,6 +73,16 @@ char* bult(char* file_name, char* user){
     while (search){
         found = 0;
         for (int i = 0; i < len; i++){
+
+            if (!strncmp(buff+i, "#*", 2)) {
+                while (strncmp(buff+i, "*#", 2)) {
+                    i++;
+                }
+            } else if (!strncmp(buff+i, "#", 1)) {
+                while (strncmp(buff+i, "\n", 1)) {
+                    i++;
+                }
+            }
             
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
