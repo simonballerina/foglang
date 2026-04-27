@@ -148,6 +148,7 @@ void print_red(char* str, int len, int print_backslash);
 static void print_dynamic_items(Dynamic_Var *items, int len, int indent);
 void print_token_row(Token* args);
 static int is_top_level_list_literal(Token *args, int args_amount);
+void print_variable(Dynamic_Var var, int is_junk);
 
 // Evals
 double evaluate_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope);

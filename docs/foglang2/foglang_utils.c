@@ -268,6 +268,86 @@ void print_red(char* str, int len, int print_backslash) {
 }
 
 
+void print_variable(Dynamic_Var var, int is_junk) {
+    if (!is_junk) {
+        if (var.type == VAR_NUMBER) {
+            int is_int = 0;
+            if ((int)(var.value) == (var.value)) is_int = 1;
+            if (is_int)
+                printf("%d", (int)(var.value));
+            else
+                printf("%lf", var.value);
+        } else if (var.type == VAR_STRING) {
+            printf("%.*s", var.str_len, var.string);
+        } else if (var.type == VAR_LIST) {
+            printf("[");
+            for (int j = 0; j < var.str_len; j++) {
+                if (j > 0) printf(", ");
+                if (var.list_ptr[j].type == VAR_STRING) {
+                    printf("\"%.*s\"", var.list_ptr[j].str_len, var.list_ptr[j].string);
+                } else if (var.list_ptr[j].type == VAR_NUMBER) {
+                    int is_int = 0;
+                    if ((int)(var.list_ptr[j].value) == (var.list_ptr[j].value)) is_int = 1;
+                    if (is_int)
+                        printf("%d", (int)(var.list_ptr[j].value));
+                    else
+                        printf("%lf", var.list_ptr[j].value);
+                } else if (var.list_ptr[j].type == VAR_LIST) {
+                    print_variable(var.list_ptr[j], is_junk);
+                }
+            }
+            printf("]");
+        }
+    } else { // junk
+        if (var.type == VAR_NUMBER) {
+            int is_int = 0;
+            if ((int)(var.value) == (var.value)) is_int = 1;
+            int amount_of_digits = floor (log10(abs((int)(var.value)))) + 1;
+            if (!is_int) amount_of_digits += 7;
+            char num_str[amount_of_digits];
+            if (is_int)
+                sprintf(num_str, "%d", (int)(var.value));
+            else
+                sprintf(num_str, "%lf", var.value);
+            print_red(num_str, amount_of_digits, 0);
+        } else if (var.type == VAR_STRING) {
+            print_red(var.string, var.str_len, 0);
+        } else if (var.type == VAR_LIST) {
+            char right_bracket = ']';
+            char left_bracket = '[';
+            print_red(&left_bracket, 1, 0);
+            for (int j = 0; j < var.str_len; j++) {
+                if (j > 0) print_red(", ", 2, 0);
+                
+                if (var.list_ptr[j].type == VAR_STRING) {
+                    char str[var.list_ptr[j].str_len+2];
+                    memcpy(str+1, var.list_ptr[j].string, var.list_ptr[j].str_len);
+                    str[0] = '\"';
+                    str[var.list_ptr[j].str_len+1] = '\"';
+                    print_red(str, var.list_ptr[j].str_len+2, 0);
+                } else if (var.list_ptr[j].type == VAR_NUMBER) {
+                    int is_int = 0;
+                    if ((int)(var.list_ptr[j].value) == (var.list_ptr[j].value)) is_int = 1;
+                    int amount_of_digits = floor (log10(abs((int)(var.list_ptr[j].value)))) + 1;
+                    if (!is_int) amount_of_digits += 7;
+                    char num_str[amount_of_digits];
+                    if (is_int)
+                        sprintf(num_str, "%d", (int)(var.list_ptr[j].value));
+                    else
+                        sprintf(num_str, "%lf", var.list_ptr[j].value);
+                    print_red(num_str, amount_of_digits, 0);
+                } else if (var.list_ptr[j].type == VAR_LIST) {
+                    print_variable(var.list_ptr[j], is_junk);
+                }
+            }
+            print_red(&right_bracket, 1, 0);
+        }
+    }
+}
+
+
+
+
 static void print_dynamic_items(Dynamic_Var *items, int len, int indent)
 {
     for (int j = 0; j < len; j++)
