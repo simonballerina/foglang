@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
-#include <sys/syslimits.h>
+
+#ifdef __APPLE__
+    #include <sys/syslimits.h>
+#endif
 
 #ifdef _WIN32
     #include <windows.h>
