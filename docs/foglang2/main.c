@@ -29,7 +29,6 @@ int *loop_links;
 #include "foglang_var.c"
 
 
-
 char* bult(char* file_name){
 
     char *buff = read_file(file_name);
@@ -1075,64 +1074,8 @@ void foug(Token *instruction, Scope *scope) {
             // printf("VARIABLE I FOUG\n");
             // print variable info before lookup:
             Dynamic_Var value = get_var_value(instruction[1+is_junk].var.name, instruction[1+is_junk].var.name_len, 0, 0, scope);
-            if (value.type == VAR_NUMBER){
-                int is_int = 0;
-                if ((int)(value.value) == (value.value)) is_int = 1;
-                
-                if (is_junk) {                    
-                    int amount_of_digits = floor (log10(abs((int)(value.value)))) + 1;
-                    if (!is_int) amount_of_digits += 7;
-                    char num_str[amount_of_digits];
-
-                    if (is_int)
-                        sprintf(num_str, "%d", (int)(value.value));
-                    else
-                        sprintf(num_str, "%lf", value.value);
-            
-                    print_red(num_str, amount_of_digits, 1);
-
-                } else
-                    if (is_int)
-                        printf("%d\n", (int)(value.value));
-                    else 
-                        printf("%lf\n", value.value);
-
-
-            } else if (value.type == VAR_STRING){
-                if (is_junk) 
-                    print_red(value.string, value.str_len, 1);
-                else
-                    printf("%.*s\n", value.str_len, value.string);
-            } else if (value.type == VAR_LIST){
-                if (is_junk) {
-                    // printa inte rött i listor för jag orkar inte implementera det ordentligt
-                    printf("[");
-                    for (int j = 0; j < value.str_len; j++) {
-                        if (j > 0) printf(", ");
-                        if (value.list_ptr[j].type == VAR_STRING) {
-                            printf("\"%.*s\"", value.list_ptr[j].str_len, value.list_ptr[j].string);
-                        } else if (value.list_ptr[j].type == VAR_NUMBER) {
-                            printf("%.0f", value.list_ptr[j].value);
-                        } else if (value.list_ptr[j].type == VAR_LIST) {
-                            printf("[...]");
-                        }
-                    }
-                    printf("]\n");
-                } else {
-                    printf("[");
-                    for (int j = 0; j < value.str_len; j++) {
-                        if (j > 0) printf(", ");
-                        if (value.list_ptr[j].type == VAR_STRING) {
-                            printf("\"%.*s\"", value.list_ptr[j].str_len, value.list_ptr[j].string);
-                        } else if (value.list_ptr[j].type == VAR_NUMBER) {
-                            printf("%.0f", value.list_ptr[j].value);
-                        } else if (value.list_ptr[j].type == VAR_LIST) {
-                            printf("[...]");
-                        }
-                    }
-                    printf("]\n");
-                }
-            }
+            print_variable(value, is_junk);
+            printf("\n");
         }
         else
         {
@@ -1168,36 +1111,7 @@ void foug(Token *instruction, Scope *scope) {
                     len++;
                 }
                 Dynamic_Var value_svets = get_var_value(instruction[2+is_junk].var.name+i+1, len, 0, 0, scope);
-
-                if (value_svets.type == VAR_NUMBER){
-                    int is_int = 0;
-                    if ((int)(value_svets.value) == (value_svets.value)) is_int = 1;
-                    
-                    if (is_junk) {                    
-                        int amount_of_digits = floor (log10(abs((int)(value_svets.value)))) + 1;
-                        if (!is_int) amount_of_digits += 7;
-                        char num_str[amount_of_digits];
-
-                        if (is_int)
-                            sprintf(num_str, "%d", (int)(value_svets.value));
-                        else
-                            sprintf(num_str, "%lf", value_svets.value);
-                
-                        print_red(num_str, amount_of_digits, 0);
-
-                    } else
-                        if (is_int)
-                            printf("%d", (int)(value_svets.value));
-                        else 
-                            printf("%lf", value_svets.value);
-
-
-                } else if (value_svets.type == VAR_STRING){
-                    if (is_junk) 
-                        print_red(value_svets.string, value_svets.str_len, 0);
-                    else
-                        printf("%.*s", value_svets.str_len, value_svets.string);
-                } 
+                print_variable(value_svets, is_junk);
                 i += len + 1;
             }
             else
