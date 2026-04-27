@@ -42,7 +42,7 @@ int *loop_links;
 
 
 
-char* bult(char* file_name, char* user){
+Bult_Ret bult(char* file_name, char* user){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -54,7 +54,8 @@ char* bult(char* file_name, char* user){
     int len = strlen(buff);
     int found;
     int search = 1;
-    
+    int import_line_count = 0;
+
     #ifdef __APPLE__
         char pre_user[] = "/Users/";
         char post_user[] = "/Library/foglang2/";
@@ -119,7 +120,13 @@ char* bult(char* file_name, char* user){
                 strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
                 
-                
+                // räkna antalet rader i importfilen
+                for (int k = 0; k < strlen(import_buff); k++) {
+                    if (import_buff[k] == '\n') {
+                        import_line_count++;
+                    }
+                }
+
                 if (find_substring(imports, import_file_name_prefix) == -1) {
                     is_dupe = 0;
                     imports_capacity += name_len+((3+strlen(lib))*(!is_sax))+1;
@@ -169,7 +176,9 @@ char* bult(char* file_name, char* user){
     free(imports);
     imports = NULL;
 
-    return buff; 
+    Bult_Ret ret = {.buff = buff, .import_line_count = import_line_count};
+
+    return ret;
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
@@ -845,7 +854,6 @@ void throw_error(int type, String err_str, Token *instruction){
     print_red("Error at line ", strlen("Error at line "), 0);
 
     if (pc_to_line && program_counter >= 0) {
-        printf("alles gut, err type %d\n", type);
         int number_of_digits = floor(log10(abs(pc_to_line[program_counter]))) + 1;
         char str[number_of_digits];
         sprintf(str, "%d", pc_to_line[program_counter]);
@@ -1626,7 +1634,12 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    char* buff = bult(argv[1], user);
+    Bult_Ret bult_ret = bult(argv[1], user);
+    char* buff = bult_ret.buff;
+    int line_offset = bult_ret.import_line_count;
+
+
+    
     Program program = tokenize(buff, debug);
     
     Token **instructions = program.data;
@@ -1634,6 +1647,10 @@ int main(int argc, char **argv)
     check_syntax(&program);
     if (debug) print_tokens(instructions, instruction_amount);
 
+    // lägg på offset
+    for (int i = 0; i < instruction_amount; i++) {
+        pc_to_line[i] -= line_offset;
+    }
 
     // hitta entry point (main)
     for (int i = 0; i < instruction_amount; i++)
