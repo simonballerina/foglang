@@ -187,6 +187,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
 void foug(Token *instruction, Scope *scope);
-char* bult(char* file_name);
+char* bult(char* file_name, char* user);
 void loop(Token *instruction, Program program, Scope *scope, int keyword_count);
 void tpos(Token *instruction, Scope *scope);

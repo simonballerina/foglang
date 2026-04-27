@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+
+#ifdef __APPLE__
+    #include <sys/syslimits.h>
+#endif
+
 #ifdef _WIN32
     #include <windows.h>
 #endif
@@ -20,6 +25,13 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
+#ifdef PATH_MAX
+    char path_diff[PATH_MAX];
+#else
+    #define PATH_MAX 1024
+    char path_diff[PATH_MAX];
+#endif
+
 // håller värde för storlek på varje rad
 int* row_lengths;
 int *loop_links;
@@ -29,7 +41,8 @@ int *loop_links;
 #include "foglang_var.c"
 
 
-char* bult(char* file_name){
+
+char* bult(char* file_name, char* user){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -41,6 +54,22 @@ char* bult(char* file_name){
     int len = strlen(buff);
     int found;
     int search = 1;
+    
+    #ifdef __APPLE__
+        char pre_user[] = "/Users/";
+        char post_user[] = "/Library/foglang2/";
+        char lib[strlen(pre_user)+strlen(user)+strlen(post_user)];
+        sprintf(lib, "%s%s%s", pre_user, user, post_user);
+    #endif
+    
+    #ifdef _WIN32
+        char lib[] = "C:\\Program Files\\foglang2\\lib\\";
+    #endif
+
+    #ifdef __linux__
+        char lib[] = "/usr/local/lib/foglang2/";
+    #endif
+
     while (search){
         found = 0;
         for (int i = 0; i < len; i++){
@@ -48,10 +77,14 @@ char* bult(char* file_name){
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
                 int is_sax = 0;
+                char origin_wd[PATH_MAX];
                 if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
                 {
                     is_sax = 1;
                     i += 4;
+                    //move to relative position
+                    getcwd(origin_wd, PATH_MAX);
+                    chdir(path_diff);
                 }
                 int name_len = 0;
                 // hitta längden på importnamnet
@@ -60,20 +93,26 @@ char* bult(char* file_name){
                     name_len++;
                 name_len-=(i+5);
 
-                char* import_file_name = malloc((name_len+1+5+4*is_sax)*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax+strlen(lib))*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
                 buff[i + name_len + 5] = '\0';
                 if (is_sax) {
                     memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
                 } else {
-                    sprintf(import_file_name, "lib/%s.fg", buff+i+5);
+                    sprintf(import_file_name, "%s%s.fg", lib, buff+i+5);
                 }
                 
                 int is_dupe = 1;
+                char import_file_name_prefix[name_len];
+                strcpy(import_file_name_prefix, "#");
+                import_file_name[name_len+7*!is_sax+strlen(lib)*(!is_sax)] = '\0';
+                strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
-                if (find_substring(imports, import_file_name) == -1) {
+                
+                
+                if (find_substring(imports, import_file_name_prefix) == -1) {
                     is_dupe = 0;
-                    imports_capacity += name_len+7*is_sax;
+                    imports_capacity += name_len+((3+strlen(lib))*(!is_sax))+1;
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
@@ -103,6 +142,11 @@ char* bult(char* file_name){
                 free(old_buff);
                 free(import_buff);
 
+                //move back
+                if (is_sax) {
+                    chdir(origin_wd);
+                }
+
                 break;
             }
         }
@@ -116,7 +160,6 @@ char* bult(char* file_name){
     imports = NULL;
 
     return buff; 
-
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
@@ -1535,6 +1578,16 @@ int main(int argc, char **argv)
         }
     }
     
+    //define the difference in path of file and cwd
+    strcpy(path_diff, argv[1]);
+    char* path_ptr = &path_diff[0];
+    while (strchr(path_ptr, '/') != NULL)
+    {
+        path_ptr++;
+    }
+    path_ptr[-1] = '\0';
+    char* user = malloc(PATH_MAX);
+    user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
 
     // skapa konstantarrays
     // variabler
@@ -1563,7 +1616,7 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    char* buff = bult(argv[1]);
+    char* buff = bult(argv[1], user);
     Program program = tokenize(buff, debug);
     
     Token **instructions = program.data;
