@@ -129,7 +129,7 @@ typedef struct {
 
 enum Err_Type  {
     
-    ERR_MALLOC = 1,             // Out of memory
+    ERR_MALLOC = 1,         // Out of memory
     ERR_SYNTAX,             // Syntax error
     ERR_MATH,               // Ex division med noll
     ERR_INDEX,              // Indexeringserror

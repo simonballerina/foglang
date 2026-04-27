@@ -790,13 +790,15 @@ void throw_error(int type, String err_str, Token *instruction){
     char tick = '\'';  
     char colon = ':';
     print_red("Error at line ", strlen("Error at line "), 0);
-    int number_of_digits = floor(log10(abs(pc_to_line[program_counter]))) + 1;
-    char str[number_of_digits];
+
+    if (pc_to_line && program_counter >= 0) {
+        printf("alles gut, err type %d\n", type);
+        int number_of_digits = floor(log10(abs(pc_to_line[program_counter]))) + 1;
+        char str[number_of_digits];
+        sprintf(str, "%d", pc_to_line[program_counter]);
+        print_red(str, number_of_digits, 0);
+    }
     
-
-    sprintf(str, "%d", pc_to_line[program_counter]);
-    print_red(str, number_of_digits, 0);
-
     print_red(&colon, 1, 1);
     if (instruction != NULL)
         print_token_row(instruction);
