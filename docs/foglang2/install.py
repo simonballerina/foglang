@@ -61,7 +61,7 @@ def main():
         print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
 
         print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"cp -r lib {lib_path}", shell=True)
+        subprocess.call(f"cp -u -r lib {lib_path}", shell=True)
 
         filepath += "/foglang2"
 
