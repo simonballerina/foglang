@@ -4,3 +4,6 @@ docs/readthedocs/build/*
 docs/foglang2/build/*
 .vscode/*
 docs/foglang2/test/*
+docs/bandvagn/test/*
+docs/bandvagn/build/*
+docs/bandvagn/requests/*
