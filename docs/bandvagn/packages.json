@@ -1,0 +1,13 @@
+[
+    {
+        "name": "package1",
+        "version": "1.0.0",
+        "link" : "https://example.com/package1"
+    },
+    {
+        "name": "package2",
+        "version": "2.0.0",
+        "link" : "https://example.com/package2"
+
+    }
+]
