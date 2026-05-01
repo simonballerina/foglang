@@ -38,10 +38,17 @@ def main():
         print(f"     Installerar Library i {lib_path}")
         subprocess.call(f"powershell -Command xcopy lib {lib_path} /s /y /i", shell=True)
         print("TODO: Lägg in följande miljövariabel \"C:\\Program Files\\foglang2\\build\"")
-        exit_code = os.WEXITSTATUS(status)
+        status1 = subprocess.call(f"gcc -o {filepath+'\\foglang2.exe'} -lm")
+        exit_code = os.WEXITSTATUS(status1)
 
         if exit_code != 0:
-            print("     Installation misslyckades, installation avbruten")
+            print("     Kompilering misslyckades, installation avbruten")
+            exit(-1)
+
+        print(f"     Installerar Bandvagn package manager i {filepath}...")
+        status1 = subprocess.call(f"gcc -o {filepath+'\\vagn.exe'} -lcurl")
+        if exit_code != 0:
+            print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
 
     #unix
@@ -63,27 +70,50 @@ def main():
         print(f"     Installerar Library i {lib_path}")
         subprocess.call(f"cp -u -r lib {lib_path}", shell=True)
 
-        filepath += "/foglang2"
+        filepath_bin = filepath+"/foglang2"
 
-        status1 = subprocess.run(["make", "clean", f"TARGET={filepath}"]).returncode
+        status1 = subprocess.run(["make", "clean", f"TARGET={filepath_bin}"]).returncode
         exit_code1 = os.WEXITSTATUS(status1)
-
 
         if exit_code1 != 0:
             print("     Rensning misslyckades, installation avbruten")
             exit(-1)
 
-        status2 = subprocess.run(["make", f"TARGET={filepath}"]).returncode
+        status2 = subprocess.run(["make", f"TARGET={filepath_bin}"]).returncode
         exit_code2 = os.WEXITSTATUS(status2)
 
         if exit_code2 != 0:
             print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
 
-        print("     Foglang2 installerat!")
+
+
+
+        print(f"     Installerar Bandvagn package manager i {filepath}...")
+        os.chdir("../bandvagn")
+
+        filepath_vagn = filepath+"/vagn"
+        status1 = subprocess.run(["make", "clean", f"TARGET={filepath_vagn}"]).returncode
+        exit_code1 = os.WEXITSTATUS(status1)
+
+        if exit_code1 != 0:
+            print("     Rensning misslyckades, installation avbruten")
+            exit(-1)
+
+        status2 = subprocess.run(["make", f"TARGET={filepath_vagn}"]).returncode
+        exit_code2 = os.WEXITSTATUS(status2)
+
+        if exit_code2 != 0:
+            print("     Kompilering misslyckades, installation avbruten")
+            exit(-1)
+
+
+
     else:
         print("Okänt operativsystem, installation misslyckades")
         exit(-1)
+    
+    print("     Foglang2 installerat!")
 
 if __name__ == "__main__":
     try:
