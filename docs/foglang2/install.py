@@ -38,7 +38,7 @@ def main():
         print(f"     Installerar Library i {lib_path}")
         subprocess.call(f"powershell -Command xcopy lib {lib_path} /s /y /i", shell=True)
         print("TODO: Lägg in följande miljövariabel \"C:\\Program Files\\foglang2\\build\"")
-        status1 = subprocess.call(f"gcc -o {filepath+'\\foglang2.exe'} -lm")
+        status1 = subprocess.call(f"gcc -o {filepath+'\\foglang2.exe'} main.c -lm")
         exit_code = os.WEXITSTATUS(status1)
 
         if exit_code != 0:
@@ -46,7 +46,8 @@ def main():
             exit(-1)
 
         print(f"     Installerar Bandvagn package manager i {filepath}...")
-        status1 = subprocess.call(f"gcc -o {filepath+'\\vagn.exe'} -lcurl")
+        os.chdir("../bandvagn")
+        status1 = subprocess.call(f"gcc -o {filepath+'\\vagn.exe'} main.c -lcurl")
         if exit_code != 0:
             print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
