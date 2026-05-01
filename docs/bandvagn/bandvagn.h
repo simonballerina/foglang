@@ -6,16 +6,22 @@ struct url_data {
 };
 
 typedef struct {
-    int number;
-    union {
-        char* name;
-        char* url;
-    };
+    char* name;
+    char* version;
+    char* url;
 } Token;
 
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data);
+typedef struct {
+    Token* tokens;
+    size_t size;
+} Token_List;
 
-char* http_get(char* url);
+size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata);
 
+int http_get(const char *url, char **out);
 
-
+Token_List parse_packages(char* data);
+char* get_lib_path_unix(char* base, char* name);
+int check_and_create_dir(char* path);
+int install_package(char* package_name);
+int remove_package(char* package_name);

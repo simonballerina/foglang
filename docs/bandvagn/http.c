@@ -3,61 +3,70 @@
 
 
 
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
-    size_t index = data->size;
-    size_t n = (size * nmemb);
-    char* tmp;
+size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata) {
+    struct url_data *data = userdata;
+    size_t n = size * nmemb;
 
-    data->size += (size * nmemb);
-
-
-    tmp = realloc(data->data, data->size + 1); 
-
-    if(tmp) {
-        data->data = tmp;
-    } else {
-        if(data->data) {
-            free(data->data);
-        }
-        fprintf(stderr, "Failed to allocate memory\n");
-        return 0;
+    char *tmp = realloc(data->data, data->size + n + 1);
+    if (!tmp) {
+        return 0; // abort safely
     }
 
-    memcpy((data->data + index), ptr, n);
+    data->data = tmp;
+    memcpy(data->data + data->size, ptr, n);
+
+    data->size += n;
     data->data[data->size] = '\0';
 
-    return size * nmemb;
+    return n;
 }
 
-char* http_get(char* url) {
-    CURL *curl;
+int http_get(const char *url, char **out) {
+    CURL *curl = curl_easy_init();
+    if (!curl) return -1;
 
-    struct url_data data;
-    data.size = 0;
-    data.data = malloc(4096); 
-    if(NULL == data.data) {
-        fprintf(stderr, "Failed to allocate memory\n");
-        return NULL;
-    }
+    struct url_data data = {0};
 
-    data.data[0] = '\0';
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
 
-    CURLcode res;
+    CURLcode res = curl_easy_perform(curl);
 
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-        res = curl_easy_perform(curl);
-        if(res != CURLE_OK) {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n",  
-            curl_easy_strerror(res));
-        }
-
+    if (res != CURLE_OK) {
         curl_easy_cleanup(curl);
-
+        free(data.data);
+        return -1;
     }
-    return data.data;
+
+    curl_easy_cleanup(curl);
+    *out = data.data;
+    return 0;
 }
 
+size_t write_file(void *ptr, size_t size, size_t nmemb, void *stream) {
+    FILE *file = (FILE *)stream;
+    return fwrite(ptr, size, nmemb, file);
+}
+
+int http_download(const char *url, const char *filename) {
+    CURL *curl = curl_easy_init();
+    if (!curl) return -1;
+
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        curl_easy_cleanup(curl);
+        return -1;
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    fclose(file);
+    curl_easy_cleanup(curl);
+
+    return (res == CURLE_OK) ? 0 : -1;
+}
