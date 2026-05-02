@@ -1,8 +1,20 @@
-
+//#include <foglang.h>
 void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     
     for (int i = 0; i < args_amount; i++){
-
+        /*if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals
+            int depth = 0;
+            int len = 0;
+            for (int j = i; args[j].type != TERMINATOR; j++){
+                len++;
+                if (args[j].type == LEFT_BRACKET) depth++;
+                if (args[j].type == RIGHT_BRACKET) depth--;
+                if (args[j].type == RIGHT_BRACKET && depth == 0) break;
+            }
+            if (is_top_level_list_literal(args+i, len)) {
+                List ret = evaluate_list_expression(args+i, len, instructions, instruction_amount, scope);
+            }
+        }*/
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
             // kolla om det är en indexering av en variabel
 
@@ -533,7 +545,6 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
 
 List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     // denna tuffa funktion syftar till att skapa en lista i formatet [värde, värde, värde], så det inte är massa aritmetiska operationer som ska hanteras
-
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token));
 
@@ -612,16 +623,32 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
     Dynamic_Var ret;
-
-    if (is_top_level_list_literal(args, args_amount)) {
-        List list_ret = evaluate_list_expression(args, args_amount, instructions, instruction_amount, scope);
-        ret.type = VAR_LIST;
-        ret.string = NULL;
-        ret.str_len = list_ret.len;
-        ret.value = 0;
-        ret.list_ptr = list_ret.items;
-        return ret;
+    for (int i = 0; i < args_amount; i++) {
+        if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals
+            int depth = 0;
+            int len = 0;
+            for (int j = i; args[j].type != TERMINATOR; j++){
+                len++;
+                if (args[j].type == LEFT_BRACKET) depth++;
+                if (args[j].type == RIGHT_BRACKET) depth--;
+                if (args[j].type == RIGHT_BRACKET && depth == 0) break;
+            }
+            if (is_top_level_list_literal(args+i, len)) {
+                List ret = evaluate_list_expression(args+i, len, instructions, instruction_amount, scope);
+                // mark the tokens consumed by the literal as removed
+                for (int j = i; j < i + len && j < args_amount; j++) {
+                    args[j].type = NONE;
+                }
+                // allocate a List holder on this token and attach the evaluated items
+                args[i].list_ptr = malloc(sizeof(List));
+                if (!args[i].list_ptr) goto malloc_error;
+                args[i].list_ptr->items = ret.items;
+                args[i].list_ptr->len = ret.len;
+                args[i].type = LIST;
+            }
+        }
     }
+
 
     int type = VAR_STRING;
 

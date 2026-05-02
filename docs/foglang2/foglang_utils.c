@@ -1,3 +1,4 @@
+
 double str_to_double(char *num)
 {
     int len = strlen(num);
@@ -493,6 +494,14 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
                 break;
             case COMMA:
                 printf("',' ");
+                break;
+            case LIST:
+                printf("'<LIST>' ");
+                for (int k = 0; k < args[j].list_ptr->len; k++) {
+                    print_variable(args[j].list_ptr->items[k], 0);
+                    printf(" ");
+                }
+                printf("'</LIST>'");
                 break;
             }
         }

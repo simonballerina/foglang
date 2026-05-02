@@ -1380,8 +1380,15 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     
     // räkna antal formella argument
     int amount_of_args = 1;
+    int paren_depth = 0;
+    int bracket_depth = 0;
     for (int i = 2; instruction[i].type != TERMINATOR; i++){
-        if (instruction[i].type == COMMA) amount_of_args++;
+        if (instruction[i].type == LEFT_PAR) paren_depth++;
+        else if (instruction[i].type == RIGHT_PAR) paren_depth--;
+        else if (instruction[i].type == LEFT_BRACKET) bracket_depth++;
+        else if (instruction[i].type == RIGHT_BRACKET) bracket_depth--;
+        // only count commas that are not inside parentheses or brackets
+        if (instruction[i].type == COMMA && paren_depth == 0 && bracket_depth == 0) amount_of_args++;
     }
 
     typedef struct {
@@ -1391,16 +1398,17 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     } Arg;
 
     int arg_count = 0;
-    int depth = 0;
+    int paren_depth2 = 0;
+    int bracket_depth2 = 0;
     int start = 2; // första token efter (
 
     Arg arg_info[amount_of_args];
 
     int arg_tokens_len = 0;
     for (int i = 2; instruction[i].type != TERMINATOR; i++) {
-        if (instruction[i].type == LEFT_PAR) depth++;
-        if (instruction[i].type == RIGHT_PAR) {
-            if (depth == 0) {
+        if (instruction[i].type == LEFT_PAR) paren_depth2++;
+        else if (instruction[i].type == RIGHT_PAR) {
+            if (paren_depth2 == 0) {
                 // sista argumentet
                 arg_info[arg_count].start_index = start;
                 arg_info[arg_count].len = i - start;
@@ -1408,10 +1416,12 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
                 arg_tokens_len = i - 2 + 1;
                 break;
             }
-            depth--;
-        }
+            paren_depth2--;
+        } else if (instruction[i].type == LEFT_BRACKET) bracket_depth2++;
+        else if (instruction[i].type == RIGHT_BRACKET) bracket_depth2--;
 
-        if (instruction[i].type == COMMA && depth == 0) {
+        // comma separerar argument om den inte är inuti parenteser eller brackets
+        if (instruction[i].type == COMMA && paren_depth2 == 0 && bracket_depth2 == 0) {
             arg_info[arg_count].start_index = start;
             arg_info[arg_count].len = i - start;
             arg_count++;
