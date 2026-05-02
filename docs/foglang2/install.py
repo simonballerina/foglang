@@ -107,7 +107,7 @@ def main():
         if exit_code2 != 0:
             print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
-
+        subprocess.run("mkdir -p ~/.local/lib//foglang2/packages")
 
 
     else:
