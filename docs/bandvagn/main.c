@@ -13,6 +13,8 @@ Bandvagn package manager for Foglang
 #include <curl/curl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
+
 
 #include "bandvagn.h"
 
@@ -146,7 +148,7 @@ int check_and_create_dir(char* path) {
 int install_package(char* package_name) {
     printf("Locating package '%s'...\n", package_name);
     int EXIT_CODE = 0;
-    // Find packages json in Foglang github
+    // Find packages file in Foglang github
     char* packages = NULL;
     if (http_get(PACKAGES_PATH, &packages) != 0) {
         fprintf(stderr, "Failed to fetch packages\n");
@@ -214,6 +216,7 @@ int remove_package(char* package_name) {
     #ifdef _WIN32
     #elif __APPLE__
         char* base "/Library/";
+        char* lib_path = get_lib_path_unix(base, package_name);
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/lib/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, package_name);
@@ -229,16 +232,128 @@ int remove_package(char* package_name) {
     return 0;
 }
 
+char** read_ls(char* path) {
+    DIR *d;
+    struct dirent *dir;
+
+    d = opendir(path);
+    if (d == NULL) {
+        perror("opendir");
+    }
+    int file_amount = 0;
+    int ret_cap = 8;
+    int ret_top = 0;
+    char** ret = calloc(ret_cap, sizeof(char*));
+    if (!ret) goto malloc_error;
+
+    while ((dir = readdir(d)) != NULL) {
+        if ((strcmp(dir->d_name, "..") == 0) || (strcmp(dir->d_name, ".") == 0)) continue;
+
+        int name_len = strlen(dir->d_name);
+        char* str = malloc((name_len+1)*sizeof(char));
+        if (!str) goto malloc_error;
+        memcpy(str, dir->d_name, name_len);
+        str[name_len] = '\0';
+
+        if (ret_top >= ret_cap) { 
+            ret = realloc(ret, (ret_cap + 8) * sizeof(char*)); 
+            ret_cap += 8; 
+            if (!ret) goto malloc_error; 
+        }
+        ret[ret_top++] = str;
+    }
+    ret[ret_top] = NULL;
+
+    closedir(d);
+    return ret;
+
+
+    malloc_error:
+        fprintf(stderr, "Could not allocate memory\n");
+        exit(1);
+
+}
+
+int update_packages() {
+    printf("Locating packages...\n");
+    int EXIT_CODE = 0;
+    // Find packages file in Foglang github
+    char* packages = NULL;
+    if (http_get(PACKAGES_PATH, &packages) != 0) {
+        fprintf(stderr, "Failed to fetch packages\n");
+        return 1;
+    }
+    Token_List found_packages = parse_packages(packages);
+
+    // Find installed packages
+    
+    #ifdef _WIN32
+
+    #elif __linux__ || __unix__ || __posix__ || __APPLE__
+
+        char* name = getenv("HOME");
+        #ifdef __APPLE__
+            char* path_suffix = "/Library";
+        #else
+            char* path_suffix = "/.local/lib/foglang2/packages";
+        #endif
+        int name_len = strlen(name);
+        int suffix_len = strlen(path_suffix);
+        int len = name_len+suffix_len;
+        char path[len+1];
+        memcpy(path, name, name_len);
+        memcpy(path+name_len, path_suffix, suffix_len);
+        path[len] = '\0';
+
+        char** ls_ret = read_ls(path);
+
+        // ta bort fg file extentions
+        for (int i = 0; ls_ret[i]; i++) { 
+            int pack_len = strlen(ls_ret[i]); 
+            if (pack_len > 3 && strcmp(ls_ret[i] + pack_len - 3, ".fg") == 0) {
+                ls_ret[i][pack_len - 3] = '\0'; 
+            }
+        }
+
+        for (int i = 0; i < sizeof(ls_ret) && ls_ret[i]; i++) {
+            int pack_len = strlen(ls_ret[i]);
+            if (strncmp(ls_ret[i]+(pack_len-3), ".fg", 3) == 0) {
+                ls_ret[i][pack_len-1] = '\0';
+                ls_ret[i][pack_len-2] = '\0';
+                ls_ret[i][pack_len-3] = '\0';
+            }
+        }
+
+        for (int i = 0; i < found_packages.size; i++) {
+            for (int j = 0; ls_ret[j]; j++) { 
+                if (strcmp(found_packages.tokens[i].name, ls_ret[j]) == 0) 
+                install_package(ls_ret[j]); 
+            }
+        }
+        printf("Update successful\n");
+
+    for (int i = 0; ls_ret[i]; i++) free(ls_ret[i]); 
+    free(ls_ret);
+    #endif
+    
+    exit: 
+
+    return EXIT_CODE;
+}
+
+
+
 int main(int argc, char *argv[]) {
     int EXIT_CODE = 0;
 
-    int install = 0;
+    int do_install = 0;
     int do_remove = 0;
+    int do_update = 0;
     char* package_to_modify = NULL;
 
     if (argc > 1) {
         if (strcmp(argv[1], "install") == 0) {
-            install = 1;
+            do_install = 1;
             if (argc < 3) {
                 printf("No package name provided for installation\n");
                 return 1;
@@ -253,6 +368,8 @@ int main(int argc, char *argv[]) {
             }
             package_to_modify = argv[2];
             printf("Removing package '%s'\n", argv[2]);
+        } else if (strcmp(argv[1], "update") == 0) {
+            do_update = 1;
         } else {
             printf("Unknown command '%s'\n", argv[1]);
             return -1;
@@ -264,10 +381,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (install) {
+    if (do_install) {
         EXIT_CODE = install_package(package_to_modify);
     } else if (do_remove) {
         EXIT_CODE = remove_package(package_to_modify);
+    } else if (do_update) {
+        EXIT_CODE = update_packages();
     }
 
     return EXIT_CODE;

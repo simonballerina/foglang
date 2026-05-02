@@ -2,7 +2,6 @@
 
 
 
-
 size_t write_data(void *ptr, size_t size, size_t nmemb, void *userdata) {
     struct url_data *data = userdata;
     size_t n = size * nmemb;
