@@ -59,7 +59,7 @@ def main():
             user = os.environ.get("SUDO_USER")
             if not user:
                 user = os.environ.get("USER")
-            lib_path: str = f"/Users/{user}/Library/foglang2"
+            lib_path: str = f"~/Library/foglang2"
         #linux etc
         else:
             lib_path: str = "/usr/local/lib/foglang2"
@@ -69,7 +69,7 @@ def main():
         print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
 
         print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"cp -u -r lib {lib_path}", shell=True)
+        subprocess.call(f"mkdir -p {lib_path} && cp -r lib/ {lib_path}", shell=True)
 
         filepath_bin = filepath+"/foglang2"
 

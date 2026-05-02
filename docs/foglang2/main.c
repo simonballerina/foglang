@@ -68,7 +68,7 @@ Bult_Ret bult(char* file_name, char* user){
     #endif
 
     #ifdef __linux__
-        char lib[] = "/usr/local/lib/foglang2/";
+        char lib[] = "/usr/local/lib/foglang/";
     #endif
 
     while (search){
@@ -103,7 +103,6 @@ Bult_Ret bult(char* file_name, char* user){
                 while (name_len < len && buff[name_len] != ';')
                     name_len++;
                 name_len-=(i+5);
-
                 char* import_file_name = malloc((name_len+1+5+4*is_sax+strlen(lib))*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
                 buff[i + name_len + 5] = '\0';
@@ -112,14 +111,16 @@ Bult_Ret bult(char* file_name, char* user){
                 } else {
                     sprintf(import_file_name, "%s%s.fg", lib, buff+i+5);
                 }
-                
                 int is_dupe = 1;
-                char import_file_name_prefix[name_len];
+                char import_file_name_prefix[name_len+7*!is_sax+strlen(lib)*(!is_sax)+1];
                 strcpy(import_file_name_prefix, "#");
                 import_file_name[name_len+7*!is_sax+strlen(lib)*(!is_sax)] = '\0';
                 strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
-                
+                if (!import_buff) {
+                    printf("ERR: Kunde inte öppna importfil\n");
+                    exit(1);
+                }
                 // räkna antalet rader i importfilen
                 for (int k = 0; k < strlen(import_buff); k++) {
                     if (import_buff[k] == '\n') {
@@ -132,10 +133,6 @@ Bult_Ret bult(char* file_name, char* user){
                     imports_capacity += name_len+((3+strlen(lib))*(!is_sax))+1;
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
-                }
-                if (!import_buff && !is_dupe) {
-                    printf("ERR: Kunde inte öppna importfil\n");
-                    exit(1);
                 }
                 free(import_file_name);
                 int import_end = i + 5 + name_len + 1;
