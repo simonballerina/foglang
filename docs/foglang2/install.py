@@ -107,6 +107,7 @@ def main():
         if exit_code2 != 0:
             print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
+        os.mkdir(f"{os.getenv("HOME")}/.local/lib/foglang2/packages")
 
 
 
