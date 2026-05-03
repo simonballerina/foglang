@@ -5,3 +5,6 @@ docs/foglang2/build/*
 .vscode/*
 docs/foglang2/test/*
 .DS_Store
+docs/bandvagn/test/*
+docs/bandvagn/build/*
+docs/bandvagn/requests/*

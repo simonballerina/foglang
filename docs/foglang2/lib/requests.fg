@@ -1,0 +1,37 @@
+bult os;
+
+boul _requests_call_unix(api_link) {
+    tpos svets "curl -s %api_link% -o foglang_temp_call.txt";
+
+    band slip ret = "foglang_temp_call.txt";
+    naer ret = "" {
+        band slip ret = "foglang_temp_call.txt";
+    }
+    tpos "rm foglang_temp_call.txt";
+    return ret;
+}
+
+boul _requests_call_windows(api_link) {
+    tpos svets "curl -s %api_link% -o foglang_temp_call.txt";
+
+    band slip ret = "foglang_temp_call.txt";
+    naer ret = "" {
+        band slip ret = "foglang_temp_call.txt";
+    }
+
+    tpos "del foglang_temp_call.txt";
+
+    return ret;
+}
+
+boul requests_call(api_link) {
+    band kernel = os_get_kernel();
+    givet att kernel = "Linux" eller kernel = "Darwin" {
+        band ans = _requests_call_unix(api_link);
+        return ans;
+    }
+
+    band ans = _requests_call_windows(api_link);
+    return ans;
+
+}

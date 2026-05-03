@@ -1,3 +1,4 @@
+
 double str_to_double(char *num)
 {
     int len = strlen(num);
@@ -64,7 +65,7 @@ char *read_file(const char *filename)
 }
 
 
-void print_tokens(Token instructions[][128], int instruction_amount)
+void print_tokens(Token** instructions, int instruction_amount)
 {
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -83,6 +84,12 @@ void print_tokens(Token instructions[][128], int instruction_amount)
         {
             switch (instructions[i][j].type)
             {
+            case GRIP:
+                printf("'GRIP'    ");
+                break;
+            case SLIP:
+                printf("'SLIP'    ");
+                break;
             case FOUG:
                 printf("'FOUG'    ");
                 break;
@@ -109,9 +116,6 @@ void print_tokens(Token instructions[][128], int instruction_amount)
                 break;
             case LEFT_BRACKET:
                 printf("'['    ");
-                break;
-            case LOOP_MARKER:
-                printf("'{%c}'    ", instructions[i][j].loop_id);
                 break;
             case PLUS:
                 printf("'+'    ");
@@ -214,16 +218,326 @@ void print_variables(Scope *scope)
                 printf("%c", (*scope).variables[i].name[j]);
             }
         }
-        printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
 
-        if ((*scope).variables[i].str_ptr != 0)
+        if ((*scope).variables[i].type == VAR_LIST)
         {
-            for (int j = 0; j < (*scope).variables[i].len; j++)
+            printf("    Lista (len: %d):\n", (*scope).variables[i].len);
+            print_dynamic_items((*scope).variables[i].list_ptr, (*scope).variables[i].len, 2);
+        }
+        else
+        {
+            printf("    Value: %lf    List/String_len: %d   String: '", (*scope).variables[i].value, (*scope).variables[i].len);
+
+            if ((*scope).variables[i].str_ptr != 0)
             {
-                printf("%c", (*scope).variables[i].str_ptr[j]);
+                for (int j = 0; j < (*scope).variables[i].len; j++)
+                {
+                    printf("%c", (*scope).variables[i].str_ptr[j]);
+                }
+            }
+
+            printf("'\n");
+        }
+    }
+}
+
+int find_substring(char *txt, char *pat) {
+    int n = strlen(txt);
+    int m = strlen(pat);
+    for (int i = 0; i <= n - m; i++) {
+        int j;
+        for (j = 0; j < m; j++) {
+            if (txt[i + j] != pat[j]) {
+                break;
+            }
+        }
+        if (j == m) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+void print_red(char* str, int len, int print_backslash) {
+
+    #ifdef _WIN32
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        fprintf(stderr, "%.*s", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+        SetConsoleTextAttribute(hConsole, 7);  // reset
+    #else
+        fprintf(stderr, "\033[31m%.*s\033[0m", len, str);
+        if (print_backslash) fprintf(stderr, "\n");
+    #endif
+
+}
+
+
+void print_variable(Dynamic_Var var, int is_junk) {
+    if (!is_junk) {
+        if (var.type == VAR_NUMBER) {
+            int is_int = 0;
+            if ((int)(var.value) == (var.value)) is_int = 1;
+            if (is_int)
+                printf("%d", (int)(var.value));
+            else
+                printf("%lf", var.value);
+        } else if (var.type == VAR_STRING) {
+            printf("%.*s", var.str_len, var.string);
+        } else if (var.type == VAR_LIST) {
+            printf("[");
+            for (int j = 0; j < var.str_len; j++) {
+                if (j > 0) printf(", ");
+                if (var.list_ptr[j].type == VAR_STRING) {
+                    printf("\"%.*s\"", var.list_ptr[j].str_len, var.list_ptr[j].string);
+                } else if (var.list_ptr[j].type == VAR_NUMBER) {
+                    int is_int = 0;
+                    if ((int)(var.list_ptr[j].value) == (var.list_ptr[j].value)) is_int = 1;
+                    if (is_int)
+                        printf("%d", (int)(var.list_ptr[j].value));
+                    else
+                        printf("%lf", var.list_ptr[j].value);
+                } else if (var.list_ptr[j].type == VAR_LIST) {
+                    print_variable(var.list_ptr[j], is_junk);
+                }
+            }
+            printf("]");
+        }
+    } else { // junk
+        if (var.type == VAR_NUMBER) {
+            int is_int = 0;
+            if ((int)(var.value) == (var.value)) is_int = 1;
+            int amount_of_digits = floor (log10(abs((int)(var.value)))) + 1;
+            if (!is_int) amount_of_digits += 7;
+            char num_str[amount_of_digits];
+            if (is_int)
+                sprintf(num_str, "%d", (int)(var.value));
+            else
+                sprintf(num_str, "%lf", var.value);
+            print_red(num_str, amount_of_digits, 0);
+        } else if (var.type == VAR_STRING) {
+            print_red(var.string, var.str_len, 0);
+        } else if (var.type == VAR_LIST) {
+            char right_bracket = ']';
+            char left_bracket = '[';
+            print_red(&left_bracket, 1, 0);
+            for (int j = 0; j < var.str_len; j++) {
+                if (j > 0) print_red(", ", 2, 0);
+                
+                if (var.list_ptr[j].type == VAR_STRING) {
+                    char str[var.list_ptr[j].str_len+2];
+                    memcpy(str+1, var.list_ptr[j].string, var.list_ptr[j].str_len);
+                    str[0] = '\"';
+                    str[var.list_ptr[j].str_len+1] = '\"';
+                    print_red(str, var.list_ptr[j].str_len+2, 0);
+                } else if (var.list_ptr[j].type == VAR_NUMBER) {
+                    int is_int = 0;
+                    if ((int)(var.list_ptr[j].value) == (var.list_ptr[j].value)) is_int = 1;
+                    int amount_of_digits = floor (log10(abs((int)(var.list_ptr[j].value)))) + 1;
+                    if (!is_int) amount_of_digits += 7;
+                    char num_str[amount_of_digits];
+                    if (is_int)
+                        sprintf(num_str, "%d", (int)(var.list_ptr[j].value));
+                    else
+                        sprintf(num_str, "%lf", var.list_ptr[j].value);
+                    print_red(num_str, amount_of_digits, 0);
+                } else if (var.list_ptr[j].type == VAR_LIST) {
+                    print_variable(var.list_ptr[j], is_junk);
+                }
+            }
+            print_red(&right_bracket, 1, 0);
+        }
+    }
+}
+
+
+
+
+static void print_dynamic_items(Dynamic_Var *items, int len, int indent)
+{
+    for (int j = 0; j < len; j++)
+    {
+        for (int sp = 0; sp < indent; sp++)
+        {
+            printf("  ");
+        }
+
+        printf("%d: Type: %d    Value: %lf    List/String_len: %d   String: '",
+               j,
+               items[j].type,
+               items[j].value,
+               items[j].str_len);
+
+        if (items[j].type == VAR_STRING && items[j].string != NULL)
+        {
+            for (int k = 0; k < items[j].str_len; k++)
+            {
+                printf("%c", items[j].string[k]);
             }
         }
 
         printf("'\n");
+
+        if (items[j].type == VAR_LIST)
+        {
+            print_dynamic_items(items[j].list_ptr, items[j].str_len, indent + 4);
+        }
     }
 }
+
+
+void print_token_row(Token* args){
+for (int j = 0; args[j].type != TERMINATOR; j++)
+        {
+            switch (args[j].type)
+            {
+            case FOUG:
+                printf("'FOUG' ");
+                break;
+            case JUNK:
+                printf("'JUNK' ");
+                break;
+            case BAND:
+                printf("'BAND' ");
+                break;
+            case SLIP:
+                printf("'SLIP' ");
+                break;
+            case GRIP:
+                printf("'GRIP' ");
+                break;
+            case GIVET:
+                printf("'GIVET' ");
+                break;
+            case ATT:
+                printf("'ATT' ");
+                break;
+            case NAER:
+                printf("'NAER' ");
+                break;
+            case RIGHT_PAR:
+                printf("')' ");
+                break;
+            case LEFT_PAR:
+                printf("'(' ");
+                break;
+            case RIGHT_BRACKET:
+                printf("']' ");
+                break;
+            case LEFT_BRACKET:
+                printf("'[' ");
+                break;
+            case PLUS:
+                printf("'+' ");
+                break;
+            case MINUS:
+                printf("'-' ");
+                break;
+            case MULTIPLIED:
+                printf("'*' ");
+                break;
+            case DIVIDED:
+                printf("'/' ");
+                break;
+            case EXPONENT:
+                printf("'^' ");
+                break;
+            case MODULO:
+                printf("'%%' ");
+                break;
+            case VARIABLE:
+                printf("'");
+                if (args[j].var.type == VAR_FUNCTION)
+                    printf("f ");
+                for (int k = 0; k < args[j].var.name_len; k++)
+                {
+                    printf("%c", *(args[j].var.name + k));
+                }
+                printf("' ");
+                break;
+            case STRING:
+                printf("'");
+                for (int k = 0; k < args[j].var.name_len; k++)
+                {
+                    printf("%c", *(args[j].var.name + k));
+                }
+                printf("' ");
+                break;
+            case EQUALS:
+                printf("'=' ");
+                break;
+            case NOT_EQUAL_TO:
+                printf("'!=' ");
+                break;
+            case GREATER_THAN:
+                printf("'>' ");
+                break;
+            case LESS_THAN:
+                printf("'<' ");
+                break;
+            case NUMBER:
+                printf("'%lf' ", args[j].value);
+                break;
+            case TERMINATOR:
+                printf("'\\0' ");
+                break;
+            case FUNCTION:
+                printf("'BOUL' ");
+                break;
+            case RETURN:
+                printf("'RETURN' ");
+                break;
+            case MAIN:
+                printf("'MAIN' ");
+                break;
+            case SVETS:
+                printf("'SVETS' ");
+                break;
+            case TPOS:
+                printf("'TPOS' ");
+                break;
+            case COMMA:
+                printf("',' ");
+                break;
+            case LIST:
+                printf("'<LIST>' ");
+                for (int k = 0; k < args[j].list_ptr->len; k++) {
+                    print_variable(args[j].list_ptr->items[k], 0);
+                    printf(" ");
+                }
+                printf("'</LIST>'");
+                break;
+            }
+        }
+        printf("\n");
+}
+
+static int is_top_level_list_literal(Token *args, int args_amount)
+{
+    int start = 0;
+    while (start < args_amount && args[start].type == NONE) start++;
+    if (start >= args_amount || args[start].type != LEFT_BRACKET) return 0;
+
+    int depth = 0;
+    for (int i = start; i < args_amount; i++) {
+        if (args[i].type == LEFT_BRACKET) {
+            depth++;
+        } else if (args[i].type == RIGHT_BRACKET) {
+            depth--;
+            if (depth == 0) {
+                int j = i + 1;
+                while (j < args_amount && args[j].type == NONE) j++;
+                return j == args_amount;
+            }
+        }
+    }
+    return 0;
+}
+
+
+
+
+
+
