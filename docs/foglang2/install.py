@@ -62,6 +62,8 @@ def main():
             lib_path: str = f"~/Library/foglang2"
         #linux etc
         else:
+            if not os.access(f"/home/{os.getenv("SUDO_USER")}/.local/lib/foglang2/packages", os.R_OK):
+                os.mkdir(f"/home/{os.getenv("SUDO_USER")}/.local/lib/foglang2/packages")
             lib_path: str = "/usr/local/lib/foglang2"
 
         if not filepath:
@@ -107,8 +109,8 @@ def main():
         if exit_code2 != 0:
             print("     Kompilering misslyckades, installation avbruten")
             exit(-1)
-        if not os.access(f"/home/{os.getenv("SUDO_USER")}/.local/lib/foglang2/packages", os.R_OK):
-            os.mkdir(f"/home/{os.getenv("SUDO_USER")}/.local/lib/foglang2/packages")
+        
+
 
 
 
