@@ -56,14 +56,12 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     if (current.type == VAR_LIST) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
-                            printf("Index: %d, List length: %d\n", index, current.str_len);
                             throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }
                         current = current.list_ptr[index];
                     } else if (current.type == VAR_STRING) {
                         if (index < 0) index += current.str_len;
                         if (index >= current.str_len || index < 0) {
-                            printf("Index: %d, String length: %d\n", index, current.str_len);
                             print_variables(scope);
                             throw_error(ERR_INDEX, (String){current.string, current.str_len}, NULL);
                         }

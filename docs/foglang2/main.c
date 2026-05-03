@@ -47,9 +47,10 @@ Bult_Ret bult(char* file_name, char* user){
     char *buff = read_file(file_name);
     int imports_capacity = 32;
     char *imports = malloc(imports_capacity);
+    
     if (!buff) {
-        printf("ERR: Kunde inte öppna fil\n");
-        exit(1);
+        String str = {.len = strlen("Unknown file"), .string = "Unknown file"};
+        throw_error(ERR_FILE, str, NULL);
     }
     int len = strlen(buff);
     int found;
@@ -118,8 +119,8 @@ Bult_Ret bult(char* file_name, char* user){
                 strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
                 if (!import_buff) {
-                    printf("ERR: Kunde inte öppna importfil\n");
-                    exit(1);
+                    throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
+                    
                 }
                 // räkna antalet rader i importfilen
                 for (int k = 0; k < strlen(import_buff); k++) {
@@ -613,7 +614,7 @@ void check_syntax(Program* program){
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
                         if (j >= 4) break;
-                        printf("[NAER]: ERR: Syntax error, instruktion %d\n", i);
+                        printf("[NAER]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
 
@@ -646,16 +647,16 @@ void check_syntax(Program* program){
                     j++;
                 }
                 if (comp_amount < 1){
-                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara minst 1\n", i, comp_amount);
+                    printf("[NAER]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
                     exit(-1);
                 }
                 if (!left_args || !right_args){
                     printf("RIGHT: %d, left: %d\n", right_args, left_args);
-                    printf("[NAER]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    printf("[NAER]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
                 if (!opens_loop){
-                    printf("[NAER]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid naer\n", i);
+                    printf("[NAER]: ERR: Syntax error, instruction %d, opened no loop at naer\n", i);
                     exit(-1);
                 }
                 break;
@@ -673,7 +674,7 @@ void check_syntax(Program* program){
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
                         if (j >= 5) break;
-                        printf("[GIVET]: ERR: Syntax error, instruktion %d\n", i);
+                        printf("[GIVET]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
                     int tok = instructions[i][j].type;
@@ -707,19 +708,19 @@ void check_syntax(Program* program){
                 }
                 
                 if (comp_amount < 1){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade %d jämförelseoperationer när det ska vara minst 1\n", i, comp_amount);
+                    printf("[GIVET]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
                     exit(-1);
                 }
                 if (!left_args || !right_args){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, hittade inga värden att jämföra\n", i);
+                    printf("[GIVET]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
                 if (!opens_loop){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid givet\n", i);
+                    printf("[GIVET]: ERR: Syntax error, instruction %d, opened no loop at givet\n", i);
                     exit(-1);
                 }
                 if (!att_exists){
-                    printf("[GIVET]: ERR: Syntax error, instruktion %d, ATT token saknas\n", i);
+                    printf("[GIVET]: ERR: Syntax error, instruction %d, ATT token saknas\n", i);
                     exit(-1);
                 }
 
@@ -745,7 +746,7 @@ void check_syntax(Program* program){
                     }
                 }
                 if (!sig_paren){
-                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsdeklarationen saknar '('\n", i);
+                    printf("[BOUL]: ERR: Syntax error, instruction %d, function declaration is missing '('\n", i);
                     exit(-1);
                 }
                 for (int k = sig_paren + 1; instructions[i][k].type != TERMINATOR; k++){
@@ -757,7 +758,7 @@ void check_syntax(Program* program){
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
                         if (j >= 4) break;
-                        printf("[BOUL]: ERR: Syntax error, instruktion %d\n", i);
+                        printf("[BOUL]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
                     if (instructions[i][j].type == OPEN_LOOP) {
@@ -804,13 +805,13 @@ void check_syntax(Program* program){
                                     c++;
                                 }
                                 if (depth != 0){
-                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, förväntade ')' efter funktionsanropet '%.*s'\n", a, instructions[i][1].var.name_len, instructions[i][1].var.name);
+                                    printf("[BOUL]: ERR: Syntax error, instruction %d, expected ')' after function call '%.*s'\n", a, instructions[i][1].var.name_len, instructions[i][1].var.name);
                                     exit(-1);
                                 }
                                 if (saw_arg || counted_args > 0) counted_args++;
 
                                 if (counted_args != func_argument_count){
-                                    printf("[BOUL]: ERR: Syntax error, instruktion %d, funktionsanropet har %d argument när funktionen '%.*s' kräver %d\n", a, counted_args, instructions[i][1].var.name_len, instructions[i][1].var.name, func_argument_count);
+                                    printf("[BOUL]: ERR: Syntax error, instruction %d, function call found %d argument(s) when function '%.*s' requires %d\n", a, counted_args, instructions[i][1].var.name_len, instructions[i][1].var.name, func_argument_count);
                                     exit(-1);
                                 }
 
@@ -820,7 +821,7 @@ void check_syntax(Program* program){
                 }
                 
                 if (!opens_loop){
-                    printf("[BOUL]: ERR: Syntax error, instruktion %d, Öppnade ingen loop vid funktion\n", i);
+                    printf("[BOUL]: ERR: Syntax error, instruction %d, no loop opened at function start\n", i);
                     exit(-1);
                 }
                 //TODO check not implemented
@@ -834,13 +835,13 @@ void check_syntax(Program* program){
                 break;
         }
         if (openers < closers) {
-        printf("[CLOSE]: ERR: Syntax error, instruktion %d, ensamt stängande bracket\n", i);
+        printf("[CLOSE]: ERR: Syntax error, instruction %d, alone closing bracket\n", i);
         exit(-1);
         }
     }
 
     if (openers != closers) {
-        printf("ERR: Syntax error, ostängda bracket, öppnar x%d men stänger x%d\n", openers, closers);
+        printf("ERR: Syntax error, unclosed bracket, opens x%d but closes x%d\n", openers, closers);
         exit(-1);
     }
 }
@@ -895,6 +896,10 @@ void throw_error(int type, String err_str, Token *instruction){
         case ERR_TYPE:
             print_red("ERR_TYPE: Invalid type\n", strlen("ERR_TYPE: Invalid type\n"), 0);
             print_red(err_str.string, err_str.len, 1);     // err_str is a description of the type error
+            break;
+        case ERR_FILE:
+            print_red("ERR_FILE: Could not read file\n", strlen("ERR_FILE: Could not read file\n"), 0);
+            print_red(err_str.string, err_str.len, 1);
             break;
     }
     exit(type);
@@ -1624,8 +1629,8 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        printf("fog:~$ För få argument!\n");
-        printf("fog:~$ SYNTAX: <./fog fil.fg>\n");
+        printf("Too few arguments, ");
+        printf("Syntax: <foglang2 file.fg>\n");
         return -1;
     }
 
