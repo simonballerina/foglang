@@ -141,6 +141,7 @@ enum Err_Type  {
     ERR_INDEX,              // 4 - Indexeringserror
     ERR_NAME,               // 5 - Okänt värde hittas ej
     ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
+    ERR_FILE,               // 7 - Läsning av fil misslyckades
 };
 
 // utils, ex hjälpfunktioner
