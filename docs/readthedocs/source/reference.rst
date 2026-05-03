@@ -56,7 +56,7 @@ Here is a program using quadruple spaces intents:
     naer i < 100 {
         # indent
         # givet att also starts a block
-        givet att i % 3 == 0 {
+        givet att i % 3 = 0 {
             foug svets "%i% is divisible by three\n";
         }
         # unindent after block end
@@ -103,11 +103,54 @@ Keywords
 Band
 ****
 
-etc
+Band is the Foglang keyword for declaring and modifying variables. The syntax is the keyword itself, 
+then the variable where the result of the content to the right of the equals sign is stored.
+::
+    band foo = 120;
+
+Entire mathematical expressions can be evaluated in band, 
+but beware that mixing different data types in a single evaluation will result in an error.
+::
+    band bar = ((120^4)+10)/2;
+Strings in Foglang start and end with quotation marks...
+::
+    band example_str = "This is a string!";
+
+... and can also be concatenated with the '+' operator.
+::
+    band sentence = "Hello, " + "World!";
+
+The third and last data type in Foglang is the list. A list is declared with brackets, and commas separating the items. 
+They act as a single variable storing multiple variables. 
+::
+    band fruit_list = ["Apple", "Banana", "John", 26];
+
+Note that a list can hold different data types, including other lists.
+::
+    band names = ["John", "Sven", ["Apple", 26]];
+
+Keep in mind that band is needed even for updating variables.
+
 
 .. _r4_2:
 
 Slip
 ####
 
-tbd — be till gud och vipps...
+The slip tag is used for reading files. 
+The evaluated expression to the right of the equals sign is the name of the file being read. 
+::
+    band slip passwords = "passwords.txt";
+
+Note that the text in passwords.txt will be saved as a string.
+
+.. _r4_3:
+
+Grip
+####
+
+The grip tag is used for reading input.
+The evaluated expression to the right of the equals sign is the promt of the input. 
+Can also be left as an empty string.
+::
+    band grip fruit = "Name a fruit beginning with the letter 'B': ";
