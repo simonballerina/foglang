@@ -20,7 +20,7 @@ Bandvagn package manager for Foglang
 
 #include "http.c"
 
-#define PACKAGES_PATH "https://raw.githubusercontent.com/simonballerina/foglang/refs/heads/main/docs/bandvagn/packages.fgpkg"
+#define PACKAGES_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
 
 Token_List parse_packages(char* data) {
     int data_len = strlen(data);
@@ -32,7 +32,7 @@ Token_List parse_packages(char* data) {
     int len = 0;
     int i = 0;
     while (data[i]) if (data[i++] == '\n') len++;
-    Token* tokens = malloc((len+1)*sizeof(Token));
+    Token* tokens = calloc((len+1), sizeof(Token));
 
     int top_tok = 0;
     for (int i = 0; i < data_len; i++){ 
@@ -87,16 +87,29 @@ Token_List parse_packages(char* data) {
 }
 
 char* get_lib_path_unix(char* base, char* name) {
-    // add .fg file extention to name
-    int name_len = strlen(name);
-    char* name_with_ext = malloc(name_len + 3 + 1);
-    if (!name_with_ext) {
-        fprintf(stderr, "Could not allocate memory for name_with_ext\n");
-        exit(1);
+    // add .fg file extention to name if it doesnt have an extention
+    int has_ext = 0;
+    for (int i = strlen(name)-1; i >= 0 && name[i] != '/'; i--) {
+        if (name[i] == '.') {
+            has_ext = 1;
+            break;
+        }
     }
-    memcpy(name_with_ext, name, name_len);
-    memcpy(name_with_ext + name_len, ".fg", 3);
-    name_with_ext[name_len+3] = '\0';
+
+    int name_len = strlen(name);
+    char* name_with_ext;
+    if (!has_ext) {
+        name_with_ext = malloc(name_len + 3 + 1);
+        if (!name_with_ext) {
+            fprintf(stderr, "Could not allocate memory for name_with_ext\n");
+            exit(1);
+        }
+        memcpy(name_with_ext, name, name_len);
+        memcpy(name_with_ext + name_len, ".fg", 3);
+        name_with_ext[name_len+3] = '\0';
+    } else {
+        name_with_ext = name;
+    }
 
     const char *home = getenv("HOME");
     if (!home) {
@@ -127,7 +140,9 @@ int check_and_create_dir(char* path) {
         fprintf(stderr, "Failed to allocate memory for dir_path\n");
         return 1;
     }
-    memcpy(dir_path, path, strlen(path));
+    size_t path_len = strlen(path);
+    memcpy(dir_path, path, path_len);
+    dir_path[path_len] = '\0';
     char* last_slash = strrchr(dir_path, '/');
     if (last_slash) {
         *last_slash = '\0';
@@ -198,13 +213,11 @@ int install_package(char* package_name) {
     }
 
     exit_program:
-
-    free(packages);
     for (size_t i = 0; i < found_packages.size; i++) 
         free(found_packages.tokens[i].url);
     
     free(found_packages.tokens);
-
+    free(packages);
 
 
 
