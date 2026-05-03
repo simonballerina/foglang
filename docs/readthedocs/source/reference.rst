@@ -27,7 +27,7 @@ Therefore, each new instruction needs to be terminated by a semicolon.
 .. _r2:
 
 Good practice
-------------
+-------------
 
 aka. best practices — We <3 god praxis
 
