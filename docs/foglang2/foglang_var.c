@@ -63,6 +63,7 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 
     }
     throw_error(ERR_NAME, (String){name, length}, NULL);
+    return ret_value;
 }
 
 
