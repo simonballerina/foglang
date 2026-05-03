@@ -69,7 +69,7 @@ Bult_Ret bult(char* file_name, char* user){
     #endif
 
     #ifdef __linux__
-        char lib[] = "/usr/local/lib/foglang/";
+        char lib[] = "/usr/local/lib/foglang2/";
     #endif
 
     while (search){
