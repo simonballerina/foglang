@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -lcurl
+CFLAGS = -lcurl 
 TARGET = build/vagn
 
 $(TARGET): main.c bandvagn.h http.c
