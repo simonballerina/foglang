@@ -84,6 +84,12 @@ void print_tokens(Token** instructions, int instruction_amount)
         {
             switch (instructions[i][j].type)
             {
+            case GRIP:
+                printf("'GRIP'    ");
+                break;
+            case SLIP:
+                printf("'SLIP'    ");
+                break;
             case FOUG:
                 printf("'FOUG'    ");
                 break;
