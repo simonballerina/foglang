@@ -613,6 +613,7 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed for list", strlen("Memory allocation failed for list")}, NULL);
+    return ret;
 }
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
@@ -703,6 +704,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
     return ret;
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+    return ret;
 }
 
 
@@ -866,4 +868,5 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+    return res;
 }

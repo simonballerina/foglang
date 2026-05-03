@@ -179,7 +179,7 @@ Bult_Ret bult(char* file_name, char* user){
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
-        
+    return ret;
 }
 
 
