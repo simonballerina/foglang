@@ -984,7 +984,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         }
     }
 
-
     if (create_new)
     {
         if (type == VAR_NUMBER)
@@ -995,7 +994,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         {
             create_list_var(end_var.var.name, end_var.var.name_len, eval_result, scope);
         }
-        else if (type == VAR_STRING && is_slip == 0)
+        else if (type == VAR_STRING && is_slip == 0 && is_grip == 0)
         {
             create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string, scope);
         } 
@@ -1010,6 +1009,21 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             if (slip_string == NULL) goto malloc_error;
             create_str_var(end_var.var.name, end_var.var.name_len, strlen(slip_string), slip_string, scope);
             free(slip_string);
+        }
+        else if (is_grip)
+        {
+            // read input from user and store as string variable
+            printf("%.*s", eval_result.str_len, eval_result.string);
+
+            char *line = NULL;
+            size_t len = 0;
+
+            getline(&line, &len, stdin);
+            int line_len = strlen(line)-1; // ta bort newline
+
+            create_str_var(end_var.var.name, end_var.var.name_len, line_len, line, scope);
+
+            free(line);
         }
         
         else 
@@ -1031,7 +1045,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 }
             }
         }
-        else if (type == VAR_STRING && is_slip == 0 && !modify_list_item){
+        else if (type == VAR_STRING && is_slip == 0 && !modify_list_item && !is_grip){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
                     continue;
@@ -1090,6 +1104,27 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 }
             }
 
+        } else if (is_grip){
+            for (int i = 0; i < (*scope).index; i++){
+                if ((*scope).variables[i].name == NULL)
+                    continue;
+                if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
+                    free((*scope).variables[i].str_ptr);
+                    (*scope).variables[i].value = 0;
+
+                    printf("%.*s", eval_result.str_len, eval_result.string);
+
+                    char *line = NULL;
+                    size_t len = 0;
+
+                    getline(&line, &len, stdin);
+                    int line_len = strlen(line)-1; // ta bort newline
+
+                    (*scope).variables[i].str_ptr = line;
+                    (*scope).variables[i].len = line_len;
+                    (*scope).variables[i].type = VAR_STRING;
+                }
+            }
         }
     }
 
