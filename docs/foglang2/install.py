@@ -71,7 +71,7 @@ def main():
         print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
 
         print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"mkdir -p {lib_path} && cp -r lib/ {lib_path}", shell=True)
+        subprocess.call(f"mkdir -p {lib_path} && cp -r lib/* {lib_path}", shell=True)
 
         filepath_bin = filepath+"/foglang2"
 
