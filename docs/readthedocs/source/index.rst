@@ -27,7 +27,7 @@ Reference
 We have :ref:`reference<theref>` tings.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
    installation_guide
