@@ -123,7 +123,7 @@ def create_bandvagn_dir(plat):
     elif plat == "Darwin":
         lib_dir = os.path.join(f"/Users/{user}/", "Library/Application Support/foglang2/packages/")
     elif plat == "Windows":
-        lib_dir = f"C:\Program Files\foglang2\packages"
+        lib_dir = f"C:\\Program Files\\foglang2\\packages"
     ret_code = 0
     if not os.access(lib_dir, os.F_OK):
         ret_code = subprocess.run(["mkdir", "-p", lib_dir], check=True).returncode
