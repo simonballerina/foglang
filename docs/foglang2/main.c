@@ -58,10 +58,7 @@ Bult_Ret bult(char* file_name, char* user){
     int import_line_count = 0;
 
     #ifdef __APPLE__
-        char pre_user[] = "/Users/";
-        char post_user[] = "/Library/foglang2/";
-        char lib[strlen(pre_user)+strlen(user)+strlen(post_user)];
-        sprintf(lib, "%s%s%s", pre_user, user, post_user);
+        char lib[] = "/usr/local/lib/foglang2/";
     #endif
     
     #ifdef _WIN32
