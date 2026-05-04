@@ -190,16 +190,15 @@ int install_package(char* package_name) {
 
     #ifdef _WIN32
     #elif __APPLE__
-        char* base = "/Library/foglang2/packages/";
+        char* base = "/Library/Application Support/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
         // check if directory exists, if not create it
         if (check_and_create_dir(lib_path) != 0) {
             EXIT_CODE = 1;
             goto exit_program;
         }
-        printf("lib path: %s\n", lib_path);
     #elif __linux__ || __unix__ || __posix__
-        char* base = "/.local/lib/foglang2/packages/";
+        char* base = "/.local/share/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
         // check if directory exists, if not create it
         if (check_and_create_dir(lib_path) != 0) {
@@ -208,6 +207,7 @@ int install_package(char* package_name) {
         }
 
     #endif
+    
     
     if (http_download(found_packages.tokens[found_index].url, lib_path) == 0) {
         printf("Package download successful!\n");
@@ -235,10 +235,10 @@ int remove_package(char* package_name) {
     printf("Removing package '%s'...\n", package_name);
     #ifdef _WIN32
     #elif __APPLE__
-        char* base = "/Library/";
+        char* base = "/Library/Application Support/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, package_name);
     #elif __linux__ || __unix__ || __posix__
-        char* base = "/.local/lib/foglang2/packages/";
+        char* base = "/.local/share/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, package_name);
     #endif
 
