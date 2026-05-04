@@ -315,7 +315,7 @@ int update_packages() {
         #ifdef __APPLE__
             char* path_suffix = "/Library/foglang2/packages";
         #else
-            char* path_suffix = "/.local/lib/foglang2/packages";
+            char* path_suffix = "/.local/share/foglang2/packages";
         #endif
         int name_len = strlen(name);
         int suffix_len = strlen(path_suffix);
