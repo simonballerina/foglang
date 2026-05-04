@@ -364,9 +364,9 @@ int update_packages() {
 
 int get_highlighter() {
     int EXIT_CODE = 0;
-    printf("Installing Foglanghighlight for Visual Studio Code...");
+    printf("Installing Foglanghighlight for Visual Studio Code...\n");
     #ifdef _WIN32
-        printf("funkar inte än sorry — byt operativsystem");
+        printf("funkar inte än sorry — byt operativsystem\n");
         return -1;
     #elif __APPLE__
         system("curl -s https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
