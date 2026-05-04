@@ -116,27 +116,26 @@ def chown_recursive(path, uid, gid):
 
 def create_bandvagn_dir(plat): 
     print(f"Creating Bandvagn package directory for {plat}...")
-    
+
     user = os.environ.get("SUDO_USER")
     if plat == "Linux" or plat == "FreeBSD":
         lib_dir = f"/home/{user}/.local/share/foglang2/packages/"
     elif plat == "Darwin":
-        lib_dir = f"/Users/{user}/Library/Application Support/foglang2/packages"
+        lib_dir = os.path.join(f"/Users/{user}/", "Library/Application Support/foglang2/packages/")
     elif plat == "Windows":
-        lib_dir = f"C:\\Program Files\\foglang2\\packages"
+        lib_dir = f"C:\Program Files\foglang2\packages"
     ret_code = 0
     if not os.access(lib_dir, os.F_OK):
-        ret_code = subprocess.call(f"mkdir -p {lib_dir}", shell=True)
-    
+        ret_code = subprocess.run(["mkdir", "-p", lib_dir], check=True).returncode
+
     # change permissions for the folders
     chown_recursive(lib_dir, pwd.getpwnam(user).pw_uid, pwd.getpwnam(user).pw_gid)
-
-    
     if ret_code != 0:
         print("     Creation failed, exiting install...")
         sys.exit(1)
     else:
         print("     Creation successful!")
+
 
 
 
