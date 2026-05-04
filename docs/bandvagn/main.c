@@ -190,7 +190,14 @@ int install_package(char* package_name) {
 
     #ifdef _WIN32
     #elif __APPLE__
-        char* base "/Library/";
+        char* base = "/Library/foglang2/packages/";
+        char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
+        // check if directory exists, if not create it
+        if (check_and_create_dir(lib_path) != 0) {
+            EXIT_CODE = 1;
+            goto exit_program;
+        }
+        printf("lib path: %s\n", lib_path);
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/lib/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
@@ -228,7 +235,7 @@ int remove_package(char* package_name) {
     printf("Removing package '%s'...\n", package_name);
     #ifdef _WIN32
     #elif __APPLE__
-        char* base "/Library/";
+        char* base = "/Library/";
         char* lib_path = get_lib_path_unix(base, package_name);
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/lib/foglang2/packages/";
@@ -306,7 +313,7 @@ int update_packages() {
 
         char* name = getenv("HOME");
         #ifdef __APPLE__
-            char* path_suffix = "/Library";
+            char* path_suffix = "/Library/foglang2/packages";
         #else
             char* path_suffix = "/.local/lib/foglang2/packages";
         #endif
