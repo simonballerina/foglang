@@ -3,4 +3,3 @@ docs/** linguist-vendored=false
 *.yaml linguist-detectable
 *.md linguist-detectable
 *.rst linguist-detectable
-*.h linguist-detectable
