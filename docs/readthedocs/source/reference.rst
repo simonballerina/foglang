@@ -154,3 +154,74 @@ The evaluated expression to the right of the equals sign is the promt of the inp
 Can also be left as an empty string.
 ::
     band grip fruit = "Name a fruit beginning with the letter 'B': ";
+
+
+.. _r4_4:
+
+Foug
+****
+
+The foug keyword is the only way to display output in Foglang. It prints directly to standard out (stdout).
+::
+    foug "Hello, World!\n";
+
+Foug can also directly print variables.
+::
+    band number = 180;
+    foug number;
+
+A newline character is included if a variable is printed. 
+
+.. _r4_5:
+
+Svets
+#######
+
+The svets tag is used for when you want to merge a string with a variable. 
+To print the variable, encase it in percent symbols and insert it into a string.
+::
+    band age = 30;
+    foug svets "I am %age% years old!\n";
+
+Svets will also work for the tpos keyword.
+
+.. _r4_6:
+
+Junk
+#######
+
+The junk tag directs output to standard error, stderr. It can be used for throwing errors in Foglang.
+::
+    foug junk "ERROR: Something went wrong.\n";
+
+Different tags can also be combined. If both junk and svets are used, 
+keep in mind that it's very foggy to put the junk before svets.
+::
+    band err_msg = "Unknown error";
+    foug junk svets "ERROR: %err_msg%\n";
+
+
+.. _r4_7:
+
+Givet
+*********
+
+The givet keyword starts a block that runs if a condition is true. 
+The keyword is immediately followed by "att", and then the condition.
+::
+    band num = 7;
+    givet att num = 7 {
+        foug svets "num is equal to 7!\n";
+    } 
+
+This code block will only run when num is equal to 7. 
+The other comparative operators are greater than '>', less than '<', and not equal to '!='. 
+
+
+Multiple conditions can also be checked with 'och' (and), 'eller' (or) and 'inte' (not).
+::
+    band num = 4;
+    
+    givet att num > 0 och inte num2 > 10 {
+        foug "num is between 1 and 10!\n";
+    }
