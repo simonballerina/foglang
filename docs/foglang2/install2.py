@@ -3,6 +3,7 @@ import sys
 import ctypes
 import subprocess
 import platform
+import pwd
 
 def is_admin():
     try:
@@ -38,7 +39,6 @@ def install_foglang_bin(plat):
     else:
         print("     Build successful!")
     
-#os.system(f"sudo mkdir -p {lib_path} && sudo cp -r lib/* {lib_path}")
 
 def install_foglang_lib(plat):
 
@@ -89,11 +89,11 @@ def install_bandvagn(plat):
     abs_path += "/bandvagn/main.c"
 
     if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
-        build_path = "/usr/local/bin/foglang2"
+        build_path = "/usr/local/bin/vagn"
 
     elif plat == "Windows":
         abs_path.replace("/", "\\")
-        build_path = "C:\\Program Files\\foglang2\\build\\foglang2.exe"
+        build_path = "C:\\Program Files\\foglang2\\build\\vagn.exe"
 
     print(f"     Building to {build_path}...")
 
@@ -106,27 +106,38 @@ def install_bandvagn(plat):
         print("     Build successful!")
     
 
+def chown_recursive(path, uid, gid):
+    for root, dirs, files in os.walk(path):
+        os.chown(root, uid, gid)
+        for d in dirs:
+            os.chown(os.path.join(root, d), uid, gid)
+        for f in files:
+            os.chown(os.path.join(root, f), uid, gid)
+
 def create_bandvagn_dir(plat): 
     print(f"Creating Bandvagn package directory for {plat}...")
     
-    if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
-        user = os.environ.get("SUDO_USER")
-        if plat == "Linux" or plat == "FreeBSD":
-            lib_dir = f"/home/{user}/.local/share/foglang2/packages/"
-        elif plat == "Darwin":
-            lib_dir = f"/Users/{user}/Library/Application Support/foglang2/packages"
-        elif plat == "Windows":
-            lib_dir = f"C:\\Program Files\\foglang2\\packages"
-        ret_code = 0
-        if not os.access(lib_dir, os.F_OK):
-            ret_code = subprocess.call(f"mkdir -p {lib_dir}", shell=True)
-        if ret_code != 0:
-            print("     Creation failed, exiting install...")
-            sys.exit(1)
-        else:
-            print("     Creation successful!")
+    user = os.environ.get("SUDO_USER")
+    if plat == "Linux" or plat == "FreeBSD":
+        lib_dir = f"/home/{user}/.local/share/foglang2/packages/"
+    elif plat == "Darwin":
+        lib_dir = f"/Users/{user}/Library/Application Support/foglang2/packages"
     elif plat == "Windows":
-        pass
+        lib_dir = f"C:\\Program Files\\foglang2\\packages"
+    ret_code = 0
+    if not os.access(lib_dir, os.F_OK):
+        ret_code = subprocess.call(f"mkdir -p {lib_dir}", shell=True)
+    
+    # change permissions for the folders
+    chown_recursive(lib_dir, pwd.getpwnam(user).pw_uid, pwd.getpwnam(user).pw_gid)
+
+    
+    if ret_code != 0:
+        print("     Creation failed, exiting install...")
+        sys.exit(1)
+    else:
+        print("     Creation successful!")
+
 
 
 def main():
