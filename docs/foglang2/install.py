@@ -1,98 +1,158 @@
 import os
 import sys
+import ctypes
 import subprocess
 import platform
+import pwd
+
+def is_admin():
+    try:
+        is_adm = (os.getuid() == 0)
+
+    except AttributeError:
+        is_adm = ctypes.windll.shell32.IsUserAnAdmin() != 0
+
+    return is_adm
+
+def install_foglang_bin(plat):
+    print(f"Building Foglang executable for {plat}...")
+
+    abs_path = os.path.abspath(__file__)
+    for i in range(1, len(abs_path)-1):
+        if abs_path[-i] == '/':
+            abs_path = abs_path[:len(abs_path)-i+1]
+            break
+    abs_path += "main.c"
+
+    if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
+        build_path = "/usr/local/bin/foglang2"
+    elif plat == "Windows":
+        abs_path.replace("/", "\\")
+        build_path = "C:\\Program Files\\foglang2\\build\\foglang2.exe"
+
+    print(f"     Building to {build_path}...")
+
+    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lm", shell=True)
+    if ret_code != 0:
+        print("     Build failed, exiting install...")
+        sys.exit(1)
+    else:
+        print("     Build successful!")
+    
+
+def install_foglang_lib(plat):
+
+    print(f"Installing Foglang library for {plat}...")
+    abs_path = os.path.abspath(__file__)
+
+    for i in range(1, len(abs_path)-1):
+        if abs_path[-i] == '/' or abs_path[-i] == '\\':
+            abs_path = abs_path[:len(abs_path)-i+1]
+            break
+
+    abs_path += "lib/*"
+
+    if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
+        stdlib_path = "/usr/local/lib/foglang2/"
+
+    elif plat == "Windows":
+        stdlib_path = "'C:\\Program Files\\foglang2\\lib'"
+        abs_path.replace("/", "\\")
+
+    print(f"     Installing to {stdlib_path}...")
+        
+    if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
+        ret_code = subprocess.call(f"mkdir -p {stdlib_path} && cp -r {abs_path} {stdlib_path}", shell=True)
+
+    elif plat == "Windows":
+        ret_code = subprocess.call(f"powershell -Command xcopy {abs_path} {stdlib_path} /s /y /i", shell=True)
+
+    if ret_code != 0:
+        print("     Library install failed, exiting install...")
+        sys.exit(1)
+    else:
+        print("     Library install successful!")
+
+
+
+        
+
+def install_bandvagn(plat):
+    print(f"Building Bandvagn executable for {plat}...")
+
+    abs_path = os.path.abspath(__file__)
+    for a in range(2):
+        for i in range(1, len(abs_path)-1):
+            if abs_path[-i] == '/':
+                abs_path = abs_path[:len(abs_path)-i]
+                break
+    abs_path += "/bandvagn/main.c"
+
+    if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
+        build_path = "/usr/local/bin/vagn"
+
+    elif plat == "Windows":
+        abs_path.replace("/", "\\")
+        build_path = "C:\\Program Files\\foglang2\\build\\vagn.exe"
+
+    print(f"     Building to {build_path}...")
+
+    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lcurl", shell=True)
+
+    if ret_code != 0:
+        print("     Build failed, exiting install...")
+        sys.exit(1)
+    else:
+        print("     Build successful!")
+    
+
+def chown_recursive(path, uid, gid):
+    for root, dirs, files in os.walk(path):
+        os.chown(root, uid, gid)
+        for d in dirs:
+            os.chown(os.path.join(root, d), uid, gid)
+        for f in files:
+            os.chown(os.path.join(root, f), uid, gid)
+
+def create_bandvagn_dir(plat): 
+    print(f"Creating Bandvagn package directory for {plat}...")
+
+    user = os.environ.get("SUDO_USER")
+    if plat == "Linux" or plat == "FreeBSD":
+        lib_dir = f"/home/{user}/.local/share/foglang2/packages/"
+    elif plat == "Darwin":
+        lib_dir = os.path.join(f"/Users/{user}/", "Library/Application Support/foglang2/packages/")
+    elif plat == "Windows":
+        lib_dir = f"C:\Program Files\foglang2\packages"
+    ret_code = 0
+    if not os.access(lib_dir, os.F_OK):
+        ret_code = subprocess.run(["mkdir", "-p", lib_dir], check=True).returncode
+
+    # change permissions for the folders
+    chown_recursive(lib_dir, pwd.getpwnam(user).pw_uid, pwd.getpwnam(user).pw_gid)
+    if ret_code != 0:
+        print("     Creation failed, exiting install...")
+        sys.exit(1)
+    else:
+        print("     Creation successful!")
+
+
+
 
 def main():
+    if not is_admin():
+        print("You need to run the installation as root/administrator to install Foglang!")
+        sys.exit(1)
 
+    plat = platform.system()
 
-    name = os.name
+    install_foglang_bin(plat)
+    install_foglang_lib(plat)
 
-    filepath = input("  Var vill du lägga installationen? [sökväg] (enter för default): ")
-    bs = "\\" 
+    install_bandvagn(plat)
+    create_bandvagn_dir(plat)
 
-    #windows
-    print("name: ", name)
-    if name == "nt":
+    print("Foglang install successful!")
 
-        lib_path: str = "'C:\\Program Files\\foglang2\\lib'"
-
-        if not filepath:
-            filepath = "C:\\Program Files\\foglang2\\build"
-
-        filepath = filepath.replace("/", "\\")
-        print(f"     Installerar för Windows i {filepath}...")
-
-        print(f"     Installerar Library i {lib_path}")
-        subprocess.call(f"powershell -Command xcopy lib {lib_path} /s /y /i", shell=True)
-        print("TODO: Lägg in följande miljövariabel \"C:\\Program Files\\foglang2\\build\"")
-        status1 = subprocess.call(f"gcc -o {filepath+bs+'foglang2.exe'} main.c -lm")
-        exit_code = os.WEXITSTATUS(status1)
-
-        if exit_code != 0:
-            print("     Kompilering misslyckades, installation avbruten")
-            sys.exit(-1)
-
-        print(f"     Installerar Bandvagn package manager i {filepath}...")
-        os.chdir("../bandvagn")
-        status1 = subprocess.call(f"gcc -o {filepath+bs+'vagn.exe'} main.c -lcurl")
-        if exit_code != 0:
-            print("     Kompilering misslyckades, installation avbruten")
-            exit(-1)
-
-    #unix
-    elif name == "posix":
-        #mac
-        if platform.system() == "Darwin":
-            user = os.environ.get("USER")
-            lib_path: str = "/usr/local/lib/foglang2"
-            bandvagn_path: str = f"/Users/{user}/Library/foglang2/packages"
-        #linux etc
-        else:
-            user = os.environ.get("USER")
-            if not os.access(f"/home/{user}/.local/lib/foglang2/packages", os.R_OK):
-                os.mkdir(f"/home/{user}/.local/lib/foglang2/packages")
-            lib_path: str = "/usr/local/lib/foglang2"
-            bandvagn_path = f"/home/{user}/.local/lib/foglang2/packages"
-
-        if not filepath:
-            filepath = "/usr/local/bin"
-        print(f"     Installerar för Linux/MacOS/BSD i {filepath}...")
-
-        print(f"     Installerar Library i {lib_path}")
-        os.system(f"sudo mkdir -p {lib_path} && sudo cp -r lib/* {lib_path}")
-        filepath_bin = filepath+"/foglang2"
-
-        os.system(f"sudo make clean TARGET={filepath_bin}")
-
-        os.system(f"sudo make TARGET={filepath_bin}")
-
-
-
-
-        print(f"     Installerar Bandvagn package manager i {filepath}...")
-        os.chdir("../bandvagn")
-
-        os.system(f"mkdir -p {bandvagn_path}")
-
-
-        filepath_vagn = filepath+"/vagn"
-        os.system(f"sudo make clean TARGET={filepath_vagn}")
-        os.system(f"sudo make TARGET={filepath_vagn}")
- 
-
-
-
-
-    else:
-        print("Okänt operativsystem, installation misslyckades")
-        sys.exit(-1)
-    
-    print("     Foglang2 installerat!")
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n     Avbröt installationen")
-        sys.exit(0)
+if __name__ == '__main__':
+    main()
