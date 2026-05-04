@@ -6,6 +6,7 @@ Bandvagn package manager for Foglang
 
         ex:
         vagn install package_name
+        vagn highlight
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -361,7 +362,21 @@ int update_packages() {
     return EXIT_CODE;
 }
 
+int get_highlighter() {
+    int EXIT_CODE = 0;
+    printf("Installing Foglanghighlight for Visual Studio Code...");
+    #ifdef _WIN32
+        printf("funkar inte än sorry — byt operativsystem");
+        return -1;
+    #elif __APPLE__
+        system("curl -s https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+    #elif __linux__ || __unix__ || __posix__
+        system("curl -s https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix -L -o foglanghighlight.vsix && code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+    #endif
 
+
+    return EXIT_CODE;
+}
 
 int main(int argc, char *argv[]) {
     int EXIT_CODE = 0;
@@ -369,6 +384,7 @@ int main(int argc, char *argv[]) {
     int do_install = 0;
     int do_remove = 0;
     int do_update = 0;
+    int do_highlight = 0;
     char* package_to_modify = NULL;
 
     if (argc > 1) {
@@ -390,6 +406,8 @@ int main(int argc, char *argv[]) {
             printf("Removing package '%s'\n", argv[2]);
         } else if (strcmp(argv[1], "update") == 0) {
             do_update = 1;
+        } else if (strcmp(argv[1], "highlight") == 0) {
+            do_highlight = 1;
         } else {
             printf("Unknown command '%s'\n", argv[1]);
             return -1;
@@ -407,6 +425,8 @@ int main(int argc, char *argv[]) {
         EXIT_CODE = remove_package(package_to_modify);
     } else if (do_update) {
         EXIT_CODE = update_packages();
+    } else if (do_highlight) {
+        EXIT_CODE = get_highlighter();
     }
 
     return EXIT_CODE;

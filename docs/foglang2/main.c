@@ -368,10 +368,10 @@ Program tokenize(char* buff, int debug)
             tok.type = MAIN;
             i += 4;
         }
-        else if (strncmp(&buff[i], "grip", 4) == 0)
+        else if (strncmp(&buff[i], "grip ", 5) == 0)
         {
             tok.type = GRIP;
-            i += 4;
+            i += 5;
         }
         else if (buff[i] == '"')
         {
