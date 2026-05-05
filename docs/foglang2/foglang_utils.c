@@ -186,6 +186,20 @@ void print_tokens(Token** instructions, int instruction_amount)
             case COMMA:
                 printf("','    ");
                 break;
+            case ANNARS:
+                printf("'ANNARS'    ");
+                break;
+            case OM:
+                printf("'OM'    ");
+                break;
+            case OPEN_LOOP:
+                printf("'OPEN'    ");
+                break;
+            case CLOSE_LOOP:
+                printf("'CLOSE'    ");
+                break;
+            default:
+                printf("'TKN'    ");
             }
         }
         printf("\n");
@@ -508,6 +522,12 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
                     printf(" ");
                 }
                 printf("'</LIST>'");
+                break;
+            case ANNARS:
+                printf("'ANNARS' ");
+                break;
+            case OM:
+                printf("'OM' ");
                 break;
             }
         }

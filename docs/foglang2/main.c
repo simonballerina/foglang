@@ -321,11 +321,16 @@ Program tokenize(char* buff, int debug)
             i += 6;
             loop_type = -1;
         }
-        else if (strncmp(&buff[i], "annars ", 7) == 0)
+        else if (strncmp(&buff[i], "annars", 6) == 0)
         {
             tok.type = ANNARS;
-            i += 7;
+            i += 6;
             loop_type = -1;
+        }
+        else if (strncmp(&buff[i], " om ", 4) == 0)
+        {
+            tok.type = OM;
+            i += 4;
         }
         else if (strncmp(&buff[i], "att ", 4) == 0)
         {
@@ -1232,11 +1237,14 @@ void foug(Token *instruction, Scope *scope) {
     }
 }
 
-void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last) {
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last, int has_eval) {
     int len = 0;
     while (instruction[len].type != OPEN_LOOP) len++;
     len -=keyword_count;
-    int do_statement = logic_eval(instruction+keyword_count, len, program.data, program.instruction_amount, scope);
+    int do_statement = 1;
+    if (has_eval) {
+        do_statement = logic_eval(instruction+keyword_count, len, program.data, program.instruction_amount, scope);
+    }
     //printf("loop do statement: %d\n", do_statement);
 
     if (!do_statement || (require_last*last_givet_res))
@@ -1591,15 +1599,15 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
         break;
 
     case GIVET:
-        loop(current, (Program){instructions, instruction_amount}, scope, 2, 0);
+        loop(current, (Program){instructions, instruction_amount}, scope, 2, 0, 1);
         break;
 
     case ANNARS:
-        loop(current, (Program){instructions, instruction_amount}, scope, 1, 1);
+        loop(current, (Program){instructions, instruction_amount}, scope, 1+(current[1].type == OM), 1, (current[1].type == OM));
         break;
 
     case NAER:
-        loop(current, (Program){instructions, instruction_amount}, scope, 1, 0);
+        loop(current, (Program){instructions, instruction_amount}, scope, 1, 0, 1);
         break;
 
     case TPOS:
