@@ -129,6 +129,24 @@ Note that a list can hold different data types, including other lists.
 ::
     band names = ["John", "Sven", ["Apple", 26]];
 
+Lists can be changed and accessed with indexing, where the first item holds the index 0.
+::
+    # Change the first item of a list
+    band names = ["John", "Sven", ["Apple", 26]];
+    band names[0] = "Enrique";
+
+    # Access the first name
+    band first = names[0];
+
+    # Access the string "Apple"
+    band item_apple = names[2][0];
+
+If a list is indexed with a negative number, it counts backwards.
+:: 
+    band names = ["John", "Sven", "Apple"];
+
+    band last = names[-1]; # Apple
+
 Keep in mind that band is needed even for updating variables.
 
 
@@ -225,3 +243,90 @@ Multiple conditions can also be checked with 'och' (and), 'eller' (or) and 'inte
     givet att num > 0 och inte num2 > 10 {
         foug "num is between 1 and 10!\n";
     }
+
+.. _r4_8:
+
+Naer
+*********
+The givet keyword starts a block that runs a block while the evaluated condition is true. 
+It stops running when the condition is false.
+::
+    # Count to 10
+    band i = 1;
+    
+    naer i < 11 {
+        foug i;
+        band i = i+1;
+    }
+
+Same as givet, multiple conditions can be checked.
+::
+    # Count to 10
+    band i = 1;
+    
+    naer i < 10 eller i = 10 {
+        foug i;
+        band i = i+1;
+    }
+
+.. _r4_9:
+
+Tpos
+*********
+Tpos is used for executing code on the host machine. It acts as a terminal directly in Foglang, 
+and behaves differently based on your operating system. It can be for example be used to do http requests with curl, 
+although using the requests library is recommended.
+::
+    # Get the contents of example.com
+    tpos "curl -s https://example.com -o text.txt";
+    
+    # Read the output file and print the result
+    band slip ret_str = "text.txt";
+    foug ret_str;
+
+.. _r4_10:
+
+Svets
+#######
+Tpos can also use the svets tag, which inserts a variable into the call string, just like foug.
+::
+    # Print the name of the user (on Unix like systems!) using echo
+    band cmd = "echo";
+    tpos svets "%cmd% $USER";
+
+.. _r4_12:
+
+Main
+****
+The main keyword is placed at the execution start of a program. Functions are to be placed above it.
+::
+    # Functions go here...
+    main;
+    # Code goes here...
+
+
+.. _r4_12:
+
+Boul
+****
+The boul keyword defines functions. All functions are to be placed at the top of the program, 
+before the main keyword. More on that later. A function is code that can be reused and called from whereever. 
+Functions can take arguments separated by commas and must include a return token at the end. 
+::
+    boul introduce(name, age) {
+        foug svets "Hello %name%, you are %age% years old!\n";
+        return;
+    }
+
+    main;
+
+    introduce("Simon", 26);
+
+A value can also be returned from the function.
+::
+    boul square(number) {
+        return number^2;
+    }
+
+    main;
+    band squared_num = square(8); # Returns 64
