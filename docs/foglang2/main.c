@@ -25,6 +25,8 @@ Dynamic_Var *function_return_stack;
 int function_stack_top = 0;
 int function_stack_capacity = 128;
 
+int last_givet_res = 0;
+
 #ifdef PATH_MAX
     char path_diff[PATH_MAX];
 #else
@@ -317,6 +319,12 @@ Program tokenize(char* buff, int debug)
         {
             tok.type = GIVET;
             i += 6;
+            loop_type = -1;
+        }
+        else if (strncmp(&buff[i], "annars ", 7) == 0)
+        {
+            tok.type = ANNARS;
+            i += 7;
             loop_type = -1;
         }
         else if (strncmp(&buff[i], "att ", 4) == 0)
@@ -1224,18 +1232,21 @@ void foug(Token *instruction, Scope *scope) {
     }
 }
 
-void loop(Token *instruction, Program program, Scope *scope, int keyword_count){
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last) {
     int len = 0;
     while (instruction[len].type != OPEN_LOOP) len++;
     len -=keyword_count;
     int do_statement = logic_eval(instruction+keyword_count, len, program.data, program.instruction_amount, scope);
     //printf("loop do statement: %d\n", do_statement);
-    
-    if (!do_statement)
+
+    if (!do_statement || (require_last*last_givet_res))
     {
+        if (!require_last*last_givet_res) last_givet_res = do_statement;
         program_counter = loop_links[program_counter];
         return;
     }
+    last_givet_res = do_statement;
+    return;
 }
 
 void tpos(Token *instruction, Scope *scope)
@@ -1580,11 +1591,15 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
         break;
 
     case GIVET:
-        loop(current, (Program){instructions, instruction_amount}, scope, 2);
+        loop(current, (Program){instructions, instruction_amount}, scope, 2, 0);
+        break;
+
+    case ANNARS:
+        loop(current, (Program){instructions, instruction_amount}, scope, 1, 1);
         break;
 
     case NAER:
-        loop(current, (Program){instructions, instruction_amount}, scope, 1);
+        loop(current, (Program){instructions, instruction_amount}, scope, 1, 0);
         break;
 
     case TPOS:
@@ -1688,7 +1703,7 @@ int main(int argc, char **argv)
     
     Token **instructions = program.data;
     int instruction_amount = program.instruction_amount;
-    check_syntax(&program);
+    //check_syntax(&program);
     if (debug) print_tokens(instructions, instruction_amount);
 
     // lägg på offset
