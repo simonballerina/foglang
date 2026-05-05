@@ -602,6 +602,7 @@ void check_syntax(Program* program){
         switch (instructions[i][0].type){
             
             case NAER: ;
+                int args = 0;
                 int j = 1;
                 int comp_amount = 0;
                 int left_args = 0;
@@ -617,7 +618,7 @@ void check_syntax(Program* program){
 
                     int tok = instructions[i][j].type;
 
-
+                    if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
 
                     if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
                         if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
@@ -644,12 +645,8 @@ void check_syntax(Program* program){
 
                     j++;
                 }
-                if (comp_amount < 1){
-                    printf("[NAER]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
-                    exit(-1);
-                }
-                if (!left_args || !right_args){
-                    printf("RIGHT: %d, left: %d\n", right_args, left_args);
+
+                if ((!left_args && !right_args) && !args){
                     printf("[NAER]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
@@ -661,6 +658,7 @@ void check_syntax(Program* program){
 
             case GIVET: ;
                 j = 1;
+                args = 0;
                 comp_amount = 0;
                 left_args = 0;
                 right_args = 0;
@@ -677,6 +675,7 @@ void check_syntax(Program* program){
                     }
                     int tok = instructions[i][j].type;
                     
+                    if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
 
 
                     if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
@@ -706,11 +705,8 @@ void check_syntax(Program* program){
                     j++;
                 }
                 
-                if (comp_amount < 1){
-                    printf("[GIVET]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
-                    exit(-1);
-                }
-                if (!left_args || !right_args){
+
+                if ((!left_args && !right_args) && !args){
                     printf("[GIVET]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
