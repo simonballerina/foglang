@@ -6,7 +6,7 @@ Read our documentation at our [readthedocs page](https://foglang.readthedocs.io)
 
 ## Installation Guide
 
-> **_NOTE:_**  The following istallation guide is downstream of our [readthedocs installation guide](https://foglang.readthedocs.io/en/latest/installation_guide.html). Look there to get the latest version.
+> **_NOTE:_**  The following installation guide is downstream of our [readthedocs installation guide](https://foglang.readthedocs.io/en/latest/installation_guide.html). Look there to get the latest version.
 
 ### Requirements
 There are a few requirements for your machine, in order to install Foglang. First of, you need the C compiler GCC. Check if you have it by running the following command in your terminal: `gcc -v`. Secondly, you need a modern version of python, which you can get [here](https://www.python.org/downloads/). To check if you already have it, run the following command: `python3 -V`.
@@ -25,8 +25,6 @@ If you have [git](https://git-scm.com/install/) installed, you can clone the off
 
 Once you have the Foglang repo, install the Foglang command using the following command, from the Foglang root:
 ```python3 docs/foglang2/install.py```
-
-The current installer will output in Swedish. Use a store-bought Swedish-English dictionary, or other methods, to understand and follow the installation.
 
 ### And you are all set!
 
