@@ -1624,22 +1624,37 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
 
 }
 
+void help(int argc, char **argv) {
+    printf("Imagine needing help\n");
+}
+
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+
+    //check for flags
+    int flag_help = 0;      // -h --help
+    int flag_debug = 0;     // -d --debug
+    int flag_unchecked = 0; // -c --unchecked
+
+    for (int i = 0; i < argc; i++)
     {
-        printf("Too few arguments, ");
-        printf("Syntax: <foglang2 file.fg>\n");
-        return -1;
-    }
-
-    // kolla om -d finns
-
-    int debug = 0;
-    if (argc > 2){
-        if (!strncmp(argv[2], "-d", 2)){
-            debug = 1;
+        if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "-H") == 0) || (strcmp(argv[i], "--help") == 0) || argc < 2)
+        {
+            flag_help = 1;
         }
+        else if ((strcmp(argv[i], "-d") == 0 )|| (strcmp(argv[i], "-D") == 0) || (strcmp(argv[i], "--debug") == 0))
+        {
+            flag_debug = 1;
+        }
+        else if ((strcmp(argv[i], "-c") == 0) || (strcmp(argv[i], "-C") == 0) || (strcmp(argv[i], "--unchecked") == 0))
+        {
+            flag_unchecked = 1;
+        }
+    }
+    
+    if (flag_help) {
+        help(argc, argv);
+        exit(0);
     }
     
     //define the difference in path of file and cwd
@@ -1686,12 +1701,12 @@ int main(int argc, char **argv)
 
 
     
-    Program program = tokenize(buff, debug);
+    Program program = tokenize(buff, flag_debug);
     
     Token **instructions = program.data;
     int instruction_amount = program.instruction_amount;
-    check_syntax(&program);
-    if (debug) print_tokens(instructions, instruction_amount);
+    if (!flag_unchecked) check_syntax(&program);
+    if (flag_debug) print_tokens(instructions, instruction_amount);
 
     // lägg på offset
     for (int i = 0; i < instruction_amount; i++) {
@@ -1719,7 +1734,7 @@ int main(int argc, char **argv)
         program_counter++;
     }
 
-    if (debug) print_variables(&scope);
+    if (flag_debug) print_variables(&scope);
     return 0;
 
     malloc_error:
