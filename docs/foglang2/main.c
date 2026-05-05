@@ -628,7 +628,8 @@ void check_syntax(Program* program){
                             instructions[i][j-1].type == STRING || 
                             instructions[i][j-1].type == FUNCTION || 
                             instructions[i][j+1].type == RIGHT_PAR || 
-                            instructions[i][j-1].type == RIGHT_BRACKET)
+                            instructions[i][j-1].type == RIGHT_BRACKET || 
+                            instructions[i][j-1].type == RIGHT_PAR)
                         {
                             left_args = 1;
                         }
@@ -687,7 +688,8 @@ void check_syntax(Program* program){
                             instructions[i][j-1].type == STRING || 
                             instructions[i][j-1].type == FUNCTION || 
                             instructions[i][j+1].type == RIGHT_PAR || 
-                            instructions[i][j-1].type == RIGHT_BRACKET)
+                            instructions[i][j-1].type == RIGHT_BRACKET || 
+                            instructions[i][j-1].type == RIGHT_PAR)
                         {
                             left_args = 1;
                         }
