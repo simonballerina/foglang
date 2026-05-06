@@ -14,7 +14,7 @@
 #include "foglang.h"
 
 #ifndef VERSION
-    #define VERSION "Custom, manually compiled, version (2._._)"
+    #define VERSION "Unknown/Custom version (2._._)"
 #endif
 
 // konstanter och globala variabler

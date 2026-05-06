@@ -39,7 +39,8 @@ def install_foglang_bin(plat):
 
     print(f"     Building to {build_path}...")
     version = get_version()
-    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lm {bool(version)*f'-D \'VERSION=\"{version}\"\''}", shell=True)
+    version_text =  f'-D VERSION="{version}"'*bool(version)
+    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lm '{version_text}'", shell=True)
     if ret_code != 0:
         print("     Build failed, exiting install...")
         sys.exit(1)
