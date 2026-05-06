@@ -189,7 +189,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
         if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
             //printf("VAR TYPE: %d\n", (*scope).variables[i].type);
             Variable var = (*scope).variables[i];
-            if (var.type != VAR_LIST && var.type != VAR_STRING){
+            if (var.type != VAR_LIST){
                 throw_error(ERR_TYPE, (String){"Cannot change list item in non-list variable", strlen("Cannot change list item in non-list variable")}, NULL);
             }
 
