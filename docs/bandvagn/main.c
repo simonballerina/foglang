@@ -22,6 +22,7 @@ Bandvagn package manager for Foglang
 #include "http.c"
 
 #define PACKAGES_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
+#define HIGHLIGHT_PATH "https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix"
 
 Token_List parse_packages(char* data) {
     int data_len = strlen(data);
@@ -369,11 +370,10 @@ int get_highlighter() {
         printf("funkar inte än sorry — byt operativsystem\n");
         return -1;
     #elif __APPLE__
-        system("curl -s https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
     #elif __linux__ || __unix__ || __posix__
-        system("curl -s https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix -L -o foglanghighlight.vsix && code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
     #endif
-
 
     return EXIT_CODE;
 }
