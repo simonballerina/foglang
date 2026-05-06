@@ -1,4 +1,6 @@
 
+#include "foglang.h"
+
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope){
     Dynamic_Var ret_value;
     

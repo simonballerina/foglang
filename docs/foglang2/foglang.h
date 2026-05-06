@@ -1,4 +1,4 @@
-
+#pragma once
 
 enum Var_Type
 {

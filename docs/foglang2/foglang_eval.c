@@ -1,4 +1,6 @@
 
+#include "foglang.h"
+
 void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     
     for (int i = 0; i < args_amount; i++){
