@@ -10,11 +10,26 @@ Content
   * :ref:`2. Good practice<r2>`
 
     * :ref:`2.1 Naming conventions<r2_1>`
-    * :ref:`2.1 Indents<r2_2>`
-    * :ref:`2.1 Comments<r2_3>`
+    * :ref:`2.2 Indents<r2_2>`
+    * :ref:`2.3 Comments<r2_3>`
   * :ref:`3. Comments<r3>`
   * :ref:`4. Keywords<r4>`
 
+    * :ref:`4.1 Band<r4_1>`
+
+      * :ref:`4.1.1 Slip <r4_1_1>`
+      * :ref:`4.1.2 Grip<r4_1_2>`
+    * :ref:`4.2 Foug<r4_2>`
+
+      * :ref:`4.2.1 Svets <r4_2_1>`
+      * :ref:`4.2.2 Junk <r4_2_2>`
+    * :ref:`4.3 Givet<r4_3>`
+    * :ref:`4.4 Naer<r4_4>`
+    * :ref:`4.5 Tpos<r4_5>`
+
+      * :ref:`4.5.1 Svets <r4_5_1>`
+    * :ref:`4.6 Main<r4_6>`
+    * :ref:`4.7 Boul<r4_7>`
 
 .. _r1:
 
@@ -151,7 +166,7 @@ If a list is indexed with a negative number, it counts backwards.
 Keep in mind that band is needed even for updating variables.
 
 
-.. _r4_2:
+.. _r4_1_1:
 
 Slip
 ####
@@ -163,7 +178,7 @@ The evaluated expression to the right of the equals sign is the name of the file
 
 Note that the text in passwords.txt will be saved as a string.
 
-.. _r4_3:
+.. _r4_1_2:
 
 Grip
 ####
@@ -175,7 +190,7 @@ Can also be left as an empty string.
     band grip fruit = "Name a fruit beginning with the letter 'B': ";
 
 
-.. _r4_4:
+.. _r4_2:
 
 Foug
 ****
@@ -191,7 +206,7 @@ Foug can also directly print variables.
 
 A newline character is included if a variable is printed. 
 
-.. _r4_5:
+.. _r4_2_1:
 
 Svets
 #####
@@ -204,7 +219,7 @@ To print the variable, encase it in percent symbols and insert it into a string.
 
 Svets will also work for the tpos keyword.
 
-.. _r4_6:
+.. _r4_2_2:
 
 Junk
 ####
@@ -220,7 +235,7 @@ keep in mind that it's very *foggy* to put the junk before svets.
     foug junk svets "ERROR: %err_msg%\n";
 
 
-.. _r4_7:
+.. _r4_3:
 
 Givet
 *****
@@ -245,7 +260,7 @@ Multiple conditions can also be checked with ``och`` (and), ``eller`` (or) and `
         foug "num is between 1 and 10!\n";
     }
 
-.. _r4_8:
+.. _r4_4:
 
 Naer
 ****
@@ -271,7 +286,7 @@ Same as givet, multiple conditions can be checked.
         band i = i+1;
     }
 
-.. _r4_9:
+.. _r4_5:
 
 Tpos
 ****
@@ -287,7 +302,7 @@ although using the requests library is recommended.
     band slip ret_str = "text.txt";
     foug ret_str;
 
-.. _r4_10:
+.. _r4_5_1:
 
 Svets
 #####
@@ -298,7 +313,7 @@ Tpos can also use the svets tag, which inserts a variable into the call string, 
     band cmd = "echo";
     tpos svets "%cmd% $USER";
 
-.. _r4_12:
+.. _r4_6:
 
 Main
 ****
@@ -310,7 +325,7 @@ The main keyword is placed at the execution start of a program. Functions are to
     # Code goes here...
 
 
-.. _r4_12:
+.. _r4_7:
 
 Boul
 ****
