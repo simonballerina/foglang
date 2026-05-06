@@ -367,14 +367,12 @@ int get_highlighter() {
     int EXIT_CODE = 0;
     printf("Installing Foglanghighlight for Visual Studio Code...\n");
     #ifdef _WIN32
-        printf("funkar inte än sorry — byt operativsystem\n");
-        return -1;
+        system("powershell -Command curl -O foglanghighlight.vsix "HIGHLIGHT_PATH" && code.cmd --install-extension foglanghighlight.vsix && powershell -Command del -r foglanghighlight.vsix");
     #elif __APPLE__
         system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
     #elif __linux__ || __unix__ || __posix__
         system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
     #endif
-
     return EXIT_CODE;
 }
 
