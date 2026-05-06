@@ -14,6 +14,13 @@ def is_admin():
 
     return is_adm
 
+def get_version():
+    try:
+        with open("version.txt", "r", encoding="utf-8") as file:
+            return file.read()
+    except:
+        return ""
+
 def install_foglang_bin(plat):
     print(f"Building Foglang executable for {plat}...")
 
@@ -31,8 +38,8 @@ def install_foglang_bin(plat):
         build_path = "C:\\Program Files\\foglang2\\build\\foglang2.exe"
 
     print(f"     Building to {build_path}...")
-
-    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lm", shell=True)
+    version = get_version()
+    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lm {bool(version)*f'-D \'VERSION=\"{version}\"\''}", shell=True)
     if ret_code != 0:
         print("     Build failed, exiting install...")
         sys.exit(1)
