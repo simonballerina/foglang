@@ -23,7 +23,7 @@ def install_foglang_bin(plat):
             abs_path = abs_path[:len(abs_path)-i+1]
             break
     abs_path += "main.c"
-
+    build_path = ""
     if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
         build_path = "/usr/local/bin/foglang2"
     elif plat == "Windows":
@@ -51,6 +51,7 @@ def install_foglang_lib(plat):
             break
 
     abs_path += "lib/*"
+    stdlib_path = ""
 
     if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
         stdlib_path = "/usr/local/lib/foglang2/"
@@ -60,6 +61,8 @@ def install_foglang_lib(plat):
         abs_path.replace("/", "\\")
 
     print(f"     Installing to {stdlib_path}...")
+
+    ret_code = ""
         
     if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
         ret_code = subprocess.call(f"mkdir -p {stdlib_path} && cp -r {abs_path} {stdlib_path}", shell=True)
@@ -81,12 +84,13 @@ def install_bandvagn(plat):
     print(f"Building Bandvagn executable for {plat}...")
 
     abs_path = os.path.abspath(__file__)
-    for a in range(2):
+    for _ in range(2):
         for i in range(1, len(abs_path)-1):
             if abs_path[-i] == '/':
                 abs_path = abs_path[:len(abs_path)-i]
                 break
     abs_path += "/bandvagn/main.c"
+    build_path = ""
 
     if plat == "Linux" or plat == "Darwin" or plat == "FreeBSD":
         build_path = "/usr/local/bin/vagn"
@@ -118,12 +122,13 @@ def create_bandvagn_dir(plat):
     print(f"Creating Bandvagn package directory for {plat}...")
 
     user = os.environ.get("SUDO_USER")
+    lib_dir = ""
     if plat == "Linux" or plat == "FreeBSD":
         lib_dir = f"/home/{user}/.local/share/foglang2/packages/"
     elif plat == "Darwin":
         lib_dir = os.path.join(f"/Users/{user}/", "Library/Application Support/foglang2/packages/")
     elif plat == "Windows":
-        lib_dir = f"C:\\Program Files\\foglang2\\packages"
+        lib_dir = "C:\\Program Files\\foglang2\\packages"
     ret_code = 0
     if not os.access(lib_dir, os.F_OK):
         ret_code = subprocess.run(["mkdir", "-p", lib_dir], check=True).returncode
