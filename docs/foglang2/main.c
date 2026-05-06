@@ -611,7 +611,7 @@ void check_syntax(Program* program){
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
-                        if (j >= 4) break;
+                        if (j >= 2) break;
                         printf("[NAER]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
@@ -669,7 +669,7 @@ void check_syntax(Program* program){
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
-                        if (j >= 5) break;
+                        if (j >= 3) break;
                         printf("[GIVET]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
