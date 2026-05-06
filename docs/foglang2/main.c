@@ -1122,7 +1122,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         else if (modify_list_item){
             int end_res_type = get_var_type(end_var.var.name, end_var.var.name_len, scope);
             if (end_res_type == VAR_STRING) {
-                printf("change str char: %.*s to %.*s\n", 1, &end_var.var.name[indicies[0]], eval_result.str_len, eval_result.string);
                 change_str_char(end_var.var.name, end_var.var.name_len, indicies[0], eval_result.string[0], scope);
             }
             else {
@@ -1137,7 +1136,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 };
                 change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
             }
-
         } else if (type == VAR_LIST){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)

@@ -241,16 +241,41 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
 
                 index = indices[j];
                 if (index < 0) index = current_item->str_len + index;
-                if (index >= current_item->str_len || index < 0){
+                if (index > current_item->str_len || index < 0 || (index == current_item->str_len && j+1 != index_amount)){
                     throw_error(ERR_INDEX, (String){"Invalid indexing for list update", strlen("Invalid indexing for list update")}, NULL);
                     exit(1);
+                }
+                if (index == current_item->str_len) { // append
+                    if (current_item->type == VAR_LIST) {
+                        Dynamic_Var *new_ptr = realloc(current_item->list_ptr, sizeof(Dynamic_Var)*(current_item->str_len+1));
+                        if (new_ptr == NULL) {
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+                            exit(1);
+                        }
+                        current_item->list_ptr = new_ptr;
+                        // init maxxa
+                        current_item->list_ptr[current_item->str_len].string = NULL;
+                        current_item->list_ptr[current_item->str_len].str_len = 0;
+                        current_item->list_ptr[current_item->str_len].value = 0;
+                        current_item->list_ptr[current_item->str_len].type = VAR_NONE;
+                        current_item->list_ptr[current_item->str_len].list_ptr = NULL;
+                        current_item->str_len++;
+                    } else if (current_item->type == VAR_STRING) {
+                        char *new_str = realloc(current_item->string, (current_item->str_len+1)*sizeof(char));
+                        if (!new_str) {
+                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+                            exit(1);
+                        }
+                        current_item->string = new_str;
+                        // charändring fixas senare i koden
+                        current_item->str_len++;
+                    }
                 }
                 if (current_item->type == VAR_STRING) 
                     do_str_index = 1;
                 else
                     current_item = &current_item->list_ptr[index];
             }
-            //printf("do str_index: %d\n", do_str_index);
             if (current_item->type == VAR_STRING && !do_str_index) free(current_item->string);
             Dynamic_Var new_item = {
                 .string = NULL,
@@ -267,7 +292,6 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 new_item.str_len = new_var.len;
 
             } else if (new_var.type == VAR_STRING && do_str_index) {
-                //printf("change str char: %.*s to %.*s\n", 1, &current_item->string[index], new_var.len, new_var.str_ptr);
                 new_item.type = VAR_STRING;
                 new_item.string = current_item->string;
                 new_item.string[index] = new_var.str_ptr[0];
