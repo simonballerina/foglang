@@ -1625,7 +1625,12 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
 }
 
 void help(int argc, char **argv) {
-    printf("Imagine needing help\n");
+    printf("\
+usage: foglang2 [--version] [--help] \n\
+                <filepath> [--debug] [--unchecked]\n\
+                <command> [<args>]\n\
+\n\
+Interpret a Foglang2 program: foglang2 <filepath>");
 }
 
 int main(int argc, char **argv)
