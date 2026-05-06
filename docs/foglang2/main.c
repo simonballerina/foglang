@@ -931,8 +931,6 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     int type = eval_result.type;
 
 
-    //printf("BAND_TYPE: %d\n", type);
-
 
     // kolla om slutvariabeln finns sparad
     int create_new = 1;
@@ -954,18 +952,17 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     if (instruction[2+is_grip+is_slip].type == LEFT_BRACKET) {
         modify_list_item = 1;
         for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
-            // hitta alla index som används i list indexering
+            // count top-level index closures (']') to determine number of indices
             if (instruction[i].type == EQUALS) break;
-
             if (instruction[i].type == LEFT_BRACKET) {
                 depth++;
             } else if (instruction[i].type == RIGHT_BRACKET) {
-                depth--;
-            } else if (depth == 0) {
-                index_amount++;
+                if (depth == 0) {
+                    index_amount++;
+                } else {
+                    depth--;
+                }
             }
-            
-
         }
         indicies = malloc(index_amount*sizeof(int));
         if (indicies == NULL) goto malloc_error;
@@ -973,21 +970,33 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         int index_top = 0;
         depth = 0;
         for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
+            
             if (instruction[i].type == EQUALS) break;
             if (instruction[i].type == LEFT_BRACKET) {
                 depth++;
             } else if (instruction[i].type == RIGHT_BRACKET) {
                 depth--;
             } else if (depth == 0) {
-                Dynamic_Var index_eval = dynamic_eval(&instruction[i], 1, instructions, instruction_amount, scope);
+                // räkna antal tokens i index uttrycket
+                int index_tokens = 0;
+                int depth2 = 0;
+                for (int j = i; instruction[j].type != RIGHT_BRACKET && depth2 == 0; j++) {
+                    if (instruction[j].type == LEFT_BRACKET) depth2++;
+                    else if (instruction[j].type == RIGHT_BRACKET) depth2--;
+                    index_tokens++;
+                }
+                Dynamic_Var index_eval = dynamic_eval(&instruction[i], index_tokens, instructions, instruction_amount, scope);
                 if (index_eval.type != VAR_NUMBER)
                     throw_error(ERR_TYPE, (String){.string = "List index must be a number", .len = strlen("List index must be a number")}, instruction);
-                
+                i += index_tokens-1; // hoppa över index uttryckets tokens
                 indicies[index_top++] = index_eval.value;
             }
             
         }
+        index_amount = index_top; 
     }
+
+
 
     if (create_new)
     {
@@ -1064,8 +1073,11 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             }
         } 
         else if (modify_list_item){
-            if (type == VAR_STRING)
+            int end_res_type = get_var_type(end_var.var.name, end_var.var.name_len, scope);
+            if (end_res_type == VAR_STRING) {
+                printf("change str char: %.*s to %.*s\n", 1, &end_var.var.name[indicies[0]], eval_result.str_len, eval_result.string);
                 change_str_char(end_var.var.name, end_var.var.name_len, indicies[0], eval_result.string[0], scope);
+            }
             else {
                 Variable new_list_item = {
                 .len = eval_result.str_len,
