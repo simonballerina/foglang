@@ -1634,7 +1634,7 @@ usage: foglang2 [--version] [--help] \n\
                 <filepath> [--debug] [--unchecked]\n\
                 <command> [<args>]\n\
 \n\
-Interpret a Foglang2 program: foglang2 <filepath>");
+Interpret a Foglang2 program: foglang2 <filepath>\n");
 }
 
 int main(int argc, char **argv)
