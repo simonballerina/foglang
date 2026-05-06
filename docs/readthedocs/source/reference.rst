@@ -112,6 +112,7 @@ Entire mathematical expressions can be evaluated in band,
 but beware that mixing different data types in a single evaluation will result in an error.
 ::
     band bar = ((120^4)+10)/2;
+
 Strings in Foglang start and end with quotation marks...
 ::
     band example_str = "This is a string!";
@@ -179,7 +180,7 @@ Can also be left as an empty string.
 Foug
 ****
 
-The foug keyword is the only way to display output in Foglang. It prints directly to standard out (stdout).
+The foug keyword is the *only way* to display output in Foglang. It prints directly to standard out (stdout).
 ::
     foug "Hello, World!\n";
 
@@ -193,7 +194,7 @@ A newline character is included if a variable is printed.
 .. _r4_5:
 
 Svets
-#######
+#####
 
 The svets tag is used for when you want to merge a string with a variable. 
 To print the variable, encase it in percent symbols and insert it into a string.
@@ -206,14 +207,14 @@ Svets will also work for the tpos keyword.
 .. _r4_6:
 
 Junk
-#######
+####
 
 The junk tag directs output to standard error, stderr. It can be used for throwing errors in Foglang.
 ::
     foug junk "ERROR: Something went wrong.\n";
 
 Different tags can also be combined. If both junk and svets are used, 
-keep in mind that it's very foggy to put the junk before svets.
+keep in mind that it's very *foggy* to put the junk before svets.
 ::
     band err_msg = "Unknown error";
     foug junk svets "ERROR: %err_msg%\n";
@@ -222,10 +223,10 @@ keep in mind that it's very foggy to put the junk before svets.
 .. _r4_7:
 
 Givet
-*********
+*****
 
 The givet keyword starts a block that runs if a condition is true. 
-The keyword is immediately followed by "att", and then the condition.
+The keyword is immediately followed by ``att``, and then the condition.
 ::
     band num = 7;
     givet att num = 7 {
@@ -233,10 +234,10 @@ The keyword is immediately followed by "att", and then the condition.
     } 
 
 This code block will only run when num is equal to 7. 
-The other comparative operators are greater than '>', less than '<', and not equal to '!='. 
+The other comparative operators are greater than ``>``, less than ``<``, and not equal to ``!=``. 
 
 
-Multiple conditions can also be checked with 'och' (and), 'eller' (or) and 'inte' (not).
+Multiple conditions can also be checked with ``och`` (and), ``eller`` (or) and ``inte`` (not).
 ::
     band num = 4;
     
@@ -247,7 +248,8 @@ Multiple conditions can also be checked with 'och' (and), 'eller' (or) and 'inte
 .. _r4_8:
 
 Naer
-*********
+****
+
 The givet keyword starts a block that runs a block while the evaluated condition is true. 
 It stops running when the condition is false.
 ::
@@ -272,7 +274,8 @@ Same as givet, multiple conditions can be checked.
 .. _r4_9:
 
 Tpos
-*********
+****
+
 Tpos is used for executing code on the host machine. It acts as a terminal directly in Foglang, 
 and behaves differently based on your operating system. It can be for example be used to do http requests with curl, 
 although using the requests library is recommended.
@@ -287,7 +290,8 @@ although using the requests library is recommended.
 .. _r4_10:
 
 Svets
-#######
+#####
+
 Tpos can also use the svets tag, which inserts a variable into the call string, just like foug.
 ::
     # Print the name of the user (on Unix like systems!) using echo
@@ -298,6 +302,7 @@ Tpos can also use the svets tag, which inserts a variable into the call string, 
 
 Main
 ****
+
 The main keyword is placed at the execution start of a program. Functions are to be placed above it.
 ::
     # Functions go here...
