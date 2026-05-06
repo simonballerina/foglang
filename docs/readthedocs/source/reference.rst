@@ -90,7 +90,7 @@ The amount of comments recommended depends heavily on use-case. Learn about usin
 Other best practices
 ********************
 
-To learn more about good practice, read the `wikipedia entry <https://en.wikipedia.org/wiki/Coding_best_practices#Keep_the_code_simple>`_ for coding best practices.
+To learn more about good practice, read the `wikipedia entry <https://en.wikipedia.org/wiki/Coding_best_practices>`_ for coding best practices.
 
 .. _r3:
 
