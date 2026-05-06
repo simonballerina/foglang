@@ -369,9 +369,26 @@ int get_highlighter() {
     #ifdef _WIN32
         system("powershell -Command curl -O foglanghighlight.vsix "HIGHLIGHT_PATH" && code.cmd --install-extension foglanghighlight.vsix && powershell -Command del -r foglanghighlight.vsix");
     #elif __APPLE__
-        system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        if (http_download(HIGHLIGHT_PATH, "foglanghighlight.vsix") == 0) {
+            printf("Download successful!\n");
+        } else {
+            printf("Download failed, exiting...!\n");
+            rmdir("foglanghighlight.vsix");
+            exit(1);
+        }
+        system("'/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+
     #elif __linux__ || __unix__ || __posix__
-        system("curl -s "HIGHLIGHT_PATH" -L -o foglanghighlight.vsix && code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        if (http_download(HIGHLIGHT_PATH, "foglanghighlight.vsix") == 0){
+            printf("Download successful!\n");
+        } else {
+            printf("Download failed, exiting...!\n");
+            rmdir("foglanghighlight.vsix");
+            exit(1);
+        }
+        system("code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        
+        
     #endif
     return EXIT_CODE;
 }
