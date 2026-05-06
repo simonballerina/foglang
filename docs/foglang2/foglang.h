@@ -117,7 +117,9 @@ enum Tok_Type
     ELLER,         // 36
     INTE,          // 37
     JUNK,          // 38
-    LIST           // 39    
+    LIST,          // 39    
+    ANNARS,        // 40
+    OM             // 41
 };
 
 typedef struct
@@ -197,5 +199,5 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
 void foug(Token *instruction, Scope *scope);
 Bult_Ret bult(char* file_name, char* user);
-void loop(Token *instruction, Program program, Scope *scope, int keyword_count);
+void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last, int has_eval);
 void tpos(Token *instruction, Scope *scope);
