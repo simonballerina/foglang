@@ -178,6 +178,7 @@ index: indexeringen på listan, annars 0
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);
 void change_str_char(char* var_name, int name_len, int index, char new_char, Scope* scope);
+int get_var_type(char* name, int length, Scope *scope);
 
 Program tokenize(char* buff, int debug);
 void check_syntax(Program* program);

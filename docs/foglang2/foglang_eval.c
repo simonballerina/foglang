@@ -623,7 +623,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
-
     Dynamic_Var ret;
     for (int i = 0; i < args_amount; i++) {
         if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals

@@ -69,6 +69,18 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 }
 
 
+int get_var_type(char* name, int length, Scope *scope){
+
+    for (int i = 0; i < (*scope).index; i++){
+        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
+
+            return (*scope).variables[i].type;
+        }
+    }
+    throw_error(ERR_NAME, (String){name, length}, NULL);
+    return -1;
+}
+
 void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope)
 {
     Variable var = {
@@ -186,10 +198,8 @@ void change_str_char(char* var_name, int name_len, int index, char new_char, Sco
 }
 
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount){
-    
     for (int i = 0; i < (*scope).index; i++){
         if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
-            //printf("VAR TYPE: %d\n", (*scope).variables[i].type);
             Variable var = (*scope).variables[i];
             if (var.type != VAR_LIST){
                 throw_error(ERR_TYPE, (String){"Cannot change list item in non-list variable", strlen("Cannot change list item in non-list variable")}, NULL);
@@ -198,7 +208,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
             Variable *parent = &(*scope).variables[i];
             int index = indices[0];
             if (index < 0) index = parent->len + index;
-            
+
             if (index == parent->len){
                 // append
                 Dynamic_Var *new_ptr = realloc(parent->list_ptr, sizeof(Dynamic_Var) * (parent->len + 1));
@@ -207,6 +217,12 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                     exit(1);
                 }
                 parent->list_ptr = new_ptr;
+                //init
+                parent->list_ptr[parent->len].string = NULL;
+                parent->list_ptr[parent->len].str_len = 0;
+                parent->list_ptr[parent->len].value = 0;
+                parent->list_ptr[parent->len].type = VAR_NONE;
+                parent->list_ptr[parent->len].list_ptr = NULL;
                 parent->len++;
 
             }
@@ -215,21 +231,27 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 exit(1);
             }
 
+            int do_str_index = 0;
             Dynamic_Var *current_item = &parent->list_ptr[index];
             for (int j = 1; j < index_amount; j++){
-                if (current_item->type != VAR_LIST){
+                if (current_item->type != VAR_LIST && current_item->type != VAR_STRING){
                     throw_error(ERR_TYPE, (String){"Cannot index into non-list variable", strlen("Cannot index into non-list variable")}, NULL);
                     exit(1);
                 }
+
                 index = indices[j];
                 if (index < 0) index = current_item->str_len + index;
                 if (index >= current_item->str_len || index < 0){
                     throw_error(ERR_INDEX, (String){"Invalid indexing for list update", strlen("Invalid indexing for list update")}, NULL);
                     exit(1);
-                 }
-                current_item = &current_item->list_ptr[index];
+                }
+                if (current_item->type == VAR_STRING) 
+                    do_str_index = 1;
+                else
+                    current_item = &current_item->list_ptr[index];
             }
-            if (current_item->type == VAR_STRING) free(current_item->string);
+            //printf("do str_index: %d\n", do_str_index);
+            if (current_item->type == VAR_STRING && !do_str_index) free(current_item->string);
             Dynamic_Var new_item = {
                 .string = NULL,
                 .str_len = 0,
@@ -238,12 +260,21 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 .list_ptr = NULL
             };
                     
-            if (new_var.type == VAR_STRING){
+            if (new_var.type == VAR_STRING && !do_str_index){
                     
                 new_item.type = VAR_STRING;
                 new_item.string = new_var.str_ptr;
                 new_item.str_len = new_var.len;
-            } else if (new_var.type == VAR_NUMBER){
+
+            } else if (new_var.type == VAR_STRING && do_str_index) {
+                //printf("change str char: %.*s to %.*s\n", 1, &current_item->string[index], new_var.len, new_var.str_ptr);
+                new_item.type = VAR_STRING;
+                new_item.string = current_item->string;
+                new_item.string[index] = new_var.str_ptr[0];
+                new_item.str_len = current_item->str_len;
+            }
+            
+            else if (new_var.type == VAR_NUMBER){
                 new_item.type = VAR_NUMBER;
                 new_item.value = new_var.value;
             } else if (new_var.type == VAR_LIST){
@@ -254,6 +285,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 throw_error(ERR_TYPE, (String){"Unknown variable type", strlen("Unknown variable type")}, NULL);
                 exit(1);
             }
+
             *current_item = new_item;
         }
     }
