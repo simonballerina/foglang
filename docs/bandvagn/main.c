@@ -6,6 +6,7 @@ Bandvagn package manager for Foglang
 
         ex:
         vagn install package_name
+        vagn highlight
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +22,7 @@ Bandvagn package manager for Foglang
 #include "http.c"
 
 #define PACKAGES_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
+#define HIGHLIGHT_PATH "https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix"
 
 Token_List parse_packages(char* data) {
     int data_len = strlen(data);
@@ -361,7 +363,35 @@ int update_packages() {
     return EXIT_CODE;
 }
 
+int get_highlighter() {
+    int EXIT_CODE = 0;
+    printf("Installing Foglanghighlight for Visual Studio Code...\n");
+    #ifdef _WIN32
+        system("powershell -Command curl -O foglanghighlight.vsix "HIGHLIGHT_PATH" && code.cmd --install-extension foglanghighlight.vsix && powershell -Command del -r foglanghighlight.vsix");
+    #elif __APPLE__
+        if (http_download(HIGHLIGHT_PATH, "foglanghighlight.vsix") == 0) {
+            printf("Download successful!\n");
+        } else {
+            printf("Download failed, exiting...!\n");
+            rmdir("foglanghighlight.vsix");
+            exit(1);
+        }
+        system("'/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
 
+    #elif __linux__ || __unix__ || __posix__
+        if (http_download(HIGHLIGHT_PATH, "foglanghighlight.vsix") == 0){
+            printf("Download successful!\n");
+        } else {
+            printf("Download failed, exiting...!\n");
+            rmdir("foglanghighlight.vsix");
+            exit(1);
+        }
+        system("code --install-extension foglanghighlight.vsix && rm foglanghighlight.vsix");
+        
+        
+    #endif
+    return EXIT_CODE;
+}
 
 int main(int argc, char *argv[]) {
     int EXIT_CODE = 0;
@@ -369,6 +399,7 @@ int main(int argc, char *argv[]) {
     int do_install = 0;
     int do_remove = 0;
     int do_update = 0;
+    int do_highlight = 0;
     char* package_to_modify = NULL;
 
     if (argc > 1) {
@@ -390,6 +421,8 @@ int main(int argc, char *argv[]) {
             printf("Removing package '%s'\n", argv[2]);
         } else if (strcmp(argv[1], "update") == 0) {
             do_update = 1;
+        } else if (strcmp(argv[1], "highlight") == 0) {
+            do_highlight = 1;
         } else {
             printf("Unknown command '%s'\n", argv[1]);
             return -1;
@@ -407,6 +440,8 @@ int main(int argc, char *argv[]) {
         EXIT_CODE = remove_package(package_to_modify);
     } else if (do_update) {
         EXIT_CODE = update_packages();
+    } else if (do_highlight) {
+        EXIT_CODE = get_highlighter();
     }
 
     return EXIT_CODE;
