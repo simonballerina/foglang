@@ -1,3 +1,4 @@
+#include "foglang.h"
 
 double str_to_double(char *num)
 {
