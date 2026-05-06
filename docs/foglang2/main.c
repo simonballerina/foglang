@@ -13,6 +13,10 @@
 #endif
 #include "foglang.h"
 
+#ifndef VERSION
+    #define VERSION "Unknown/Custom version (2._._)"
+#endif
+
 // konstanter och globala variabler
 
 // program counter
@@ -615,6 +619,7 @@ void check_syntax(Program* program){
         switch (instructions[i][0].type){
             
             case NAER: ;
+                int args = 0;
                 int j = 1;
                 int comp_amount = 0;
                 int left_args = 0;
@@ -623,14 +628,14 @@ void check_syntax(Program* program){
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
-                        if (j >= 4) break;
+                        if (j >= 2) break;
                         printf("[NAER]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
 
                     int tok = instructions[i][j].type;
 
-
+                    if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
 
                     if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
                         if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
@@ -641,7 +646,8 @@ void check_syntax(Program* program){
                             instructions[i][j-1].type == STRING || 
                             instructions[i][j-1].type == FUNCTION || 
                             instructions[i][j+1].type == RIGHT_PAR || 
-                            instructions[i][j-1].type == RIGHT_BRACKET)
+                            instructions[i][j-1].type == RIGHT_BRACKET || 
+                            instructions[i][j-1].type == RIGHT_PAR)
                         {
                             left_args = 1;
                         }
@@ -656,12 +662,8 @@ void check_syntax(Program* program){
 
                     j++;
                 }
-                if (comp_amount < 1){
-                    printf("[NAER]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
-                    exit(-1);
-                }
-                if (!left_args || !right_args){
-                    printf("RIGHT: %d, left: %d\n", right_args, left_args);
+
+                if ((!left_args && !right_args) && !args){
                     printf("[NAER]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
@@ -673,6 +675,7 @@ void check_syntax(Program* program){
 
             case GIVET: ;
                 j = 1;
+                args = 0;
                 comp_amount = 0;
                 left_args = 0;
                 right_args = 0;
@@ -683,12 +686,13 @@ void check_syntax(Program* program){
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
-                        if (j >= 5) break;
+                        if (j >= 3) break;
                         printf("[GIVET]: ERR: Syntax error, instruction %d\n", i);
                         exit(-1);
                     }
                     int tok = instructions[i][j].type;
                     
+                    if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
 
 
                     if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
@@ -700,7 +704,8 @@ void check_syntax(Program* program){
                             instructions[i][j-1].type == STRING || 
                             instructions[i][j-1].type == FUNCTION || 
                             instructions[i][j+1].type == RIGHT_PAR || 
-                            instructions[i][j-1].type == RIGHT_BRACKET)
+                            instructions[i][j-1].type == RIGHT_BRACKET || 
+                            instructions[i][j-1].type == RIGHT_PAR)
                         {
                             left_args = 1;
                         }
@@ -717,11 +722,8 @@ void check_syntax(Program* program){
                     j++;
                 }
                 
-                if (comp_amount < 1){
-                    printf("[GIVET]: ERR: Syntax error, instruction %d, found %d comparison operations when at least 1 is required\n", i, comp_amount);
-                    exit(-1);
-                }
-                if (!left_args || !right_args){
+
+                if ((!left_args && !right_args) && !args){
                     printf("[GIVET]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
@@ -917,6 +919,7 @@ void throw_error(int type, String err_str, Token *instruction){
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
 {
+
     int is_grip = 0;
     int is_slip = 0;
     if (instruction[1].type == SLIP) is_slip = 1;
@@ -1072,8 +1075,12 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                     (*scope).variables[i].type = VAR_STRING;
                 }
             }
-        } else if (modify_list_item){
-            Variable new_list_item = {
+        } 
+        else if (modify_list_item){
+            if (type == VAR_STRING)
+                change_str_char(end_var.var.name, end_var.var.name_len, indicies[0], eval_result.string[0], scope);
+            else {
+                Variable new_list_item = {
                 .len = eval_result.str_len,
                 .name = eval_result.string,
                 .name_len = eval_result.str_len,
@@ -1081,10 +1088,10 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 .type = eval_result.type,
                 .value = eval_result.value,
                 .list_ptr = eval_result.list_ptr
-            };
+                };
+                change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
+            }
 
-            change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
-  
         } else if (type == VAR_LIST){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
@@ -1645,22 +1652,52 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
 
 }
 
+void help(int argc, char **argv) {
+    printf("\
+usage: foglang2 [--version] [--help] \n\
+                <filepath> [--debug] [--unchecked]\n\
+                <command> [<args>]\n\
+\n\
+Interpret a Foglang2 program: foglang2 <filepath>\n");
+}
+
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+
+    //check for flags
+    int flag_help = 0;      // -h --help
+    int flag_version = 0;   // -v --version --ver
+    int flag_debug = 0;     // -d --debug
+    int flag_unchecked = 0; // -u --unchecked
+
+    for (int i = 0; i < argc; i++)
     {
-        printf("Too few arguments, ");
-        printf("Syntax: <foglang2 file.fg>\n");
-        return -1;
+        if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "-H") == 0) || (strcmp(argv[i], "--help") == 0) || argc < 2)
+        {
+            flag_help = 1;
+        }
+        else if ((strcmp(argv[i], "-v") == 0 )|| (strcmp(argv[i], "-V") == 0) || (strcmp(argv[i], "--version") == 0) || (strcmp(argv[i], "--ver") == 0))
+        {
+            flag_version = 1;
+        }
+        else if ((strcmp(argv[i], "-d") == 0 )|| (strcmp(argv[i], "-D") == 0) || (strcmp(argv[i], "--debug") == 0))
+        {
+            flag_debug = 1;
+        }
+        else if ((strcmp(argv[i], "-u") == 0) || (strcmp(argv[i], "-U") == 0) || (strcmp(argv[i], "--unchecked") == 0))
+        {
+            flag_unchecked = 1;
+        }
     }
 
-    // kolla om -d finns
-
-    int debug = 0;
-    if (argc > 2){
-        if (!strncmp(argv[2], "-d", 2)){
-            debug = 1;
-        }
+    if (flag_version) {
+        printf("Foglang version: %s\n", VERSION);
+        exit(0);
+    }
+    
+    if (flag_help) {
+        help(argc, argv);
+        exit(0);
     }
     
     //define the difference in path of file and cwd
@@ -1707,12 +1744,12 @@ int main(int argc, char **argv)
 
 
     
-    Program program = tokenize(buff, debug);
+    Program program = tokenize(buff, flag_debug);
     
     Token **instructions = program.data;
     int instruction_amount = program.instruction_amount;
-    //check_syntax(&program);
-    if (debug) print_tokens(instructions, instruction_amount);
+    if (!flag_unchecked) check_syntax(&program);
+    if (flag_debug) print_tokens(instructions, instruction_amount);
 
     // lägg på offset
     for (int i = 0; i < instruction_amount; i++) {
@@ -1740,7 +1777,7 @@ int main(int argc, char **argv)
         program_counter++;
     }
 
-    if (debug) print_variables(&scope);
+    if (flag_debug) print_variables(&scope);
     return 0;
 
     malloc_error:

@@ -1,4 +1,4 @@
-//#include <foglang.h>
+
 void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     
     for (int i = 0; i < args_amount; i++){
@@ -390,7 +390,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
         { // hitta bool
-            if (args[i].type == OCH) // AND högst prio
+                if (args[i].type == OCH) // AND högst prio
             {
                 for (int j = i + 1; j < args_amount; j++)
                 {
@@ -413,7 +413,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
 
                 //printf("FIRST: %lf, SECOND: %lf\n", first_arg, second_arg);
                 if (args[i].type == OCH)
-                    args[i].value = first_arg && second_arg;
+                    args[i].value = (first_arg > 0.0 && second_arg > 0.0) ? 1.0 : 0.0;
                 args[i].type = NUMBER;
                 break;
             }
@@ -441,7 +441,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
                     }
                 }
 
-                args[i].value = first_arg || second_arg;
+                args[i].value = (first_arg > 0.0 || second_arg > 0.0) ? 1.0 : 0.0;
                 args[i].type = NUMBER;
                 break;
             }
@@ -460,7 +460,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
                     }
                 }
 
-                args[i].value = !first_arg;
+                args[i].value = (first_arg > 0.0) ? 0.0 : 1.0;
                 args[i].type = NUMBER;
                 break;
             }
@@ -621,6 +621,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
+
     Dynamic_Var ret;
     for (int i = 0; i < args_amount; i++) {
         if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals
@@ -650,7 +651,6 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
 
     int type = VAR_STRING;
-
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == NUMBER) {
             type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
@@ -776,18 +776,17 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
 
         int current_eval_result;
         if (op_index == -1) {
-            if (args[i].type == LEFT_PAR && args[i + eval_args_amount - 1].type == RIGHT_PAR) {
-                int inner_len = eval_args_amount - 2;
+            if (args[i].type == LEFT_PAR && args[i+eval_args_amount-1].type == RIGHT_PAR) {
+                int inner_len = eval_args_amount-2;
                 if (inner_len < 0) {
                     throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
                     free(bool_eval_arr);
                     exit(1);
                 }
-                current_eval_result = logic_eval(args + i + 1, inner_len, instructions, instruction_amount, scope);
+                current_eval_result = (logic_eval(args+i+1, inner_len, instructions, instruction_amount, scope) > 0);
             } else {
-                throw_error(ERR_SYNTAX, (String){"Expected operator in logic expression", strlen("Expected operator in logic expression")}, NULL);
-                free(bool_eval_arr);
-                exit(1);
+                Dynamic_Var dv = dynamic_eval(args+i, eval_args_amount, instructions, instruction_amount, scope);
+                current_eval_result = (dv.value > 0.0);
             }
         } else {
             Dynamic_Var result_left = dynamic_eval(args+i, op_index-i, instructions, instruction_amount, scope);
@@ -815,7 +814,7 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
                         current_eval_result = (!strncmp(result_left.string, result_right.string, result_left.str_len)) && (result_left.str_len == result_right.str_len);
                         break;
                     case NOT_EQUAL_TO:
-                        current_eval_result = (strncmp(result_left.string, result_right.string, result_left.str_len));
+                        current_eval_result = (strncmp(result_left.string, result_right.string, result_left.str_len) != 0);
                         break;
                 }
             } else {
@@ -851,11 +850,6 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
     }
 
     // printa bool_eval_arr
-    //printf("BOOL EVAL ARR:\n");
-    //for (int i = 0; i < bool_eval_top; i++){
-    //    printf("TYPE: %d, VALUE: %lf\n", bool_eval_arr[i].type, bool_eval_arr[i].value);
-    //}
-    //printf("\n\n");
 
     // räkna ut hela bool_eval_arr
     double res = evaluate_expression(bool_eval_arr, bool_eval_top, instructions, instruction_amount, scope);
