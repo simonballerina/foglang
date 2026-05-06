@@ -13,6 +13,10 @@
 #endif
 #include "foglang.h"
 
+#ifndef VERSION
+    #define VERSION "Custom, manually compiled, version (2._._)"
+#endif
+
 // konstanter och globala variabler
 
 // program counter
@@ -1638,8 +1642,9 @@ int main(int argc, char **argv)
 
     //check for flags
     int flag_help = 0;      // -h --help
+    int flag_version = 0;   // -v --version --ver
     int flag_debug = 0;     // -d --debug
-    int flag_unchecked = 0; // -c --unchecked
+    int flag_unchecked = 0; // -u --unchecked
 
     for (int i = 0; i < argc; i++)
     {
@@ -1647,14 +1652,23 @@ int main(int argc, char **argv)
         {
             flag_help = 1;
         }
+        else if ((strcmp(argv[i], "-v") == 0 )|| (strcmp(argv[i], "-V") == 0) || (strcmp(argv[i], "--version") == 0) || (strcmp(argv[i], "--ver") == 0))
+        {
+            flag_version = 1;
+        }
         else if ((strcmp(argv[i], "-d") == 0 )|| (strcmp(argv[i], "-D") == 0) || (strcmp(argv[i], "--debug") == 0))
         {
             flag_debug = 1;
         }
-        else if ((strcmp(argv[i], "-c") == 0) || (strcmp(argv[i], "-C") == 0) || (strcmp(argv[i], "--unchecked") == 0))
+        else if ((strcmp(argv[i], "-u") == 0) || (strcmp(argv[i], "-U") == 0) || (strcmp(argv[i], "--unchecked") == 0))
         {
             flag_unchecked = 1;
         }
+    }
+
+    if (flag_version) {
+        printf("Foglang version: %s\n", VERSION);
+        exit(0);
     }
     
     if (flag_help) {
