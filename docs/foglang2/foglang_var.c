@@ -153,11 +153,43 @@ void create_str_var(char *name, int name_len, int len, char *string, Scope *scop
 }
 
 
+void change_str_char(char* var_name, int name_len, int index, char new_char, Scope* scope) {
+    for (int i = 0; i < (*scope).index; i++){
+        if ((*scope).variables[i].name_len == name_len && !strncmp(var_name, (*scope).variables[i].name, name_len)){
+            Variable *parent = &(*scope).variables[i];
+
+            if (index < 0) index = parent->len + index; 
+            if (index == parent->len){
+                // append
+                char* new_str = malloc(parent->len+1);
+                if (!new_str) {
+                    throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+                    exit(1);
+                }
+
+                memcpy(new_str, parent->str_ptr, parent->len);
+                new_str[parent->len] = new_char;
+                free(parent->str_ptr);
+                parent->len++;
+
+                parent->str_ptr = new_str;
+            } 
+            else if (index < 0 || index > parent->len) throw_error(ERR_INDEX, (String){var_name, name_len}, NULL);
+            else { // byt ut bokstav
+                parent->str_ptr[index] = new_char;
+            }
+        }
+    }  
+
+}
+
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount){
     
     for (int i = 0; i < (*scope).index; i++){
         if ((*scope).variables[i].name_len == name_len && !strncmp(name, (*scope).variables[i].name, name_len)){
-            if ((*scope).variables[i].type != VAR_LIST){
+            //printf("VAR TYPE: %d\n", (*scope).variables[i].type);
+            Variable var = (*scope).variables[i];
+            if (var.type != VAR_LIST && var.type != VAR_STRING){
                 throw_error(ERR_TYPE, (String){"Cannot change list item in non-list variable", strlen("Cannot change list item in non-list variable")}, NULL);
             }
 
@@ -174,6 +206,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                 }
                 parent->list_ptr = new_ptr;
                 parent->len++;
+
             }
             else if (index > parent->len){
                 throw_error(ERR_INDEX, (String){"Invalid indexing for list update", strlen("Invalid indexing for list update")}, NULL);

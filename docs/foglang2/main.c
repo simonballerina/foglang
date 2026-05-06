@@ -902,6 +902,7 @@ void throw_error(int type, String err_str, Token *instruction){
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
 {
+
     int is_grip = 0;
     int is_slip = 0;
     if (instruction[1].type == SLIP) is_slip = 1;
@@ -1057,8 +1058,12 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                     (*scope).variables[i].type = VAR_STRING;
                 }
             }
-        } else if (modify_list_item){
-            Variable new_list_item = {
+        } 
+        else if (modify_list_item){
+            if (type == VAR_STRING)
+                change_str_char(end_var.var.name, end_var.var.name_len, indicies[0], eval_result.string[0], scope);
+            else {
+                Variable new_list_item = {
                 .len = eval_result.str_len,
                 .name = eval_result.string,
                 .name_len = eval_result.str_len,
@@ -1066,10 +1071,10 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 .type = eval_result.type,
                 .value = eval_result.value,
                 .list_ptr = eval_result.list_ptr
-            };
+                };
+                change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
+            }
 
-            change_list_item(end_var.var.name, end_var.var.name_len, indicies, new_list_item, scope, index_amount);
-  
         } else if (type == VAR_LIST){
             for (int i = 0; i < (*scope).index; i++){
                 if ((*scope).variables[i].name == NULL)
