@@ -325,16 +325,16 @@ Program tokenize(char* buff, int debug)
             i += 6;
             loop_type = -1;
         }
-        else if (strncmp(&buff[i], "annars", 6) == 0)
+        else if (strncmp(&buff[i], "annars ", 7) == 0)
         {
             tok.type = ANNARS;
-            i += 6;
+            i += 7;
             loop_type = -1;
         }
-        else if (strncmp(&buff[i], " om ", 4) == 0)
+        else if (strncmp(&buff[i], "om", 2) == 0)
         {
             tok.type = OM;
-            i += 4;
+            i += 2;
         }
         else if (strncmp(&buff[i], "att ", 4) == 0)
         {
@@ -673,44 +673,64 @@ void check_syntax(Program* program){
                 }
                 break;
 
-            case GIVET: ;
+            //both givet & annars
+            case GIVET:
+            case ANNARS: ;
                 j = 1;
                 args = 0;
                 comp_amount = 0;
                 left_args = 0;
                 right_args = 0;
                 int att_exists = 0;
+                int is_pure_else = 0;
                 opens_loop = 0;
-
-                if (instructions[i][1].type == ATT) att_exists = 1;
+                // att or om
+                if ((instructions[i][1].type == ATT && instructions[i][0].type == GIVET) || (instructions[i][1].type == OM && instructions[i][0].type == ANNARS))
+                {
+                    att_exists = 1;
+                }
+                // Pure else removes checks
+                else if (instructions[i][1].type != OM && instructions[i][0].type == ANNARS)
+                {
+                    is_pure_else = 1;
+                }
 
                 while (instructions[i][j-1].type != TERMINATOR){
                     if (instructions[i][j].type == TERMINATOR){
-                        if (j >= 3) break;
-                        printf("[GIVET]: ERR: Syntax error, instruction %d\n", i);
+                        if (j >= 3 || is_pure_else) break;
+                        if (instructions[i][0].type == GIVET)
+                        {
+                            printf("[GIVET]: ERR: Syntax error, instruction %d\n", i);
+                        }
+                        else
+                        {
+                            printf("[ANNARS]: ERR: Syntax error, instruction %d\n", i);
+                        }
                         exit(-1);
                     }
                     int tok = instructions[i][j].type;
-                    
-                    if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
+                    if (!is_pure_else) {
+                        
+                        if (tok == NUMBER || tok == VARIABLE || tok == STRING || tok == FUNCTION) args = 1;
 
 
-                    if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
-                        if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
-                            right_args = 1;
+                        if (tok == EQUALS || tok == NOT_EQUAL_TO || tok == GREATER_THAN || tok == LESS_THAN) {
+                            if (instructions[i][j+1].type == NUMBER || instructions[i][j+1].type == VARIABLE || instructions[i][j+1].type == STRING || instructions[i][j+1].type == FUNCTION || instructions[i][j+1].type == LEFT_PAR){
+                                right_args = 1;
+                            }
+                            if (instructions[i][j-1].type == NUMBER || 
+                                instructions[i][j-1].type == VARIABLE || 
+                                instructions[i][j-1].type == STRING || 
+                                instructions[i][j-1].type == FUNCTION || 
+                                instructions[i][j+1].type == RIGHT_PAR || 
+                                instructions[i][j-1].type == RIGHT_BRACKET || 
+                                instructions[i][j-1].type == RIGHT_PAR)
+                            {
+                                left_args = 1;
+                            }
+
+                            comp_amount++;
                         }
-                        if (instructions[i][j-1].type == NUMBER || 
-                            instructions[i][j-1].type == VARIABLE || 
-                            instructions[i][j-1].type == STRING || 
-                            instructions[i][j-1].type == FUNCTION || 
-                            instructions[i][j+1].type == RIGHT_PAR || 
-                            instructions[i][j-1].type == RIGHT_BRACKET || 
-                            instructions[i][j-1].type == RIGHT_PAR)
-                        {
-                            left_args = 1;
-                        }
-
-                        comp_amount++;
                     }
 
                     if (tok == OPEN_LOOP){
@@ -723,16 +743,30 @@ void check_syntax(Program* program){
                 }
                 
 
-                if ((!left_args && !right_args) && !args){
+                if ((!left_args && !right_args) && !args && !is_pure_else){
                     printf("[GIVET]: ERR: Syntax error, instruction %d, found no values to compare\n", i);
                     exit(-1);
                 }
                 if (!opens_loop){
-                    printf("[GIVET]: ERR: Syntax error, instruction %d, opened no loop at givet\n", i);
+                    if (instructions[i][0].type == GIVET)
+                    {
+                        printf("[GIVET]: ERR: Syntax error, instruction %d, opened no loop at givet\n", i);
+                    }
+                    else
+                    {
+                        printf("[ANNARS]: ERR: Syntax error, instruction %d, opened no loop at annars\n", i);
+                    }
                     exit(-1);
                 }
-                if (!att_exists){
-                    printf("[GIVET]: ERR: Syntax error, instruction %d, ATT token saknas\n", i);
+                if (!att_exists && !is_pure_else){
+                    if (instructions[i][0].type == GIVET)
+                    {
+                        printf("[GIVET]: ERR: Syntax error, instruction %d, ATT token saknas\n", i);
+                    }
+                    else
+                    {
+                        printf("[ANNARS]: ERR: Syntax error, instruction %d, OM token saknas\n", i);
+                    }
                     exit(-1);
                 }
 
