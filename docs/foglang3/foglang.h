@@ -1,3 +1,5 @@
+#pragma once
+
 typedef enum {
     NODE_NUMBER,
     NODE_BINARY,
@@ -82,6 +84,8 @@ typedef struct {
 
 } Token;
 
+char *read_file(const char *filename);
+void help(int argc, char **argv);
 
 Node* make_num(double number);
 Node* make_binary(Node* left, TokType op, Node* right);

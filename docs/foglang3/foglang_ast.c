@@ -5,10 +5,6 @@
 
 #include "foglang.h"
 
-#include "foglang_utils.c"
-#include "debug_print.c"
-
-
 int current = 0;
 
 Node* make_num(double number){
@@ -335,6 +331,7 @@ Token* tokenize(char* buff, int* tok_amount){
 }
 
 double interpret(Node* ast) {
+
     if (ast->type == NODE_NUMBER) return ast->number.value;
 
     // bin expr
@@ -363,16 +360,3 @@ double interpret(Node* ast) {
     }
 }
 
-int main(){
-    char* buff = "givet att 10 = 10 {band a = 4; }";
-    int tok_count;
-    Token* tokens = tokenize(buff, &tok_count);
-    print_tokens(tokens, tok_count);
-    
-    int ast_size;
-    Node** ast = build_ast(tokens, tok_count, &ast_size);
-    print_ast(ast, "", 0, ast_size);
-
-    
-    return 0;
-}

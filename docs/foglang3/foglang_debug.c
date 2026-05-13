@@ -1,3 +1,5 @@
+#pragma once
+
 void print_indent(int indent){
 
     for(int i = 0; i < indent; i++)

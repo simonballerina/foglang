@@ -1,3 +1,5 @@
+#pragma once
+
 char *read_file(const char *filename)
 {
     FILE *f = fopen(filename, "rb");
@@ -17,4 +19,14 @@ char *read_file(const char *filename)
 
     fclose(f);
     return buffer;
+}
+
+
+void help(int argc, char **argv) {
+    printf("\
+usage: foglang3 [--version] [--help] \n\
+                <filepath> [--debug] [--unchecked]\n\
+                <command> [<args>]\n\
+\n\
+Interpret a Foglang3 program: foglang3 <filepath>\n");
 }
