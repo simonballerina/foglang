@@ -4,6 +4,10 @@ docs/readthedocs/build/*
 docs/foglang2/build/*
 .vscode/*
 docs/foglang2/test/*
+
+docs/foglang3/test/*
+docs/foglang3/build/*
+
 .DS_Store
 docs/bandvagn/test/*
 docs/bandvagn/build/*
