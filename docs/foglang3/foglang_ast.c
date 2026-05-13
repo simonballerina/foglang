@@ -19,6 +19,17 @@ Node* make_num(double number){
     return ret;
 }
 
+Node* make_str(char* str) {
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    // Tokenized strings are malloc:ed
+    ret->string.string = str;
+    ret->type = NODE_STRING;
+}
+
 Node* make_binary(Node* left, TokType op, Node* right){
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
@@ -42,7 +53,13 @@ Node* parse_factor(Token* tokens, int tok_count) {
 
         return ret;
     }
-    if(tokens[current].type == LEFT_PAR) {
+    if (tokens[current].type == STRING) {
+        Node* ret = make_str(tokens[current].string);
+        current++;
+
+        return ret;
+    }
+    if (tokens[current].type == LEFT_PAR) {
 
         current++;
 
@@ -229,64 +246,79 @@ Token* tokenize(char* buff, int* tok_amount){
             continue;
         }
 
-        int letter_token_flag = 0;
         switch (letter) {
             case '(':
                 tokens[tok_top++].type = LEFT_PAR;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case ')':
                 tokens[tok_top++].type = RIGHT_PAR;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '+':
                 tokens[tok_top++].type = OP_ADD;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '-':
                 tokens[tok_top++].type = OP_SUB;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '*':
                 tokens[tok_top++].type = OP_MUL;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '/':
                 tokens[tok_top++].type = OP_DIV;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '%':
                 tokens[tok_top++].type = OP_MOD;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '^':
                 tokens[tok_top++].type = OP_EXP;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '=':
                 tokens[tok_top++].type = CMP_EQUALS;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '>':
                 tokens[tok_top++].type = CMP_GREATER_THAN;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '<':
                 tokens[tok_top++].type = CMP_LESS_THAN;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case ';':
                 tokens[tok_top++].type = TERMINATOR;
-                letter_token_flag = 1;
-                break;
+                continue;
+
             case '{':
                 tokens[tok_top++].type = OPEN_BLOCK;
-                letter_token_flag = 1;
-                break;
+                continue;
             case '}':
                 tokens[tok_top++].type = CLOSE_BLOCK;
-                letter_token_flag = 1;
-                break;
+                continue;
+            case '"': { // Create string
+                tokens[tok_top].type = STRING;
+                // Get str len
+                int len = 0;
+                while (buff[1+i+len++] != '"'){}
+                
+                len--;
+                char* string = malloc(len);
+
+                if (!string) goto malloc_error;
+
+                strncpy(string, buff+i+1, len);
+                string[len] = '\0';
+
+                tokens[tok_top++].string = string;
+                i+=len+1;
+                continue;
+            }
         }
         if (strncmp(buff+i, "band ", 5) == 0){
             tokens[tok_top++].type = BAND;
@@ -300,7 +332,7 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "!=", 2) == 0) {
             i+=2;
             tokens[tok_top++].type = CMP_NOT_EQUALS;
-        } else if (!letter_token_flag) {
+        } else {
             // anta variabel
             int j = i;
             while (j < buff_len && ((buff[j] >= 'a' && buff[j] <= 'z') || (buff[j] >= 'A' && buff[j] <= 'Z') || (buff[j] >= '0' && buff[j] <= '9') || buff[j] == '_')) j++;

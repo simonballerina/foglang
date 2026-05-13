@@ -36,10 +36,16 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
         case NODE_NUMBER:
 
-            printf("%g\n",
-                node->number.value);
+            printf("%g\n", node->number.value);
 
             break;
+
+        case NODE_STRING:
+
+            printf("'%s'\n", node->string.string);
+
+            break;
+
 
         case NODE_BINARY: {
 
@@ -197,7 +203,7 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'%%'    ");
             break;
         case IDENTIFIER:
-            printf("'%.*s'    ", strlen(instructions[i].string), instructions[i].string);
+            printf("i'%.*s'    ", strlen(instructions[i].string), instructions[i].string);
             break;
         case CMP_EQUALS:
             printf("'='    ");
@@ -213,6 +219,9 @@ void print_tokens(Token* instructions, int instruction_amount)
             break;
         case NUMBER:
             printf("'%lf'    ", instructions[i].value);
+            break;
+        case STRING:
+            printf("s'%s'    ", instructions[i].string);
             break;
         case TERMINATOR:
             printf(";\n");
