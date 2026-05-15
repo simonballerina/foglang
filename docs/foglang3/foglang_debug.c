@@ -40,6 +40,11 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
                 node->number.value);
 
             break;
+        case NODE_IDENTIFIER:
+
+            printf("%s\n", node->string.string);
+
+            break;
 
         case NODE_BINARY: {
 

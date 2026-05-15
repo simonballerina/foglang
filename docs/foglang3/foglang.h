@@ -5,6 +5,7 @@ typedef enum {
     NODE_BINARY,
     NODE_BAND,
     NODE_GIVET,
+    NODE_IDENTIFIER,
 } NodeType;
 
 

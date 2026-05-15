@@ -19,6 +19,19 @@ Node* make_num(double number){
     return ret;
 }
 
+Node* make_identifier(char* name) {
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    
+    ret->string.string = name;
+    ret->type = NODE_IDENTIFIER;
+    
+    return ret;
+}
+
 Node* make_binary(Node* left, TokType op, Node* right){
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
@@ -42,7 +55,13 @@ Node* parse_factor(Token* tokens, int tok_count) {
 
         return ret;
     }
-    if(tokens[current].type == LEFT_PAR) {
+    if (tokens[current].type == IDENTIFIER){
+        Node* ret = make_identifier(tokens[current].string);
+        current++;
+
+        return ret;
+    }
+    if (tokens[current].type == LEFT_PAR) {
 
         current++;
 
@@ -71,8 +90,7 @@ Node* parse_term(Token* tokens, int tok_count){
         (tokens[current].type == OP_MUL ||
             tokens[current].type == OP_DIV ||
             tokens[current].type == OP_EXP ||
-            tokens[current].type == OP_MOD || 
-            tokens[current].type == CMP_EQUALS)) 
+            tokens[current].type == OP_MOD) )
     {
         TokType op = tokens[current].type;
 
@@ -90,7 +108,13 @@ Node* parse_expression(Token* tokens, int tok_count){
 
     Node* left = parse_term(tokens, tok_count);
 
-    while (current < tok_count && (tokens[current].type == OP_ADD || tokens[current].type == OP_SUB)) 
+    while (current < tok_count && 
+        (tokens[current].type == OP_ADD || 
+            tokens[current].type == OP_SUB || 
+            tokens[current].type == CMP_EQUALS || 
+            tokens[current].type == CMP_NOT_EQUALS || 
+            tokens[current].type == CMP_GREATER_THAN || 
+            tokens[current].type == CMP_LESS_THAN)) 
     {
         TokType op = tokens[current].type;
         current++;
@@ -301,7 +325,7 @@ Token* tokenize(char* buff, int* tok_amount){
             i+=2;
             tokens[tok_top++].type = CMP_NOT_EQUALS;
         } else if (!letter_token_flag) {
-            // anta variabel
+            // anta identifier
             int j = i;
             while (j < buff_len && ((buff[j] >= 'a' && buff[j] <= 'z') || (buff[j] >= 'A' && buff[j] <= 'Z') || (buff[j] >= '0' && buff[j] <= '9') || buff[j] == '_')) j++;
             j -= i;
