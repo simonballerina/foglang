@@ -39,6 +39,11 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             printf("%g\n", node->number.value);
 
             break;
+        case NODE_IDENTIFIER:
+
+            printf("%s\n", node->string.string);
+
+            break;
 
         case NODE_STRING:
 
@@ -144,7 +149,53 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             }
 
             break;
-        }    
+        }   
+        case NODE_NAER: {
+
+            printf("NAER\n");
+
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            /*
+                CONDITION
+            */
+
+            printf("%s├── CONDITION\n", new_prefix);
+
+            char cond_prefix[256];
+
+            snprintf(cond_prefix, sizeof(cond_prefix), "%s│   ", new_prefix);
+
+            print_ast_statement(node->block.condition, cond_prefix, 0);
+
+            /*
+                BLOCK
+            */
+
+            printf("%s└── BLOCK\n", new_prefix);
+
+            char block_prefix[256];
+
+            snprintf(block_prefix, sizeof(block_prefix), "%s    ", new_prefix);
+
+            for(int i = 0;
+                i < node->block.statement_count;
+                i++)
+            {
+                print_ast_statement(node->block.block[i], block_prefix, i != node->block.statement_count - 1);
+            }
+
+            break;
+        }  
+
     }
 }
 
@@ -169,6 +220,9 @@ void print_tokens(Token* instructions, int instruction_amount)
             break;
         case BAND:
             printf("'BAND'    ");
+            break;
+        case NAER:
+            printf("'NAER'    ");
             break;
         case GIVET:
             printf("'GIVET ATT'    ");
@@ -203,7 +257,7 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'%%'    ");
             break;
         case IDENTIFIER:
-            printf("i'%.*s'    ", strlen(instructions[i].string), instructions[i].string);
+            printf("'%.*s'    ", (int)strlen(instructions[i].string), instructions[i].string);
             break;
         case CMP_EQUALS:
             printf("'='    ");

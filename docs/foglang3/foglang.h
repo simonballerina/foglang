@@ -6,6 +6,8 @@ typedef enum {
     NODE_BINARY,
     NODE_BAND,
     NODE_GIVET,
+    NODE_IDENTIFIER,
+    NODE_NAER,
 } NodeType;
 
 
@@ -29,10 +31,11 @@ typedef enum {
 
     IDENTIFIER, // 14
 
-    TERMINATOR, // 15
-    BAND,       // 16
-    GIVET,      // 17
-    FOUG,       // 18
+    TERMINATOR, // 14
+    BAND,       // 15
+    GIVET,      // 16
+    FOUG,       // 17
+    NAER,       // 18
 
     OPEN_BLOCK,
     CLOSE_BLOCK,
@@ -93,12 +96,14 @@ Node* make_num(double number);
 Node* make_str(char* str);
 
 Node* make_binary(Node* left, TokType op, Node* right);
+Node* parse_exp(Token* tokens, int tok_count);
 Node* parse_factor(Token* tokens, int tok_count);
 Node* parse_term(Token* tokens, int tok_count);
 Node* parse_expression(Token* tokens, int tok_count);
+Node* parse_cmp(Token* tokens, int tok_count);
 Node* parse_statement(Token* tokens, int tok_count);
 
-Node* parse_givet(Token* tokens, int tok_count);
+Node* parse_cond_block(Token* tokens, int tok_count, TokType type);
 Node* parse_band(Token* tokens, int tok_count);
 
 Node** build_ast(Token* tokens, int tok_count, int* ast_size);
