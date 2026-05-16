@@ -25,7 +25,7 @@ Node* make_str(char* str) {
         printf("Memory allocation failed\n");
         exit(1);
     }
-    // Tokenized strings are malloc:ed
+    // tokenized strings are on the heap
     ret->string.string = str;
     ret->type = NODE_STRING;
 }
