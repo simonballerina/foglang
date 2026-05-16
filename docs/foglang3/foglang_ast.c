@@ -19,6 +19,19 @@ Node* make_num(double number){
     return ret;
 }
 
+Node* make_identifier(char* name) {
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    
+    ret->string.string = name;
+    ret->type = NODE_IDENTIFIER;
+    
+    return ret;
+}
+
 Node* make_binary(Node* left, TokType op, Node* right){
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
@@ -42,7 +55,13 @@ Node* parse_factor(Token* tokens, int tok_count) {
 
         return ret;
     }
-    if(tokens[current].type == LEFT_PAR) {
+    if (tokens[current].type == IDENTIFIER){
+        Node* ret = make_identifier(tokens[current].string);
+        current++;
+
+        return ret;
+    }
+    if (tokens[current].type == LEFT_PAR) {
 
         current++;
 
@@ -71,8 +90,7 @@ Node* parse_term(Token* tokens, int tok_count){
         (tokens[current].type == OP_MUL ||
             tokens[current].type == OP_DIV ||
             tokens[current].type == OP_EXP ||
-            tokens[current].type == OP_MOD || 
-            tokens[current].type == CMP_EQUALS)) 
+            tokens[current].type == OP_MOD) )
     {
         TokType op = tokens[current].type;
 
@@ -90,7 +108,13 @@ Node* parse_expression(Token* tokens, int tok_count){
 
     Node* left = parse_term(tokens, tok_count);
 
-    while (current < tok_count && (tokens[current].type == OP_ADD || tokens[current].type == OP_SUB)) 
+    while (current < tok_count && 
+        (tokens[current].type == OP_ADD || 
+            tokens[current].type == OP_SUB || 
+            tokens[current].type == CMP_EQUALS || 
+            tokens[current].type == CMP_NOT_EQUALS || 
+            tokens[current].type == CMP_GREATER_THAN || 
+            tokens[current].type == CMP_LESS_THAN)) 
     {
         TokType op = tokens[current].type;
         current++;
@@ -105,8 +129,8 @@ Node* parse_expression(Token* tokens, int tok_count){
 
 }
 
-Node* parse_givet(Token* tokens, int tok_count) {
-    current++; // Hoppa över GIVET
+Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
+    current++; // Hoppa över GIVET/NAER
     Node* ret = malloc(sizeof(Node));
 
     Node* condition = parse_expression(tokens, tok_count);
@@ -115,8 +139,17 @@ Node* parse_givet(Token* tokens, int tok_count) {
 
     // Count statement/block size
     int len = 0;
-    for (int i = 0; i < tok_count; i++) {
-        if (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK) len++;
+    int depth = 0;
+    for (int i = current; i < tok_count; i++) {
+        if (tokens[i].type == OPEN_BLOCK) depth++;
+        if (tokens[i].type == CLOSE_BLOCK) {
+            if (depth == 0) break; 
+            depth--;
+        }
+        // count statements at block depth (0)
+        if (depth == 0 && (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK)) {
+            len++;
+        }
     }
     
     Node** block = malloc(sizeof(Node*)*len);
@@ -129,7 +162,10 @@ Node* parse_givet(Token* tokens, int tok_count) {
     }
     current++; // Hoppa över }
 
-    ret->type = NODE_GIVET;
+    NodeType ret_type;
+    if (type == NAER) ret_type = NODE_NAER;
+    else if (type == GIVET) ret_type = NODE_GIVET;
+    ret->type = ret_type;
     ret->block.condition = condition;
     ret->block.block = block;
     ret->block.statement_count = statement_count;
@@ -172,8 +208,12 @@ Node* parse_statement(Token* tokens, int tok_count) {
         return parse_band(tokens, tok_count);
 
     if (tokens[current].type == GIVET)
-        return parse_givet(tokens, tok_count);
+        return parse_cond_block(tokens, tok_count, GIVET);
 
+    if (tokens[current].type == NAER)
+        return parse_cond_block(tokens, tok_count, NAER);
+
+    printf("Unknown token: '%s'\n", tokens[current].string);
     return NULL;
 }
 
@@ -294,6 +334,9 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "foug ", 5) == 0){
             tokens[tok_top++].type = FOUG;
             i+=4;
+        } else if (strncmp(buff+i, "naer ", 5) == 0){
+            tokens[tok_top++].type = NAER;
+            i+=4;
         } else if (strncmp(buff+i, "givet att ", 10) == 0) {
             i+=9;
             tokens[tok_top++].type = GIVET;
@@ -301,7 +344,7 @@ Token* tokenize(char* buff, int* tok_amount){
             i+=2;
             tokens[tok_top++].type = CMP_NOT_EQUALS;
         } else if (!letter_token_flag) {
-            // anta variabel
+            // anta identifier
             int j = i;
             while (j < buff_len && ((buff[j] >= 'a' && buff[j] <= 'z') || (buff[j] >= 'A' && buff[j] <= 'Z') || (buff[j] >= '0' && buff[j] <= '9') || buff[j] == '_')) j++;
             j -= i;
@@ -330,7 +373,11 @@ Token* tokenize(char* buff, int* tok_amount){
         exit(1);
 }
 
-double interpret(Node* ast) {
+/*
+    Mathematical evaluator
+*/
+
+/*double interpret(Node* ast) {
 
     if (ast->type == NODE_NUMBER) return ast->number.value;
 
@@ -358,5 +405,5 @@ double interpret(Node* ast) {
             return left == right;
             break;
     }
-}
+}*/
 
