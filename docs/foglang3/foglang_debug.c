@@ -107,8 +107,11 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
         }
         case NODE_FOUG: {
 
-            printf("FOUG\n");
+            printf("FOUG ");
+            if (node->foug.is_junk) printf("JUNK ");
 
+            if (node->foug.is_svets) printf("SVETS");
+            printf("\n");
             char new_prefix[256];
 
             snprintf(
@@ -129,8 +132,9 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
         }
         case NODE_TPOS: {
 
-            printf("TPOS\n");
-
+            printf("TPOS ");
+            if (node->tpos.is_svets) printf("SVETS");
+            printf("\n");
             char new_prefix[256];
 
             snprintf(
