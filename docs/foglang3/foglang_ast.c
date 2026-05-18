@@ -15,7 +15,6 @@ Node* make_num(double number){
     }
     ret->number.value = number;
     ret->type = NODE_NUMBER;
-
     return ret;
 }
 
@@ -35,7 +34,7 @@ Node* make_identifier(char* name) {
 Node* make_str(char* str) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
-        printf("Memory allocation failed\n");
+        printf("Memory allocation failed for string\n");
         exit(1);
     }
     // tokenized strings are on the heap
@@ -46,7 +45,7 @@ Node* make_str(char* str) {
 Node* make_binary(Node* left, TokType op, Node* right){
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
-        printf("Memory allocation failed\n");
+        printf("Memory allocation failed for binary\n");
         exit(1);
     }
     ret->type = NODE_BINARY;
@@ -162,7 +161,6 @@ Node* parse_cmp(Token* tokens, int tok_count) {
 
 }
 
-
 Node* parse_expression(Token* tokens, int tok_count){
 
     Node* left = parse_term(tokens, tok_count);
@@ -191,7 +189,8 @@ Node* parse_expression(Token* tokens, int tok_count){
 Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
     current++; // Hoppa över GIVET/NAER
     Node* ret = malloc(sizeof(Node));
-
+    if (!ret) goto malloc_error;
+    
     Node* condition = parse_cmp(tokens, tok_count);
 
     current++; // Hoppa över {
@@ -231,7 +230,7 @@ Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
 
     return ret;
     malloc_error:
-        printf("Memory allocation failed\n");
+        printf("Memory allocation failed conditional block\n");
         exit(1);
 }
 
@@ -257,6 +256,49 @@ Node* parse_band(Token* tokens, int tok_count) {
     return ret;
 
     malloc_error:
+        printf("Memory allocation failed for band statement\n");
+        exit(1);
+}
+
+Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
+    current++; // Hoppa över 'foug'/'tpos'
+
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) goto malloc_error;
+
+    int is_junk = 0;
+    int is_svets = 0;
+
+    while (tokens[current].type == SVETS || tokens[current].type == JUNK) {
+
+        if (tokens[current].type == SVETS) is_svets = 1;
+        if (tokens[current].type == JUNK) is_junk = 1;
+
+        current++;
+    }
+    Node* eval_str = parse_expression(tokens, tok_count);
+    
+    if (type == FOUG) {
+        ret->type = NODE_FOUG;
+
+        ret->foug.is_junk = is_junk;
+        ret->foug.is_svets = is_svets;
+
+        ret->foug.string = eval_str;
+    }
+    
+    else if (type == TPOS) {
+        ret->type = NODE_TPOS;
+        ret->tpos.is_svets = is_svets;
+
+        ret->foug.string = eval_str;
+    }
+
+    current++;
+
+    return ret;
+
+    malloc_error:
         printf("Memory allocation failed\n");
         exit(1);
 }
@@ -272,7 +314,14 @@ Node* parse_statement(Token* tokens, int tok_count) {
     if (tokens[current].type == NAER)
         return parse_cond_block(tokens, tok_count, NAER);
 
-    printf("Unknown token: '%s'\n", tokens[current].string);
+    if (tokens[current].type == FOUG)
+        return parse_output_statement(tokens, tok_count, FOUG);
+
+    if (tokens[current].type == TPOS)
+        return parse_output_statement(tokens, tok_count, TPOS);
+    
+    printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
+
     return NULL;
 }
 
@@ -408,8 +457,17 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "foug ", 5) == 0){
             tokens[tok_top++].type = FOUG;
             i+=4;
+        } else if (strncmp(buff+i, "tpos ", 5) == 0){
+            tokens[tok_top++].type = TPOS;
+            i+=4;
         } else if (strncmp(buff+i, "naer ", 5) == 0){
             tokens[tok_top++].type = NAER;
+            i+=4;
+        } else if (strncmp(buff+i, "svets ", 6) == 0){
+            tokens[tok_top++].type = SVETS;
+            i+=5;
+        } else if (strncmp(buff+i, "junk ", 5) == 0){
+            tokens[tok_top++].type = JUNK;
             i+=4;
         } else if (strncmp(buff+i, "givet att ", 10) == 0) {
             i+=9;

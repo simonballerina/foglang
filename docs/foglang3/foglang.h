@@ -8,6 +8,8 @@ typedef enum {
     NODE_GIVET,
     NODE_IDENTIFIER,
     NODE_NAER,
+    NODE_FOUG,
+    NODE_TPOS,
 } NodeType;
 
 
@@ -36,6 +38,9 @@ typedef enum {
     GIVET,      // 16
     FOUG,       // 17
     NAER,       // 18
+    SVETS,      // 19
+    JUNK,       // 20
+    TPOS,       // 21
 
     OPEN_BLOCK,
     CLOSE_BLOCK,
@@ -76,6 +81,17 @@ struct Node {
             Node* right;
             TokType op;
         } binary;
+
+        struct {
+            Node* string;
+            int is_svets;
+        } tpos;
+
+        struct {
+            Node* string;
+            int is_svets;
+            int is_junk;
+        } foug;
 
     };
 };
