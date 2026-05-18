@@ -51,10 +51,6 @@ int main(int argc, char **argv){
     if (argv[1]){
         buff = read_file(argv[1]);
         if (!buff) goto malloc_error; 
-    }   
-    if (!buff) {
-        printf("Could not read file %s\n", argv[1]);
-        exit(1);
     }
 
 
@@ -71,7 +67,7 @@ int main(int argc, char **argv){
     return 0;
 
     malloc_error:
-        printf("Memory allocation failed\n");
+        printf("Could not read file '%s'\n", argv[1]);
         exit(1);
 
 }

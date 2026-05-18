@@ -36,8 +36,7 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
         case NODE_NUMBER:
 
-            printf("%g\n",
-                node->number.value);
+            printf("%g\n", node->number.value);
 
             break;
         case NODE_IDENTIFIER:
@@ -45,6 +44,13 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             printf("%s\n", node->string.string);
 
             break;
+
+        case NODE_STRING:
+
+            printf("'%s'\n", node->string.string);
+
+            break;
+
 
         case NODE_BINARY: {
 
@@ -99,6 +105,56 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
             break;
         }
+        case NODE_FOUG: {
+
+            printf("FOUG ");
+            if (node->foug.is_junk) printf("JUNK ");
+
+            if (node->foug.is_svets) printf("SVETS");
+            printf("\n");
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            print_ast_statement(
+                node->foug.string,
+                new_prefix,
+                0
+            );
+
+            break;
+        }
+        case NODE_TPOS: {
+
+            printf("TPOS ");
+            if (node->tpos.is_svets) printf("SVETS");
+            printf("\n");
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            print_ast_statement(
+                node->tpos.string,
+                new_prefix,
+                0
+            );
+
+            break;
+        }
+
+
         case NODE_GIVET: {
 
             printf("GIVET ATT\n");
@@ -204,7 +260,6 @@ void print_ast(Node** ast, const char* prefix, int is_left, int ast_size) {
 
 void print_tokens(Token* instructions, int instruction_amount)
 {
-
     for (int i = 0; i < instruction_amount; i++)
     {
         switch (instructions[i].type)
@@ -267,6 +322,9 @@ void print_tokens(Token* instructions, int instruction_amount)
             break;
         case NUMBER:
             printf("'%lf'    ", instructions[i].value);
+            break;
+        case STRING:
+            printf("s'%s'    ", instructions[i].string);
             break;
         case TERMINATOR:
             printf(";\n");

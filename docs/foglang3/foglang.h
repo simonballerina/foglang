@@ -2,11 +2,14 @@
 
 typedef enum {
     NODE_NUMBER,
+    NODE_STRING,
     NODE_BINARY,
     NODE_BAND,
     NODE_GIVET,
     NODE_IDENTIFIER,
     NODE_NAER,
+    NODE_FOUG,
+    NODE_TPOS,
 } NodeType;
 
 
@@ -20,20 +23,24 @@ typedef enum {
     OP_MOD,             // 6
     OP_EXP,             // 7
     NUMBER,             // 8
+    STRING,             // 9
 
-    CMP_EQUALS,         // 9
-    CMP_NOT_EQUALS,     // 10
-    CMP_GREATER_THAN,   // 11
-    CMP_LESS_THAN,      // 12
+    CMP_EQUALS,         // 10
+    CMP_NOT_EQUALS,     // 11
+    CMP_GREATER_THAN,   // 12
+    CMP_LESS_THAN,      // 13
 
 
-    IDENTIFIER, // 13
+    IDENTIFIER, // 14
 
     TERMINATOR, // 14
     BAND,       // 15
     GIVET,      // 16
     FOUG,       // 17
     NAER,       // 18
+    SVETS,      // 19
+    JUNK,       // 20
+    TPOS,       // 21
 
     OPEN_BLOCK,
     CLOSE_BLOCK,
@@ -75,6 +82,17 @@ struct Node {
             TokType op;
         } binary;
 
+        struct {
+            Node* string;
+            int is_svets;
+        } tpos;
+
+        struct {
+            Node* string;
+            int is_svets;
+            int is_junk;
+        } foug;
+
     };
 };
 
@@ -91,10 +109,14 @@ char *read_file(const char *filename);
 void help(int argc, char **argv);
 
 Node* make_num(double number);
+Node* make_str(char* str);
+
 Node* make_binary(Node* left, TokType op, Node* right);
+Node* parse_exp(Token* tokens, int tok_count);
 Node* parse_factor(Token* tokens, int tok_count);
 Node* parse_term(Token* tokens, int tok_count);
 Node* parse_expression(Token* tokens, int tok_count);
+Node* parse_cmp(Token* tokens, int tok_count);
 Node* parse_statement(Token* tokens, int tok_count);
 
 Node* parse_cond_block(Token* tokens, int tok_count, TokType type);
