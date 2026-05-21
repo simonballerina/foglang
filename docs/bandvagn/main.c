@@ -136,6 +136,53 @@ char* get_lib_path_unix(char* base, char* name) {
 
 }
 
+
+char* get_lib_path_windows(const char* local, const char* base, const char* name) {
+    int has_ext = 0;
+
+    for (int i = strlen(name)-1; i >= 0 && name[i] != '\\' && name[i] != '/'; i--) {
+        if (name[i] == '.') {
+            has_ext = 1;
+            break;
+        }
+    }
+
+    char* name_with_ext;
+    int name_len = strlen(name);
+
+    if (!has_ext) {
+        name_with_ext = malloc(name_len + 4);
+
+        if (!name_with_ext) {
+            fprintf(stderr, "malloc failed\n");
+            exit(1);
+        }
+
+        strcpy(name_with_ext, name);
+        strcat(name_with_ext, ".fg");
+    } else {
+        name_with_ext = (char*)name;
+    }
+
+    int len =
+        strlen(local) +
+        strlen(base) +
+        strlen(name_with_ext) + 1;
+
+    char *path = malloc(len);
+
+    if (!path) {
+        fprintf(stderr, "malloc failed\n");
+        exit(1);
+    }
+
+    strcpy(path, local);
+    strcat(path, base);
+    strcat(path, name_with_ext);
+
+    return path;
+}
+
 int check_and_create_dir(char* path) {
     char* dir_path = malloc(strlen(path) + 1);
     if (!dir_path) {
@@ -149,11 +196,19 @@ int check_and_create_dir(char* path) {
     if (last_slash) {
         *last_slash = '\0';
         if (access(dir_path, F_OK) == -1) {
-            if (mkdir(dir_path, 0755) != 0) {
-                fprintf(stderr, "Failed to create directory '%s'\n", dir_path);
-                free(dir_path);
-                return 1;
-            }
+            #ifndef _WIN32 
+                if (mkdir(dir_path, 0755) != 0) {
+                    fprintf(stderr, "Failed to create directory '%s'\n", dir_path);
+                    free(dir_path);
+                    return 1;
+                }
+            #else
+                if (mkdir(dir_path) != 0) {
+                    fprintf(stderr, "Failed to create directory '%s'\n", dir_path);
+                    free(dir_path);
+                    return 1;
+                }
+            #endif
         }
     }
     free(dir_path);
@@ -191,6 +246,11 @@ int install_package(char* package_name) {
 
 
     #ifdef _WIN32
+        char* lib_path = "C:\\Users\\Simon\\AppData\\Local\\foglang2\\packages\\";
+        if (check_and_create_dir(lib_path) != 0) {
+            EXIT_CODE = 1;
+            goto exit_program;
+        }
     #elif __APPLE__
         char* base = "/Library/Application Support/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
@@ -207,7 +267,6 @@ int install_package(char* package_name) {
             EXIT_CODE = 1;
             goto exit_program;
         }
-
     #endif
     
     
@@ -236,6 +295,13 @@ int install_package(char* package_name) {
 int remove_package(char* package_name) {
     printf("Removing package '%s'...\n", package_name);
     #ifdef _WIN32
+        const char *local = getenv("LOCALAPPDATA");
+        if (!local) {
+            fprintf(stderr, "LOCALAPPDATA not set\n");
+            exit(1);
+        }
+        char *base = "\\foglang2\\packages\\";
+        char *lib_path = get_lib_path_windows(local, base, package_name);
     #elif __APPLE__
         char* base = "/Library/Application Support/foglang2/packages/";
         char* lib_path = get_lib_path_unix(base, package_name);
