@@ -95,7 +95,7 @@ def install_foglang_lib(plat, is_custom) -> str:
 
         
 
-def install_bandvagn(plat):
+def install_bandvagn(plat, packages):
     print(f"Building Bandvagn executable for {plat}...")
 
     abs_path = os.path.abspath(__file__)
@@ -116,7 +116,9 @@ def install_bandvagn(plat):
 
     print(f"     Building to {build_path}...")
 
-    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} -lcurl", shell=True)
+    pack_text = (f'-D PACKPATH="{packages}{"/"*bool(packages[-1]!="/" and not plat == "Windows")}{"\\"*bool(packages[-1]!="\\" and plat == "Windows")}"')*bool(packages)
+
+    ret_code = subprocess.call(f"gcc -o {build_path} {abs_path} '{pack_text}' -lcurl", shell=True)
 
     if ret_code != 0:
         print("     Build failed, exiting install...")
@@ -175,9 +177,10 @@ def main():
     
     lib_path = install_foglang_lib(plat, is_custom)
 
-    install_bandvagn(plat)
+   
     pack_path = create_bandvagn_dir(plat, is_custom)
-
+    install_bandvagn(plat, pack_path)
+    
     install_foglang_bin(plat, lib_path, pack_path)
 
     print("Foglang install successful!")
