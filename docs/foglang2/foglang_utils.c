@@ -46,7 +46,18 @@ double str_to_double(char *num)
 
 char *read_file(const char *filename)
 {
-    FILE *f = fopen(filename, "rb");
+    //replace tilde
+    char* home = getenv("HOME");
+    if (home == NULL) printf("ofog");
+    char full_filename[strlen(home)+strlen(filename)];
+    if (filename[0] == '~') {
+        strcpy(full_filename, home);
+        strcat(full_filename, &filename[1]);
+    } else {
+        strcpy(full_filename, filename);
+    }
+
+    FILE *f = fopen(full_filename, "rb");
     if (!f)
         return NULL;
 
