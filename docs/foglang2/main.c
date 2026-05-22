@@ -17,6 +17,20 @@
     #define VERSION "Unknown/Custom version (2._._)"
 #endif
 
+#ifndef LIBPATH
+    #ifdef __APPLE__
+        #define LIBPATH "/usr/local/lib/foglang2/"
+    #endif
+
+    #ifdef _WIN32
+        #define LIBPATH "C:\\Program Files\\foglang2\\lib\\"
+    #endif
+
+    #ifdef __linux__
+        #define LIBPATH "/usr/local/lib/foglang2/"
+    #endif
+#endif
+
 // konstanter och globala variabler
 
 // program counter
@@ -48,7 +62,7 @@ int *loop_links;
 
 
 
-Bult_Ret bult(char* file_name, char* user){
+Bult_Ret bult(char* file_name){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -63,17 +77,7 @@ Bult_Ret bult(char* file_name, char* user){
     int search = 1;
     int import_line_count = 0;
 
-    #ifdef __APPLE__
-        char lib[] = "/usr/local/lib/foglang2/";
-    #endif
-    
-    #ifdef _WIN32
-        char lib[] = "C:\\Program Files\\foglang2\\lib\\";
-    #endif
-
-    #ifdef __linux__
-        char lib[] = "/usr/local/lib/foglang2/";
-    #endif
+    char lib[] = LIBPATH;
 
     while (search){
         found = 0;
@@ -1752,8 +1756,6 @@ int main(int argc, char **argv)
         path_ptr++;
     }
     path_ptr[-1] = '\0';
-    char* user = malloc(PATH_MAX);
-    user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
 
     // skapa konstantarrays
     // variabler
@@ -1782,7 +1784,7 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    Bult_Ret bult_ret = bult(argv[1], user);
+    Bult_Ret bult_ret = bult(argv[1]);
     char* buff = bult_ret.buff;
     int line_offset = bult_ret.import_line_count;
 
