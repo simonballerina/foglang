@@ -246,7 +246,13 @@ int install_package(char* package_name) {
 
 
     #ifdef _WIN32
-        char* lib_path = "C:\\Users\\Simon\\AppData\\Local\\foglang2\\packages\\";
+        const char *local = getenv("LOCALAPPDATA");
+        if (!local) {
+            fprintf(stderr, "LOCALAPPDATA not set\n");
+            exit(1);
+        }
+        char* base = "\\foglang2\\packages\\";
+        char* lib_path get_lib_path_windows(local, base, found_packages.tokens[found_index].name);
         if (check_and_create_dir(lib_path) != 0) {
             EXIT_CODE = 1;
             goto exit_program;
