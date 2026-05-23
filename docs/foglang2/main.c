@@ -149,8 +149,11 @@ Bult_Ret bult(char* file_name){
                 strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
                 if (!import_buff) {
-                    throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
-                    
+                    if (is_gung) {
+                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file\nIs the package installed?"), .string = "Unknown file\nIs the package installed?"}, NULL);
+                    } else {
+                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
+                    }               
                 }
                 // räkna antalet rader i importfilen
                 for (int k = 0; k < strlen(import_buff); k++) {
