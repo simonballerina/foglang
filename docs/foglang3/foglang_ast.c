@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "foglang.h"
 
 int current = 0;
 
-Node* make_num(double number){
+Node* make_num(double number) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
         printf("Memory allocation failed\n");
@@ -24,10 +24,10 @@ Node* make_identifier(char* name) {
         printf("Memory allocation failed\n");
         exit(1);
     }
-    
+
     ret->string.string = name;
     ret->type = NODE_IDENTIFIER;
-    
+
     return ret;
 }
 
@@ -42,7 +42,7 @@ Node* make_str(char* str) {
     ret->type = NODE_STRING;
 }
 
-Node* make_binary(Node* left, TokType op, Node* right){
+Node* make_binary(Node* left, TokType op, Node* right) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
         printf("Memory allocation failed for binary\n");
@@ -64,7 +64,7 @@ Node* parse_exp(Token* tokens, int tok_count) {
 
         return ret;
     }
-    if (tokens[current].type == IDENTIFIER){
+    if (tokens[current].type == IDENTIFIER) {
         Node* ret = make_identifier(tokens[current].string);
         current++;
 
@@ -77,12 +77,11 @@ Node* parse_exp(Token* tokens, int tok_count) {
         return ret;
     }
     if (tokens[current].type == LEFT_PAR) {
-
         current++;
 
         Node* expr = parse_cmp(tokens, tok_count);
 
-        if(tokens[current].type != RIGHT_PAR) {
+        if (tokens[current].type != RIGHT_PAR) {
             printf("Expected )\n");
             exit(1);
         }
@@ -92,19 +91,14 @@ Node* parse_exp(Token* tokens, int tok_count) {
         return expr;
     }
     printf("Expected number, got ");
-    print_tokens(tokens+current, 1);
+    print_tokens(tokens + current, 1);
     exit(1);
-
 }
 
 Node* parse_factor(Token* tokens, int tok_count) {
-
     Node* left = parse_exp(tokens, tok_count);
 
-
-    while (current < tok_count &&
-        (tokens[current].type == OP_EXP))
-    {
+    while (current < tok_count && (tokens[current].type == OP_EXP)) {
         TokType op = tokens[current].type;
 
         current++;
@@ -117,17 +111,12 @@ Node* parse_factor(Token* tokens, int tok_count) {
     return left;
 }
 
-Node* parse_term(Token* tokens, int tok_count){
-
+Node* parse_term(Token* tokens, int tok_count) {
     Node* left = parse_factor(tokens, tok_count);
 
-
     while (current < tok_count &&
-        (tokens[current].type == OP_MUL ||
-            tokens[current].type == OP_DIV ||
-            tokens[current].type == OP_EXP ||
-            tokens[current].type == OP_MOD) )
-    {
+           (tokens[current].type == OP_MUL || tokens[current].type == OP_DIV ||
+            tokens[current].type == OP_EXP || tokens[current].type == OP_MOD)) {
         TokType op = tokens[current].type;
 
         current++;
@@ -143,57 +132,49 @@ Node* parse_term(Token* tokens, int tok_count){
 Node* parse_cmp(Token* tokens, int tok_count) {
     Node* left = parse_expression(tokens, tok_count);
 
-    while (current < tok_count && (tokens[current].type == CMP_EQUALS || 
-            tokens[current].type == CMP_NOT_EQUALS || 
-            tokens[current].type == CMP_GREATER_THAN || 
-            tokens[current].type == CMP_LESS_THAN)) 
-    {
+    while (current < tok_count && (tokens[current].type == CMP_EQUALS ||
+                                   tokens[current].type == CMP_NOT_EQUALS ||
+                                   tokens[current].type == CMP_GREATER_THAN ||
+                                   tokens[current].type == CMP_LESS_THAN)) {
         TokType op = tokens[current].type;
         current++;
 
         Node* right = parse_expression(tokens, tok_count);
 
         left = make_binary(left, op, right);
-
     }
 
     return left;
-
 }
 
-Node* parse_expression(Token* tokens, int tok_count){
-
+Node* parse_expression(Token* tokens, int tok_count) {
     Node* left = parse_term(tokens, tok_count);
 
-    while (current < tok_count && 
-        (tokens[current].type == OP_ADD || 
-            tokens[current].type == OP_SUB || 
-            tokens[current].type == CMP_EQUALS || 
-            tokens[current].type == CMP_NOT_EQUALS || 
-            tokens[current].type == CMP_GREATER_THAN || 
-            tokens[current].type == CMP_LESS_THAN)) 
-    {
+    while (current < tok_count &&
+           (tokens[current].type == OP_ADD || tokens[current].type == OP_SUB ||
+            tokens[current].type == CMP_EQUALS ||
+            tokens[current].type == CMP_NOT_EQUALS ||
+            tokens[current].type == CMP_GREATER_THAN ||
+            tokens[current].type == CMP_LESS_THAN)) {
         TokType op = tokens[current].type;
         current++;
 
         Node* right = parse_term(tokens, tok_count);
 
         left = make_binary(left, op, right);
-
     }
 
     return left;
-
 }
 
 Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
-    current++; // Hoppa över GIVET/NAER
+    current++;  // Hoppa över GIVET/NAER
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
-    
+
     Node* condition = parse_cmp(tokens, tok_count);
 
-    current++; // Hoppa över {
+    current++;  // Hoppa över {
 
     // Count statement/block size
     int len = 0;
@@ -201,37 +182,41 @@ Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
     for (int i = current; i < tok_count; i++) {
         if (tokens[i].type == OPEN_BLOCK) depth++;
         if (tokens[i].type == CLOSE_BLOCK) {
-            if (depth == 0) break; 
+            if (depth == 0) break;
             depth--;
         }
         // count statements at block depth (0)
-        if (depth == 0 && (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK)) {
+        if (depth == 0 &&
+            (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK)) {
             len++;
         }
     }
-    
-    Node** block = malloc(sizeof(Node*)*len);
+
+    Node** block = malloc(sizeof(Node*) * len);
     if (!block) goto malloc_error;
 
     int statement_count = 0;
 
-    while (tokens[current].type != CLOSE_BLOCK && tokens[current].type != FILE_END) {
+    while (tokens[current].type != CLOSE_BLOCK &&
+           tokens[current].type != FILE_END) {
         block[statement_count++] = parse_statement(tokens, tok_count);
     }
-    current++; // Hoppa över }
+    current++;  // Hoppa över }
 
     NodeType ret_type;
-    if (type == NAER) ret_type = NODE_NAER;
-    else if (type == GIVET) ret_type = NODE_GIVET;
+    if (type == NAER)
+        ret_type = NODE_NAER;
+    else if (type == GIVET)
+        ret_type = NODE_GIVET;
     ret->type = ret_type;
     ret->block.condition = condition;
     ret->block.block = block;
     ret->block.statement_count = statement_count;
 
     return ret;
-    malloc_error:
-        printf("Memory allocation failed conditional block\n");
-        exit(1);
+malloc_error:
+    printf("Memory allocation failed conditional block\n");
+    exit(1);
 }
 
 Node* parse_band(Token* tokens, int tok_count) {
@@ -240,14 +225,14 @@ Node* parse_band(Token* tokens, int tok_count) {
     if (!ret) goto malloc_error;
 
     ret->band.name = tokens[current].string;
-    current+=2;
+    current += 2;
     Node* value = parse_cmp(tokens, tok_count);
     ret->band.value = value;
     ret->type = NODE_BAND;
 
-    if (tokens[current].type != TERMINATOR){
+    if (tokens[current].type != TERMINATOR) {
         printf("Expected ;, got ");
-        print_tokens(tokens+current, 1);
+        print_tokens(tokens + current, 1);
         exit(1);
     }
 
@@ -255,13 +240,13 @@ Node* parse_band(Token* tokens, int tok_count) {
 
     return ret;
 
-    malloc_error:
-        printf("Memory allocation failed for band statement\n");
-        exit(1);
+malloc_error:
+    printf("Memory allocation failed for band statement\n");
+    exit(1);
 }
 
 Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
-    current++; // Hoppa över 'foug'/'tpos'
+    current++;  // Hoppa över 'foug'/'tpos'
 
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
@@ -270,14 +255,13 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
     int is_svets = 0;
 
     while (tokens[current].type == SVETS || tokens[current].type == JUNK) {
-
         if (tokens[current].type == SVETS) is_svets = 1;
         if (tokens[current].type == JUNK) is_junk = 1;
 
         current++;
     }
     Node* eval_str = parse_expression(tokens, tok_count);
-    
+
     if (type == FOUG) {
         ret->type = NODE_FOUG;
 
@@ -286,7 +270,7 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
 
         ret->foug.string = eval_str;
     }
-    
+
     else if (type == TPOS) {
         ret->type = NODE_TPOS;
         ret->tpos.is_svets = is_svets;
@@ -298,15 +282,13 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
 
     return ret;
 
-    malloc_error:
-        printf("Memory allocation failed\n");
-        exit(1);
+malloc_error:
+    printf("Memory allocation failed\n");
+    exit(1);
 }
 
 Node* parse_statement(Token* tokens, int tok_count) {
-
-    if (tokens[current].type == BAND)
-        return parse_band(tokens, tok_count);
+    if (tokens[current].type == BAND) return parse_band(tokens, tok_count);
 
     if (tokens[current].type == GIVET)
         return parse_cond_block(tokens, tok_count, GIVET);
@@ -319,23 +301,22 @@ Node* parse_statement(Token* tokens, int tok_count) {
 
     if (tokens[current].type == TPOS)
         return parse_output_statement(tokens, tok_count, TPOS);
-    
-    printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
+
+    printf("Unknown token: '%s', type: '%d'\n", tokens[current].string,
+           tokens[current].type);
 
     return NULL;
 }
 
-
-
-Node** build_ast(Token* tokens, int tok_count, int* ast_size){
+Node** build_ast(Token* tokens, int tok_count, int* ast_size) {
     printf("Building AST...\n");
     // Count semicolons and blocks
     int len = 0;
     for (int i = 0; i < tok_count; i++) {
         if (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK) len++;
     }
-    
-    Node** ast = malloc(sizeof(Node*)*len);
+
+    Node** ast = malloc(sizeof(Node*) * len);
     if (!ast) goto malloc_error;
 
     int ast_top = 0;
@@ -349,31 +330,30 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
     printf("AST generation complete\n\n");
 
     return ast;
-    malloc_error:
-        printf("Memory allocation failed\n");
-        exit(1);
-
+malloc_error:
+    printf("Memory allocation failed\n");
+    exit(1);
 }
 
-
-Token* tokenize(char* buff, int* tok_amount){
+Token* tokenize(char* buff, int* tok_amount) {
     int tok_top = 0;
-    Token* tokens = malloc(4096*sizeof(Token));
+    Token* tokens = malloc(4096 * sizeof(Token));
     if (!tokens) goto malloc_error;
 
     int buff_len = strlen(buff);
-    for (int i = 0; i < buff_len; i++){
-
+    for (int i = 0; i < buff_len; i++) {
         char letter = buff[i];
         if (letter == ' ' || letter == '\n') continue;
-        if (isdigit(letter)){
+        if (isdigit(letter)) {
             // find how many chars the number is
-            int len = 0; 
-            while (i+len < buff_len && (isdigit(buff[i+len]) || buff[i+len] == '.')) len++;
+            int len = 0;
+            while (i + len < buff_len &&
+                   (isdigit(buff[i + len]) || buff[i + len] == '.'))
+                len++;
 
-            sscanf(buff+i, "%lf", &tokens[tok_top].value);
+            sscanf(buff + i, "%lf", &tokens[tok_top].value);
             tokens[tok_top++].type = NUMBER;
-            i += len-1;
+            i += len - 1;
             continue;
         }
 
@@ -432,66 +412,69 @@ Token* tokenize(char* buff, int* tok_amount){
             case '}':
                 tokens[tok_top++].type = CLOSE_BLOCK;
                 continue;
-            case '"': { // Create string
+            case '"': {  // Create string
                 tokens[tok_top].type = STRING;
                 // Get str len
                 int len = 0;
-                while (buff[1+i+len++] != '"'){}
-                
+                while (buff[1 + i + len++] != '"') {
+                }
+
                 len--;
                 char* string = malloc(len);
 
                 if (!string) goto malloc_error;
 
-                strncpy(string, buff+i+1, len);
+                strncpy(string, buff + i + 1, len);
                 string[len] = '\0';
 
                 tokens[tok_top++].string = string;
-                i+=len+1;
+                i += len + 1;
                 continue;
             }
         }
-        if (strncmp(buff+i, "band ", 5) == 0){
+        if (strncmp(buff + i, "band ", 5) == 0) {
             tokens[tok_top++].type = BAND;
-            i+=4;
-        } else if (strncmp(buff+i, "foug ", 5) == 0){
+            i += 4;
+        } else if (strncmp(buff + i, "foug ", 5) == 0) {
             tokens[tok_top++].type = FOUG;
-            i+=4;
-        } else if (strncmp(buff+i, "tpos ", 5) == 0){
+            i += 4;
+        } else if (strncmp(buff + i, "tpos ", 5) == 0) {
             tokens[tok_top++].type = TPOS;
-            i+=4;
-        } else if (strncmp(buff+i, "naer ", 5) == 0){
+            i += 4;
+        } else if (strncmp(buff + i, "naer ", 5) == 0) {
             tokens[tok_top++].type = NAER;
-            i+=4;
-        } else if (strncmp(buff+i, "svets ", 6) == 0){
+            i += 4;
+        } else if (strncmp(buff + i, "svets ", 6) == 0) {
             tokens[tok_top++].type = SVETS;
-            i+=5;
-        } else if (strncmp(buff+i, "junk ", 5) == 0){
+            i += 5;
+        } else if (strncmp(buff + i, "junk ", 5) == 0) {
             tokens[tok_top++].type = JUNK;
-            i+=4;
-        } else if (strncmp(buff+i, "givet att ", 10) == 0) {
-            i+=9;
+            i += 4;
+        } else if (strncmp(buff + i, "givet att ", 10) == 0) {
+            i += 9;
             tokens[tok_top++].type = GIVET;
-        } else if (strncmp(buff+i, "!=", 2) == 0) {
-            i+=2;
+        } else if (strncmp(buff + i, "!=", 2) == 0) {
+            i += 2;
             tokens[tok_top++].type = CMP_NOT_EQUALS;
         } else {
             // anta identifier
             int j = i;
-            while (j < buff_len && ((buff[j] >= 'a' && buff[j] <= 'z') || (buff[j] >= 'A' && buff[j] <= 'Z') || (buff[j] >= '0' && buff[j] <= '9') || buff[j] == '_')) j++;
+            while (j < buff_len &&
+                   ((buff[j] >= 'a' && buff[j] <= 'z') ||
+                    (buff[j] >= 'A' && buff[j] <= 'Z') ||
+                    (buff[j] >= '0' && buff[j] <= '9') || buff[j] == '_'))
+                j++;
             j -= i;
-            
+
             tokens[tok_top].type = IDENTIFIER;
-            tokens[tok_top].string = malloc(j+1);
+            tokens[tok_top].string = malloc(j + 1);
             if (!tokens[tok_top].string) goto malloc_error;
-            strncpy(tokens[tok_top].string, buff+i, j);
+            strncpy(tokens[tok_top].string, buff + i, j);
             tokens[tok_top].string[j] = '\0';
 
             tok_top++;
-            i+=j-1;
+            i += j - 1;
         }
-        
-        
     }
 
     tokens[tok_top].type = FILE_END;
@@ -500,9 +483,9 @@ Token* tokenize(char* buff, int* tok_amount){
 
     return tokens;
 
-    malloc_error:
-        printf("Memory allocation failed\n");
-        exit(1);
+malloc_error:
+    printf("Memory allocation failed\n");
+    exit(1);
 }
 
 /*
@@ -538,4 +521,3 @@ Token* tokenize(char* buff, int* tok_amount){
             break;
     }
 }*/
-

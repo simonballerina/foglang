@@ -1,29 +1,26 @@
 #pragma once
 
-char *read_file(const char *filename)
-{
+char *read_file(const char *filename) {
     FILE *f = fopen(filename, "rb");
-    if (!f)
-        return NULL;
+    if (!f) return NULL;
 
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     rewind(f);
 
     char *buffer = malloc(size + 1);
-    if (!buffer)
-        return NULL;
+    if (!buffer) return NULL;
 
     fread(buffer, 1, size, f);
-    buffer[size] = '\0'; // null-terminate
+    buffer[size] = '\0';  // null-terminate
 
     fclose(f);
     return buffer;
 }
 
-
 void help(int argc, char **argv) {
-    printf("\
+    printf(
+        "\
 usage: foglang3 [--version] [--help] \n\
                 <filepath> [--debug] [--unchecked]\n\
                 <command> [<args>]\n\
