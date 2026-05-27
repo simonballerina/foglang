@@ -223,12 +223,39 @@ Program tokenize(char* buff, int debug)
     int buff_len = strlen(buff);
     if (debug) printf("BUFF: -----------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
-    // räkna antal instr
+    // räkna antal instr SKIPPA TECKEN I STRÄNGAR!!!!
+
     int instruction_amount = 0;
-    for (int i = 0; i < buff_len; i++)
-    {
-        if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}')
-            instruction_amount++;
+    for (int p = 0; p < buff_len; p++) {
+        if (buff[p] == '"') {
+            // hoppa över strängen
+            p++;
+            while (p < buff_len) {
+                if (buff[p] == '"') {
+                    int backslash = 0; int q = p - 1;
+                    while (q >= 0 && buff[q] == '\\') { 
+                        backslash++; 
+                        q--; 
+                    }
+                    if (backslash % 2 == 0) break;
+                }
+                p++;
+            }
+            continue;
+        }
+        if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] == '*') {
+            // block kommentar
+            p += 2;
+            while (p + 1 < buff_len && !(buff[p] == '*' && buff[p+1] == '#')) p++;
+            p++;
+            continue;
+        }
+        if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] != '*') {
+            // vanlig kommentar
+            while (p < buff_len && buff[p] != '\n') p++;
+            continue;
+        }
+        if (buff[p] == ';' || buff[p] == '{' || buff[p] == '}') instruction_amount++;
     }
     if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
 
@@ -237,15 +264,40 @@ Program tokenize(char* buff, int debug)
     pc_to_line = malloc(instruction_amount*sizeof(int));
     if (!pc_to_line) goto malloc_error;
 
-    // fyll pc_to_line
+    // fyll pc_to_line 
     int line = 1;
     int instruction_index = 0;
-    for (int i = 0; i < buff_len; i++)
-    {
-        if (buff[i] == '\n')
-            line++;
-        if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}')
+    for (int p = 0; p < buff_len; p++) {
+        if (buff[p] == '\n') line++;
+        if (buff[p] == '"') {
+            p++;
+            while (p < buff_len) {
+                if (buff[p] == '"') {
+                    int bs = 0; int q = p - 1;
+                    while (q >= 0 && buff[q] == '\\') { bs++; q--; }
+                    if (bs % 2 == 0) break;
+                }
+                if (buff[p] == '\n') line++;
+                p++;
+            }
+            continue;
+        }
+        if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] == '*') {
+            p += 2;
+            while (p + 1 < buff_len && !(buff[p] == '*' && buff[p+1] == '#')) {
+                if (buff[p] == '\n') line++;
+                p++;
+            }
+            p += 1;
+            continue;
+        }
+        if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] != '*') {
+            while (p < buff_len && buff[p] != '\n') p++;
+            continue;
+        }
+        if (buff[p] == ';' || buff[p] == '{' || buff[p] == '}') {
             pc_to_line[instruction_index++] = line;
+        }
     }
     if (debug) {
         printf("[DEBUG] pc_to_line: ");
@@ -288,16 +340,11 @@ Program tokenize(char* buff, int debug)
         while (i < buff_len && (buff[i] == ' ' || buff[i] == '\n' || buff[i] == '\r' || buff[i] == '\t'))
             i++;
 
-        // kommentar
+        // kommentar (single-line)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] != '*'){
             while (i < buff_len && buff[i] != '\n') {
                 i++;
-                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
-                    instruction_amount--;
-                    instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
-                    if (instructions == NULL) goto malloc_error;
-                }
-            }      
+            }
             i++;
             continue;      
         }
@@ -306,11 +353,6 @@ Program tokenize(char* buff, int debug)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] == '*') {
             i += 2;
             while (i+1 < buff_len && !(buff[i] == '*' && buff[i+1] == '#')) {
-                if (buff[i] == ';' || buff[i] == '{' || buff[i] == '}') {
-                    instruction_amount--;
-                    instructions = realloc(instructions, instruction_amount*sizeof(*instructions));
-                    if (instructions == NULL) goto malloc_error;
-                }
                 i++;
             }
             i += 2;
@@ -421,12 +463,38 @@ Program tokenize(char* buff, int debug)
         {
             i++;
             int start = i;
-            while (i < buff_len && buff[i] != '"')
+            while (i < buff_len) {
+                if (buff[i] == '"') {
+                    int backslash = 0; // räkna backslash innan "
+                    int j = i - 1;
+                    while (j >= start && buff[j] == '\\') { 
+                        backslash++; 
+                        j--; 
+                    }
+                    if (backslash % 2 == 0) break;
+                }
                 i++;
+            }
             tok.type = STRING;
-            tok.var.name = &buff[start];
-            tok.var.name_len = i - start;
-            i++;
+            int str_len = i-start;
+
+            char* str = malloc(str_len);
+            if (!str) goto malloc_error;
+
+            memcpy(str, &buff[start], str_len);
+
+            for (int j = 0; j < str_len; j++){
+                if (str[j] == '\\') {
+                    j++;
+                    memmove(str+j-1, str+j, str_len-j);
+                    str_len--;
+                }
+            }
+
+
+            tok.var.name = str;
+            tok.var.name_len = str_len;
+            if (i < buff_len) i++;
         }
         else if (buff[i] == '(')
         {

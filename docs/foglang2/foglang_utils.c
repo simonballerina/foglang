@@ -210,6 +210,9 @@ void print_tokens(Token** instructions, int instruction_amount)
             case CLOSE_LOOP:
                 printf("'CLOSE'    ");
                 break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
             default:
                 printf("'TKN'    ");
             }
