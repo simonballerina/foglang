@@ -484,7 +484,7 @@ Program tokenize(char* buff, int debug)
             memcpy(str, &buff[start], str_len);
 
             for (int j = 0; j < str_len; j++){
-                if (str[j] == '\\') {
+                if (str[j] == '\\' && (j+1 < str_len && str[j+1] != 'n')) {
                     j++;
                     memmove(str+j-1, str+j, str_len-j);
                     str_len--;
