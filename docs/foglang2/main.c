@@ -17,6 +17,34 @@
     #define VERSION "Unknown/Custom version (2._._)"
 #endif
 
+#ifndef LIBPATH
+    #ifdef __APPLE__
+        #define LIBPATH "/usr/local/lib/foglang2/"
+    #endif
+
+    #ifdef _WIN32
+        #define LIBPATH "C:\\Program Files\\foglang2\\lib\\"
+    #endif
+
+    #ifdef __linux__
+        #define LIBPATH "/usr/local/lib/foglang2/"
+    #endif
+#endif
+
+#ifndef PACKPATH
+    #ifdef __APPLE__
+        #define PACKPATH "~/Library/Application Support/foglang2/packages/"
+    #endif
+
+    #ifdef _WIN32
+        #define PACKPATH "C:\\Program Files\\foglang2\\packages\\"
+    #endif
+
+    #ifdef __linux__
+        #define PACKPATH "~/.local/share/foglang2/packages/"
+    #endif
+#endif
+
 // konstanter och globala variabler
 
 // program counter
@@ -48,7 +76,7 @@ int *loop_links;
 
 
 
-Bult_Ret bult(char* file_name, char* user){
+Bult_Ret bult(char* file_name){
 
     char *buff = read_file(file_name);
     int imports_capacity = 32;
@@ -63,17 +91,9 @@ Bult_Ret bult(char* file_name, char* user){
     int search = 1;
     int import_line_count = 0;
 
-    #ifdef __APPLE__
-        char lib[] = "/usr/local/lib/foglang2/";
-    #endif
-    
-    #ifdef _WIN32
-        char lib[] = "C:\\Program Files\\foglang2\\lib\\";
-    #endif
-
-    #ifdef __linux__
-        char lib[] = "/usr/local/lib/foglang2/";
-    #endif
+    char lib[] = LIBPATH;
+    char pack[] = PACKPATH;
+    char *source;
 
     while (search){
         found = 0;
@@ -91,7 +111,9 @@ Bult_Ret bult(char* file_name, char* user){
             
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
+                source = lib;
                 int is_sax = 0;
+                int is_gung = 0;
                 char origin_wd[PATH_MAX];
                 if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
                 {
@@ -100,6 +122,11 @@ Bult_Ret bult(char* file_name, char* user){
                     //move to relative position
                     getcwd(origin_wd, PATH_MAX);
                     chdir(path_diff);
+                } else if (i + 10 < len && !strncmp(buff+i+5, "gung ", 5)) {
+                    //gung
+                    is_gung = 1;
+                    source = pack;
+                    i += 5;
                 }
                 int name_len = 0;
                 // hitta längden på importnamnet
@@ -107,23 +134,26 @@ Bult_Ret bult(char* file_name, char* user){
                 while (name_len < len && buff[name_len] != ';')
                     name_len++;
                 name_len-=(i+5);
-                char* import_file_name = malloc((name_len+1+5+4*is_sax+strlen(lib))*sizeof(char));
+                char* import_file_name = malloc((name_len+1+5+4*is_sax+5*is_gung+strlen(source))*sizeof(char));
                 if (import_file_name == NULL) goto malloc_error;
                 buff[i + name_len + 5] = '\0';
                 if (is_sax) {
                     memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
                 } else {
-                    sprintf(import_file_name, "%s%s.fg", lib, buff+i+5);
+                    sprintf(import_file_name, "%s%s.fg", source, buff+i+5);
                 }
                 int is_dupe = 1;
-                char import_file_name_prefix[name_len+7*!is_sax+strlen(lib)*(!is_sax)+1];
+                char import_file_name_prefix[name_len+7*!is_sax+strlen(source)*(!is_sax)+1];
                 strcpy(import_file_name_prefix, "#");
-                import_file_name[name_len+7*!is_sax+strlen(lib)*(!is_sax)] = '\0';
+                import_file_name[name_len+7*!is_sax+strlen(source)*(!is_sax)] = '\0';
                 strcat(import_file_name_prefix, import_file_name);
                 char* import_buff = read_file(import_file_name);
                 if (!import_buff) {
-                    throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
-                    
+                    if (is_gung) {
+                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file\nIs the package installed?"), .string = "Unknown file\nIs the package installed?"}, NULL);
+                    } else {
+                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
+                    }               
                 }
                 // räkna antalet rader i importfilen
                 for (int k = 0; k < strlen(import_buff); k++) {
@@ -134,13 +164,13 @@ Bult_Ret bult(char* file_name, char* user){
 
                 if (find_substring(imports, import_file_name_prefix) == -1) {
                     is_dupe = 0;
-                    imports_capacity += name_len+((3+strlen(lib))*(!is_sax))+1;
+                    imports_capacity += name_len+((3+strlen(source))*(!is_sax))+1;
                     imports = realloc(imports, imports_capacity);
                     strcat(imports, import_file_name);
                 }
                 free(import_file_name);
                 int import_end = i + 5 + name_len + 1;
-                int left_side_len = i - 4*is_sax;
+                int left_side_len = i - 4*is_sax-5*is_gung;
                 int right_side_len = len - import_end;
                 int import_buff_len = strlen(import_buff);
                 // skapa ny sträng
@@ -1752,8 +1782,6 @@ int main(int argc, char **argv)
         path_ptr++;
     }
     path_ptr[-1] = '\0';
-    char* user = malloc(PATH_MAX);
-    user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
 
     // skapa konstantarrays
     // variabler
@@ -1782,7 +1810,7 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    Bult_Ret bult_ret = bult(argv[1], user);
+    Bult_Ret bult_ret = bult(argv[1]);
     char* buff = bult_ret.buff;
     int line_offset = bult_ret.import_line_count;
 

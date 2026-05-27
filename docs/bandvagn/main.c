@@ -21,8 +21,12 @@ Bandvagn package manager for Foglang
 
 #include "http.c"
 
-#define PACKAGES_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
+#define PACKAGES_LIST_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
 #define HIGHLIGHT_PATH "https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix"
+
+#ifndef PACKPATH
+    #define PACKPATH ""
+#endif
 
 Token_List parse_packages(char* data) {
     int data_len = strlen(data);
@@ -88,7 +92,7 @@ Token_List parse_packages(char* data) {
 
 }
 
-char* get_lib_path_unix(char* base, char* name) {
+char* get_lib_path_unix(char* base, char* name, int is_homeless) {
     // add .fg file extention to name if it doesnt have an extention
     int has_ext = 0;
     for (int i = strlen(name)-1; i >= 0 && name[i] != '/'; i--) {
@@ -112,22 +116,30 @@ char* get_lib_path_unix(char* base, char* name) {
     } else {
         name_with_ext = name;
     }
-
+    int base_len = strlen(base);
     const char *home = getenv("HOME");
-    if (!home) {
-        fprintf(stderr, "HOME environment variable not set, can't determine install path\n");
-        exit(1);
+    if (is_homeless) {
+        if (!home) {
+            fprintf(stderr, "HOME environment variable not set, can't determine install path\n");
+            exit(1);
+        }
+        base_len += strlen(home);
     }
-    int base_len = strlen(home) + strlen(base);
+    
+    
     name_len = strlen(name_with_ext);
     char *lib_path = malloc(base_len + name_len + 1);
     if (!lib_path) {
         fprintf(stderr, "Could not allocate memory for lib_path\n");
         exit(1);
     }
-
-    memcpy(lib_path, home, strlen(home));
-    memcpy(lib_path + strlen(home), base, strlen(base));
+    if (is_homeless) {
+        memcpy(lib_path, home, strlen(home));
+        memcpy(lib_path + strlen(home), base, strlen(base));
+    } else {
+        memcpy(lib_path, base, strlen(base));
+    }
+    
     lib_path[base_len] = '\0';
     strcat(lib_path, name_with_ext);
     lib_path[base_len+name_len] = '\0';
@@ -167,7 +179,7 @@ int install_package(char* package_name) {
     int EXIT_CODE = 0;
     // Find packages file in Foglang github
     char* packages = NULL;
-    if (http_get(PACKAGES_PATH, &packages) != 0) {
+    if (http_get(PACKAGES_LIST_PATH, &packages) != 0) {
         fprintf(stderr, "Failed to fetch packages\n");
         return 1;
     }
@@ -188,12 +200,10 @@ int install_package(char* package_name) {
         goto exit_program;
     }
 
-
-
     #ifdef _WIN32
     #elif __APPLE__
         char* base = "/Library/Application Support/foglang2/packages/";
-        char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
+        char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, found_packages.tokens[found_index].name, 0) : get_lib_path_unix(base, found_packages.tokens[found_index].name, 1);
         // check if directory exists, if not create it
         if (check_and_create_dir(lib_path) != 0) {
             EXIT_CODE = 1;
@@ -201,7 +211,7 @@ int install_package(char* package_name) {
         }
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/share/foglang2/packages/";
-        char* lib_path = get_lib_path_unix(base, found_packages.tokens[found_index].name);
+        char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, found_packages.tokens[found_index].name, 0) : get_lib_path_unix(base, found_packages.tokens[found_index].name, 1);
         // check if directory exists, if not create it
         if (check_and_create_dir(lib_path) != 0) {
             EXIT_CODE = 1;
@@ -238,10 +248,10 @@ int remove_package(char* package_name) {
     #ifdef _WIN32
     #elif __APPLE__
         char* base = "/Library/Application Support/foglang2/packages/";
-        char* lib_path = get_lib_path_unix(base, package_name);
+        char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, package_name, 0) : get_lib_path_unix(base, package_name, 1);
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/share/foglang2/packages/";
-        char* lib_path = get_lib_path_unix(base, package_name);
+        char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, package_name, 0) : get_lib_path_unix(base, package_name, 1);
     #endif
 
     if (remove(lib_path) == 0) {
@@ -301,7 +311,7 @@ int update_packages() {
     int EXIT_CODE = 0;
     // Find packages file in Foglang github
     char* packages = NULL;
-    if (http_get(PACKAGES_PATH, &packages) != 0) {
+    if (http_get(PACKAGES_LIST_PATH, &packages) != 0) {
         fprintf(stderr, "Failed to fetch packages\n");
         return 1;
     }
