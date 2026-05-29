@@ -1049,14 +1049,116 @@ void throw_error(int type, String err_str, Token *instruction){
     exit(type);
 }
 
-void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
-{
+String create_svets_string(char* str, int str_len, Scope* scope) {
+    
+    int call_len = str_len+1;
+    char *call = malloc(call_len * sizeof(char));
 
+    call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
+    int writer = 0;
+
+    for (int i = 0; i < str_len; i++){
+        if (str[i] == '\\' && str[i+1] == 'n') // printa \n
+        {
+            if (writer + 1 >= call_len) {
+                call_len += 16;
+                char *tmp = realloc(call, call_len);
+                if (!tmp) { 
+                    free(call); 
+                    throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                }
+                call = tmp;
+            }
+            call[writer++] = '\n';
+            call[writer] = '\0';
+            i += 2;
+        }
+        if (str[i] == '\\' && str[i + 1] == '%') // printa %
+        {
+            if (writer + 2 >= call_len) {
+                call_len += 16;
+                char *tmp = realloc(call, call_len);
+                if (!tmp) { 
+                    free(call); 
+                    throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                }
+                call = tmp;
+            }
+            call[writer++] = '%';
+            call[writer++] = '%';
+            call[writer] = '\0';
+            i += 2;
+        }
+        if (str[i] == '%'){
+            // kolla längden på den
+            int len = 0;
+            for (int j = i+1; j < str_len; j++){
+                if (str[j] == '%') break;
+                len++;
+            }
+            Dynamic_Var value = get_var_value(str + i + 1, len, 0, 0, scope);
+            if (value.type == VAR_NUMBER){
+                if ((int)(value.value) == (value.value)) {
+                    call_len += 32;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                    int n = snprintf(call + writer, call_len - writer, "%d", (int)value.value);
+                    if (n > 0) writer += n;
+                } else {
+                    call_len += 64;
+                    char *tmp = realloc(call, call_len);
+                    if (!tmp) { 
+                        free(call); 
+                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                    }
+                    call = tmp;
+                    int n = snprintf(call + writer, call_len - writer, "%lf", (double)value.value);
+                    if (n > 0) writer += n;
+                }
+             } else if (value.type == VAR_STRING) {
+                 call_len += value.str_len + 1;
+                char *tmp = realloc(call, call_len);
+                if (!tmp) { 
+                    free(call); 
+                    throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
+                }
+                call = tmp;
+                int n = snprintf(call + writer, call_len - writer, "%.*s", value.str_len, value.string);
+                if (n > 0) writer += n;
+            }
+                i+=len+1;    
+            } else if (i < str_len) {
+                sprintf(call + writer, "%c", str[i]);
+                writer++;
+                
+            }
+        }
+    String ret = {
+        .len = call_len,
+        .string = call
+    };
+    return ret;
+
+}
+
+void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope)
+{    
     int is_grip = 0;
     int is_slip = 0;
-    if (instruction[1].type == SLIP) is_slip = 1;
-    else if (instruction[1].type == GRIP) is_grip = 1;
-    Token end_var = instruction[1+is_slip+is_grip];
+    int is_svets = 0;
+
+    for (int i = 0; instruction[i].type != VARIABLE && instruction[i].type != TERMINATOR; i++){
+        int type = instruction[i].type;
+        if (type == GRIP) is_grip = 1;
+        else if (type == SVETS) is_svets = 1;
+        else if (type == SLIP) is_slip = 1;
+    }
+
+    Token end_var = instruction[1+is_slip+is_grip+is_svets];
     // ta reda på vilken typ av variabler som används
     
     int start_eval = 0;
@@ -1094,9 +1196,10 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     int* indicies = NULL;
     int depth = 0;
     int index_amount = 0;
-    if (instruction[2+is_grip+is_slip].type == LEFT_BRACKET) {
+
+    if (instruction[2+is_grip+is_slip+is_svets].type == LEFT_BRACKET) {
         modify_list_item = 1;
-        for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
+        for (int i = 2+is_grip+is_slip+1+is_svets; instruction[i].type != TERMINATOR; i++) {
             // count top-level index closures (']') to determine number of indices
             if (instruction[i].type == EQUALS) break;
             if (instruction[i].type == LEFT_BRACKET) {
@@ -1114,7 +1217,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         // lägg till alla index (int) i indices, med eval expr
         int index_top = 0;
         depth = 0;
-        for (int i = 2+is_grip+is_slip+1; instruction[i].type != TERMINATOR; i++) {
+        for (int i = 2+is_grip+is_slip+1+is_svets; instruction[i].type != TERMINATOR; i++) {
             
             if (instruction[i].type == EQUALS) break;
             if (instruction[i].type == LEFT_BRACKET) {
@@ -1141,7 +1244,12 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         index_amount = index_top; 
     }
 
-
+    if (is_svets) {
+        String str = create_svets_string(eval_result.string, eval_result.str_len, scope);
+        free(eval_result.string);
+        eval_result.string = str.string;
+        eval_result.str_len = str.len;
+    }
 
     if (create_new)
     {
@@ -1153,7 +1261,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         {
             create_list_var(end_var.var.name, end_var.var.name_len, eval_result, scope);
         }
-        else if (type == VAR_STRING && is_slip == 0 && is_grip == 0)
+        else if (type == VAR_STRING && !is_slip && !is_grip)
         {
             create_str_var(end_var.var.name, end_var.var.name_len, eval_result.str_len, eval_result.string, scope);
         } 
@@ -1165,7 +1273,8 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             eval_c_str[eval_result.str_len] = '\0';
 
             char* slip_string = read_file(eval_c_str);
-            if (slip_string == NULL) goto malloc_error;
+
+            if (slip_string == NULL) throw_error(ERR_FILE, (String){.len = strlen(eval_c_str), .string = eval_c_str}, instruction);
             create_str_var(end_var.var.name, end_var.var.name_len, strlen(slip_string), slip_string, scope);
             free(slip_string);
         }
@@ -1479,88 +1588,10 @@ void tpos(Token *instruction, Scope *scope)
             exit(-1);
         }
     } else { // svets-string
-        for (int i = 0; i < instruction[2].var.name_len; i++){
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == 'n') // printa \n
-            {
-                if (writer + 1 >= call_len) {
-                    call_len += 16;
-                    char *tmp = realloc(call, call_len);
-                    if (!tmp) { 
-                        free(call); 
-                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
-                    }
-                    call = tmp;
-                }
-                call[writer++] = '\n';
-                call[writer] = '\0';
-                i += 2;
-            }
-            if (instruction[2].var.name[i] == '\\' && instruction[2].var.name[i + 1] == '%') // printa %
-            {
-                if (writer + 2 >= call_len) {
-                    call_len += 16;
-                    char *tmp = realloc(call, call_len);
-                    if (!tmp) { 
-                        free(call); 
-                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
-                    }
-                    call = tmp;
-                }
-                call[writer++] = '%';
-                call[writer++] = '%';
-                call[writer] = '\0';
-                i += 2;
-            }
 
-            if (instruction[2].var.name[i] == '%'){
-                // kolla längden på den
-                int len = 0;
-                for (int j = i+1; j < instruction[2].var.name_len; j++){
-                    if (instruction[2].var.name[j] == '%') break;
-                    len++;
-                }
-                Dynamic_Var value = get_var_value(instruction[2].var.name + i + 1, len, 0, 0, scope);
-                if (value.type == VAR_NUMBER){
-                    if ((int)(value.value) == (value.value)) {
-                        call_len += 32;
-                        char *tmp = realloc(call, call_len);
-                        if (!tmp) { 
-                            free(call); 
-                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
-                        }
-                        call = tmp;
-                        int n = snprintf(call + writer, call_len - writer, "%d", (int)value.value);
-                        if (n > 0) writer += n;
-                    } else {
-                        call_len += 64;
-                        char *tmp = realloc(call, call_len);
-                        if (!tmp) { 
-                            free(call); 
-                            throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
-                        }
-                        call = tmp;
-                        int n = snprintf(call + writer, call_len - writer, "%lf", (double)value.value);
-                        if (n > 0) writer += n;
-                    }
-                } else if (value.type == VAR_STRING) {
-                    call_len += value.str_len + 1;
-                    char *tmp = realloc(call, call_len);
-                    if (!tmp) { 
-                        free(call); 
-                        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL); 
-                    }
-                    call = tmp;
-                    int n = snprintf(call + writer, call_len - writer, "%.*s", value.str_len, value.string);
-                    if (n > 0) writer += n;
-                }
-                i+=len+1;    
-            } else if (i < instruction[2].var.name_len) {
-                sprintf(call + writer, "%c", instruction[2].var.name[i]);
-                writer++;
-                
-            }
-        }
-        
+        String svets_string = create_svets_string(instruction[2].var.name, instruction[2].var.name_len, scope);
+        free(call);
+        call = svets_string.string;        
     }
     system(call);
     //free my boy
