@@ -119,7 +119,8 @@ enum Tok_Type
     JUNK,          // 38
     LIST,          // 39    
     ANNARS,        // 40
-    OM             // 41
+    OM,            // 41
+    DILL           // 42
 };
 
 typedef struct

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #ifdef __APPLE__
     #include <sys/syslimits.h>
@@ -457,6 +458,11 @@ Program tokenize(char* buff, int debug)
         else if (strncmp(&buff[i], "grip ", 5) == 0)
         {
             tok.type = GRIP;
+            i += 5;
+        }
+        else if (strncmp(&buff[i], "dill ", 5) == 0)
+        {
+            tok.type = DILL;
             i += 5;
         }
         else if (buff[i] == '"')
@@ -1515,10 +1521,20 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
     return;
 }
 
+
 void tpos(Token *instruction, Scope *scope)
 {
     // allocation: reserve space for NUL
-    int call_len = instruction[1 + (instruction[1].type == SVETS)].var.name_len + 1;
+
+    int is_dill = 0;
+    int is_svets = 0;
+
+    for (int i = 0; instruction[i].type != TERMINATOR; i++){
+        if (instruction[i].type == DILL) is_dill++;
+        else if (instruction[i].type == SVETS) is_svets++;
+    }
+
+    int call_len = instruction[1 + (is_svets)].var.name_len + 1;
     char *call = malloc(call_len * sizeof(char));
     if (call == NULL)
     {
@@ -1527,22 +1543,22 @@ void tpos(Token *instruction, Scope *scope)
     call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
     int writer = 0;
     
-    if (instruction[1].type != SVETS && instruction[2].type != SVETS) {
-        if (instruction[1].type == STRING) {
-            for (int i = 0; i < instruction[1].var.name_len; i++) {
-                if (instruction[1].var.name[i] == '\\' && instruction[1].var.name[i + 1] == 'n') {
+    if (!is_svets) {
+        if (instruction[1+is_dill].type == STRING) {
+            for (int i = 0; i < instruction[1+is_dill].var.name_len; i++) {
+                if (instruction[1+is_dill].var.name[i] == '\\' && instruction[1+is_dill].var.name[i + 1] == 'n') {
                     i += 2;
                 }
-                if (i < instruction[1].var.name_len) {
-                    sprintf(call + writer, "%c", instruction[1].var.name[i]);
+                if (i < instruction[1+is_dill].var.name_len) {
+                    sprintf(call + writer, "%c", instruction[1+is_dill].var.name[i]);
                     writer++;
                 }  
             }
         }
-        else if (instruction[1].type == VARIABLE || instruction[2].type == VARIABLE)
+        else if (instruction[1+is_dill].type == VARIABLE)
         {
             // printf("VARIABLE I TPOS\n");
-            Dynamic_Var value = get_var_value(instruction[1].var.name, instruction[1].var.name_len, 0, 0, scope);
+            Dynamic_Var value = get_var_value(instruction[1+is_dill].var.name, instruction[1+is_dill].var.name_len, 0, 0, scope);
                 if (value.type == VAR_NUMBER){
                     if ((int)(value.value) == (value.value)) {
                         call_len += 32; // extra biffigt utrymme
@@ -1589,11 +1605,50 @@ void tpos(Token *instruction, Scope *scope)
         }
     } else { // svets-string
 
-        String svets_string = create_svets_string(instruction[2].var.name, instruction[2].var.name_len, scope);
+        String svets_string = create_svets_string(instruction[2+is_dill].var.name, instruction[2+is_dill].var.name_len, scope); // returnerar null-terminerad sträng
         free(call);
-        call = svets_string.string;        
+        call = svets_string.string;
     }
-    system(call);
+    if (!is_dill && 0 == 1)
+        system(call);
+    else {
+        // skapa en sträng på execvp formen
+        // räkna antal argument
+
+        int len = strlen(call);
+        int arg_amount = 0;
+        for (int i = 0; i < len; i++){
+            if (call[i] == ' ') arg_amount++;
+        }
+
+        char** args = malloc((arg_amount+2)*sizeof(char*));
+        if (!args) throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, instruction); 
+
+        int argc = 0;
+
+        char *token = strtok(call, " ");
+        while (token) {
+            args[argc++] = token;
+            token = strtok(NULL, " ");
+        }
+        args[argc] = NULL;
+
+        int id = fork();
+
+        if (id == 0){
+
+            int code = execvp(args[0], args);
+            if (code == -1){
+                if (*args[0] != '\0'){
+                    print_red("TPOS: Unknown command\n", strlen("TPOS: Unknown command\n"), 1);
+                }
+            }
+        } else if (is_dill){
+            wait(NULL);
+        }
+
+        free(args);
+    }
     //free my boy
     free(call);
     call = NULL;
