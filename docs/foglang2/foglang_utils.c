@@ -213,6 +213,9 @@ void print_tokens(Token** instructions, int instruction_amount)
             case TPOS:
                 printf("'TPOS'    ");
                 break;
+            case DILL:
+                printf("'TPOS'    ");
+                break;
             default:
                 printf("'TKN'    ");
             }
