@@ -1421,7 +1421,7 @@ void foug(Token *instruction, Scope *scope) {
         if (instruction[i].type == SVETS) is_svets = 1;
         else if (instruction[i].type == JUNK) is_junk = 1;
     }
-    
+
     // printf("FOUG KALLAD PÅ\n");
     if (!is_svets)
     {
@@ -1432,7 +1432,8 @@ void foug(Token *instruction, Scope *scope) {
             {
                 if (instruction[1+is_junk].var.name[i] == '\\' && i+1 < instruction[1+is_junk].var.name_len && instruction[1+is_junk].var.name[i + 1] == 'n')
                 {
-                    printf("\n");
+                    if (is_junk) fprintf(stderr, "\n");
+                    else printf("\n");
                     i += 2;
                 }
                 if (i < instruction[1+is_junk].var.name_len) {
@@ -1449,7 +1450,8 @@ void foug(Token *instruction, Scope *scope) {
             // print variable info before lookup:
             Dynamic_Var value = get_var_value(instruction[1+is_junk].var.name, instruction[1+is_junk].var.name_len, 0, 0, scope);
             print_variable(value, is_junk);
-            printf("\n");
+            if (is_junk) fprintf(stderr, "\n");
+            else printf("\n");
         }
         else
         {
@@ -1462,7 +1464,8 @@ void foug(Token *instruction, Scope *scope) {
         {
             if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == 'n') // printa \n
             {
-                printf("\n");
+                if (is_junk) fprintf(stderr, "\n");
+                else printf("\n");
                 i += 2;
             }
             if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
