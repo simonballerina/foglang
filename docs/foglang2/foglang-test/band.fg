@@ -1,0 +1,28 @@
+main;
+
+band num = 1;
+
+band str = "äpple";
+
+band lst = [1, 2, str, "Hello, world!", ["a", "b", [1, 2, 3], "c"]];
+
+foug num;
+foug str;
+foug lst;
+
+band num = num+1;
+band str = str + " och päron";
+band lst[0] = "test";
+band lst[4][2] = "svets!";
+
+foug num;
+foug str;
+foug lst;
+
+band num = str;
+band str = 1;
+band lst = num;
+
+foug num;
+foug str;
+foug lst;

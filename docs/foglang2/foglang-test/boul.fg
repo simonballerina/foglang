@@ -1,0 +1,56 @@
+boul ret_fn() {
+    foug "Function called\n";
+    return;
+}
+
+boul sum_fn(first, second) {
+    return first+second;
+}
+
+boul lst_fn(lst1, lst2){
+    band lst1[0] = "Ok";
+    band lst2[0] = lst1;
+
+    foug lst1;
+    foug lst2;
+
+
+    return lst2;
+}
+
+boul factorial(num) {
+    givet att num = 1 eller num = 0 {
+        return 1;
+    }
+    return factorial(num-1)*num;
+}
+
+boul strcat(str1, str2){
+    band sum = sum_fn(100, 12);
+    foug sum;
+    return str1+str2;
+}
+
+main;
+
+foug "Before\n";
+ret_fn();
+foug "After\n";
+
+band a = sum_fn(1, 1+1);
+foug a;
+
+
+band test_lst = [1, 2, 3, "str"];
+band ret_lst = lst_fn(["a", "b"], test_lst);
+foug ret_lst;
+
+
+band res = sum_fn(sum_fn(1, 22), 800);
+foug res;
+
+band f = factorial(10);
+foug f;
+
+band str = strcat("a", "b");
+foug str;

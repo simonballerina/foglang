@@ -1,0 +1,14 @@
+
+main;
+
+foug "Hello, world!\n";
+
+foug junk "Hello, world!\n";
+
+band a = 1;
+band b = "1";
+
+foug svets "Hello, world %a%!\n";
+
+foug junk svets "Hello, world %b%!\n";
+
