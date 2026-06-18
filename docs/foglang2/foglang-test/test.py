@@ -63,6 +63,12 @@ def main():
 
     print(f"Testing using interpreter '{interpreter}'...\n")
 
+
+    """
+    Programs dict stores programs and their valid output. 
+    The program is stored as a string and the output as a bytearray. 
+    To see the output of a program (in the form of a bytearray), toggle the global debug variable and run this file.
+    """
     programs = {"foug": b"""\x1b[31mH\x1b[0m\x1b[31me\x1b[0m\x1b[31ml\x1b[0m\x1b[31ml\x1b[0m\x1b[31mo\x1b[0m\x1b[31m,\x1b[0m\x1b[31m \x1b[0m\x1b[31mw\x1b[0m\x1b[31mo\x1b[0m\x1b[31mr\x1b[0m\x1b[31ml\x1b[0m\x1b[31md\x1b[0m\x1b[31m!\x1b[0m\n\x1b[31mH\x1b[0m\x1b[31me\x1b[0m\x1b[31ml\x1b[0m\x1b[31ml\x1b[0m\x1b[31mo\x1b[0m\x1b[31m,\x1b[0m\x1b[31m \x1b[0m\x1b[31mw\x1b[0m\x1b[31mo\x1b[0m\x1b[31mr\x1b[0m\x1b[31ml\x1b[0m\x1b[31md\x1b[0m\x1b[31m \x1b[0m\x1b[31m1\x1b[0m\x1b[31m!\x1b[0m\nHello, world!\nHello, world 1!\n""", 
                 "band": b"""1\n\xc3\xa4pple\n[1, 2, "\xc3\xa4pple", "Hello, world!", ["a", "b", [1, 2, 3], "c"]]\n2\n\xc3\xa4pple och p\xc3\xa4ron\n["test", 2, "\xc3\xa4pple", "Hello, world!", ["a", "b", "svets!", "c"]]\n\xc3\xa4pple och p\xc3\xa4ron\n1\n\xc3\xa4pple och p\xc3\xa4ron\n""", 
                 "boul": b"""Before\nFunction called\nAfter\n3\n["Ok", "b"]\n[["Ok", "b"], 2, 3, "str"]\n[["Ok", "b"], 2, 3, "str"]\n823\n3628800\n112\nab\n"""}
