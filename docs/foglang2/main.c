@@ -100,16 +100,15 @@ Bult_Ret bult(char* file_name){
         found = 0;
         for (int i = 0; i < len; i++){
 
-            if (!strncmp(buff+i, "#*", 2)) {
+            if (i + 2 < len && !strncmp(buff+i, "#*", 2)) {
                 while (strncmp(buff+i, "*#", 2)) {
                     i++;
                 }
-            } else if (!strncmp(buff+i, "#", 1)) {
+            } else if (i + 1 < len && !strncmp(buff+i, "#", 1)) {
                 while (strncmp(buff+i, "\n", 1)) {
                     i++;
                 }
             }
-            
             if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
 
                 source = lib;
@@ -205,6 +204,8 @@ Bult_Ret bult(char* file_name){
 
     }
 
+
+
     free(imports);
     imports = NULL;
 
@@ -228,6 +229,7 @@ Program tokenize(char* buff, int debug)
 
     int instruction_amount = 0;
     for (int p = 0; p < buff_len; p++) {
+
         if (buff[p] == '"') {
             // hoppa över strängen
             p++;
@@ -331,7 +333,7 @@ Program tokenize(char* buff, int debug)
     (&loops)->max_size = 16;
     (&loops)->arr = malloc((&loops)->max_size*sizeof(int));
     if ((&loops)->arr == NULL) goto malloc_error;
-
+    
     //loop links
     loop_links = malloc(instruction_amount*sizeof(int));
     if (loop_links == NULL) goto malloc_error;
@@ -1928,6 +1930,7 @@ int main(int argc, char **argv)
         exit(0);
     }
     
+
     //define the difference in path of file and cwd
     strcpy(path_diff, argv[1]);
     char* path_ptr = &path_diff[0];
@@ -1953,7 +1956,6 @@ int main(int argc, char **argv)
     row_lengths = malloc(128 * sizeof(int));
     // fyll row_lengths med 128 i varje position
     for (int i = 0; i < 128; i++) row_lengths[i] = 128;
-
 
 
 
