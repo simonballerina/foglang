@@ -1526,6 +1526,80 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
     return;
 }
 
+void tpos_call(char* call, int is_dill){
+    // skapa en sträng på execvp formen
+    // räkna antal argument
+    #ifndef _WIN32
+
+    int len = strlen(call);
+    int arg_amount = 0;
+    for (int i = 0; i < len; i++){
+        if (call[i] == ' ') arg_amount++;
+    }
+
+    char** args = malloc((arg_amount+2)*sizeof(char*));
+    if (!args) throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, instruction); 
+
+    int argc = 0;
+
+    char *token = strtok(call, " ");
+    while (token) {
+        args[argc++] = token;
+        token = strtok(NULL, " ");
+        }
+    args[argc] = NULL;
+
+    int id = fork();
+
+    if (id == 0){
+
+        int code = execvp(args[0], args);
+        if (code == -1){
+            if (*args[0] != '\0'){
+                print_red("TPOS: Unknown command\n", strlen("TPOS: Unknown command\n"), 1);
+            }
+        }
+    } else if (is_dill){
+        wait(NULL);
+    }
+
+    free(args);
+
+    #else // windows 
+
+    STARTUPINFO si = {0};
+    PROCESS_INFORMATION pi = {0};
+
+    si.cb = sizeof(si);
+
+    if (CreateProcess(
+        NULL,
+        call,
+        NULL, NULL,
+        FALSE,
+        0,
+        NULL,
+        NULL,
+        &si,
+        &pi)){
+        if (is_dill) {
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            DWORD code;
+            GetExitCodeProcess(pi.hProcess, &code);
+            if (code != 0)
+                print_red("TPOS: Process failed\n", strlen("TPOS: Process failed\n"), 1);
+        }
+            
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        
+    } else 
+        print_red("TPOS: Unknown command\n", strlen("TPOS: Unknown command\n"), 1);
+    
+
+    #endif
+
+}
 
 void tpos(Token *instruction, Scope *scope)
 {
@@ -1614,43 +1688,9 @@ void tpos(Token *instruction, Scope *scope)
         free(call);
         call = svets_string.string;
     }
-    // skapa en sträng på execvp formen
-    // räkna antal argument
 
-    int len = strlen(call);
-    int arg_amount = 0;
-    for (int i = 0; i < len; i++){
-        if (call[i] == ' ') arg_amount++;
-    }
+    tpos_call(call, is_dill);
 
-    char** args = malloc((arg_amount+2)*sizeof(char*));
-    if (!args) throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, instruction); 
-
-    int argc = 0;
-
-    char *token = strtok(call, " ");
-    while (token) {
-        args[argc++] = token;
-        token = strtok(NULL, " ");
-        }
-    args[argc] = NULL;
-
-    int id = fork();
-
-    if (id == 0){
-
-        int code = execvp(args[0], args);
-        if (code == -1){
-            if (*args[0] != '\0'){
-                print_red("TPOS: Unknown command\n", strlen("TPOS: Unknown command\n"), 1);
-            }
-        }
-    } else if (is_dill){
-        wait(NULL);
-    }
-
-    free(args);
-    
     //free my boy
     free(call);
     call = NULL;
