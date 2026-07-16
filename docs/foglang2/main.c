@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
-#include <sys/wait.h>
+
+#ifndef _WIN32
+    #include <sys/wait.h>
+#endif
 
 #ifdef __APPLE__
     #include <sys/syslimits.h>
