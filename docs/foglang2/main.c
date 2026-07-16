@@ -1526,7 +1526,8 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
     return;
 }
 
-void tpos_call(char* call, int is_dill){
+void tpos_call(char* call, int is_dill, Token* instruction){
+
     // skapa en sträng på execvp formen
     // räkna antal argument
     #ifndef _WIN32
@@ -1548,7 +1549,7 @@ void tpos_call(char* call, int is_dill){
         token = strtok(NULL, " ");
         }
     args[argc] = NULL;
-
+    
     int id = fork();
 
     if (id == 0){
@@ -1598,6 +1599,8 @@ void tpos_call(char* call, int is_dill){
     
 
     #endif
+
+    return;
 
 }
 
@@ -1689,7 +1692,7 @@ void tpos(Token *instruction, Scope *scope)
         call = svets_string.string;
     }
 
-    tpos_call(call, is_dill);
+    tpos_call(call, is_dill, instruction);
 
     //free my boy
     free(call);

@@ -183,7 +183,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
 void change_str_char(char* var_name, int name_len, int index, char new_char, Scope* scope);
 int get_var_type(char* name, int length, Scope *scope);
 String create_svets_string(char* str, int str_len, Scope* scope);
-
+void tpos_call(char* call, int is_dill, Token* instruction);
 
 Program tokenize(char* buff, int debug);
 void check_syntax(Program* program);
