@@ -385,6 +385,33 @@ void print_variable(Dynamic_Var var, int is_junk) {
 }
 
 
+// Custom Foglang implementation of the libc function getline() due to windows incompatibility.
+void fg_getline(char **line){
+    char c = 0;
+
+    int i = 0;
+    int size = 16;
+
+    *line = malloc(size);
+    if (!(*line)) goto malloc_error;
+
+    while (c != EOF && c != '\n') {
+        c = getc(stdin);
+
+        if (i >= size) {
+            *line = realloc(*line, size+16);
+            size += 16;
+            if (!(*line)) goto malloc_error;
+        }
+        (*line)[i++] = c;
+    }
+    (*line)[i-1] = '\0'; // i-1 removes '\n' character
+
+    return;
+
+    malloc_error:
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+}
 
 
 static void print_dynamic_items(Dynamic_Var *items, int len, int indent)

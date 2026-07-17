@@ -1295,10 +1295,10 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             printf("%.*s", eval_result.str_len, eval_result.string);
 
             char *line = NULL;
-            size_t len = 0;
+            
+            fg_getline(&line);
 
-            getline(&line, &len, stdin);
-            int line_len = strlen(line)-1; // ta bort newline
+            int line_len = strlen(line);
 
             create_str_var(end_var.var.name, end_var.var.name_len, line_len, line, scope);
 
@@ -1399,10 +1399,9 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                     printf("%.*s", eval_result.str_len, eval_result.string);
 
                     char *line = NULL;
-                    size_t len = 0;
 
-                    getline(&line, &len, stdin);
-                    int line_len = strlen(line)-1; // ta bort newline
+                    fg_getline(&line);
+                    int line_len = strlen(line);
 
                     (*scope).variables[i].str_ptr = line;
                     (*scope).variables[i].len = line_len;
@@ -1586,6 +1585,7 @@ void tpos_call(char* call, int is_dill, Token* instruction){
         NULL,
         &si,
         &pi)){
+        
         if (is_dill) {
             WaitForSingleObject(pi.hProcess, INFINITE);
             DWORD code;
