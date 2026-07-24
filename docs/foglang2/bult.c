@@ -119,19 +119,11 @@ typedef struct Bult_file_types {
 
 void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
 
-    /* 
-        FÖR SAX: LÄGG TILL PWD OUTPUT I BÖRJAN AV NAMNEN
-
-        ex: 
-            bult sax fog/svets.fg;
-        blir:
-            /home/simon/programming/foglang/docs/foglang2/fog/svets.fg
-
-
-
-        NÄR MAN ÖPPNAR EN NY FIL, CHDIR TILL FILEN OM DET BEHÖVS.
-
-    */
+    #ifdef _WIN32 
+        const char slash = '\\';
+    #else
+        const char slash = '/';
+    #endif
 
     // här cddir:ar man till den nya filen
 
@@ -139,7 +131,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
 
     for (int i = file_name_len-1; i >= 0; i--) {
 
-        if (file_name[i] == '/') {
+        if (file_name[i] == slash) {
             char* file_path = malloc(i+1);
             if (!file_path) goto malloc_error;
 
@@ -237,7 +229,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
             char wd[PATH_MAX];
             getcwd(wd, PATH_MAX);
 
-            if (is_sax && pack_name[0] != '/') { // absoluta sökvägar behöver inte få getcwd
+            if (is_sax && pack_name[0] != slash) { // absoluta sökvägar behöver inte få getcwd
                 // lägg på getcwd på namn
                 int wd_len = strlen(wd);
 
@@ -246,7 +238,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
 
                 int new_name_len = wd_len + pack_len + 2;
                 memcpy(new_name, wd, wd_len);
-                new_name[wd_len] = '/';
+                new_name[wd_len] = slash;
                 memcpy(new_name + wd_len + 1, pack_name, pack_len);
                 new_name[wd_len + 1 + pack_len] = '\0';
                 
@@ -266,7 +258,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
 
                 memcpy(new_name+prefix_len, pack_name, pack_len);
 
-                new_name[prefix_len+pack_len] = '/';
+                new_name[prefix_len+pack_len] = slash;
 
                 memcpy(new_name+prefix_len+1+pack_len, "main.fg", 7);
                 new_name[new_name_len] = '\0';
@@ -334,6 +326,9 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
 
 Bult_Ret bult(char* file_name){
 
+    char start_wd[PATH_MAX];
+    getcwd(start_wd, PATH_MAX);
+
     int visited_capacity = 16;
 
     Bult_File_Types visited_files = {
@@ -374,6 +369,8 @@ Bult_Ret bult(char* file_name){
     printf("\n\n");
 
     printf("RESULTAT: \n%.*s\n", buff.len, buff.string);
+
+    chdir(start_wd);
 
     return (Bult_Ret){.buff = 0, .import_line_count = 0};
 }
