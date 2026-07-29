@@ -117,7 +117,7 @@ typedef struct Bult_file_types {
     } lib;
 } Bult_File_Types;
 
-void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
+void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* offset) {
 
     #ifdef _WIN32 
         const char slash = '\\';
@@ -273,7 +273,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
             (*top)++;
 
             
-            bult_rec(pack_name, visited_files, buff);
+            bult_rec(pack_name, visited_files, buff, offset);
 
         }
         
@@ -311,6 +311,11 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff) {
         buff->string[buff->len] = '\n';
         buff->len = buff->len+new_text_len+1;
         buff->string[buff->len] = '\0';
+
+        // räkna hur många \n som finns (behövs inte göras i mainfilen)
+        for (int i = 0; i < new_text_len; i++){
+            if (cleaned_text[i] == '\n') (*offset)++;
+        }
     }
     
 
@@ -329,7 +334,7 @@ Bult_Ret bult(char* file_name){
     char start_wd[PATH_MAX];
     getcwd(start_wd, PATH_MAX);
 
-    int visited_capacity = 16;
+    const int visited_capacity = 16;
 
     Bult_File_Types visited_files = {
 
@@ -351,7 +356,9 @@ Bult_Ret bult(char* file_name){
         .string = 0
     };
 
-    bult_rec(file_name, &visited_files, &buff);
+    int offset = 0;
+
+    bult_rec(file_name, &visited_files, &buff, &offset);
 
 
     printf("\nvisited:\nsax:");
@@ -371,6 +378,7 @@ Bult_Ret bult(char* file_name){
     printf("RESULTAT: \n%.*s\n", buff.len, buff.string);
 
     chdir(start_wd);
+    printf("offset: %d\n", offset);
 
     return (Bult_Ret){.buff = 0, .import_line_count = 0};
 }
