@@ -104,7 +104,7 @@ typedef struct Bult_file_types {
     } lib;
 } Bult_File_Types;
 
-void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* offset) {
+void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin) {
 
     #ifdef _WIN32 
         const char slash = '\\';
@@ -140,8 +140,15 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
     char* text = read_file(file_name);
     if (!text) throw_error(ERR_FILE, (String){.len = strlen("Could not find imported file"), .string = "Could not find imported file"}, NULL);
 
-
     int text_len = strlen(text);
+
+    // räkna originfilrader
+    if (is_origin) {
+        for (int i = 0; i < text_len; i++) {
+            if (text[i] == '\n') (*origin_rows)++;
+        }
+    }
+
 
     for (int i = 0; i < text_len; i++) {
 
@@ -263,7 +270,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             (*top)++;
 
             
-            bult_rec(pack_name, visited_files, buff, offset);
+            bult_rec(pack_name, visited_files, buff, origin_rows, 0);
 
         }
         
@@ -303,14 +310,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         buff->string[buff->len] = '\n';
         buff->len = buff->len+new_text_len+1;
         buff->string[buff->len] = '\0';
-
-        // gör offset större med antalet rader som tillkommit från importerade filer
-        int rows = 0;
-        for (int i = 0; i < new_text_len; i++) {
-            if (cleaned_text[i] == '\n') rows++;
-        }
-        if (new_text_len > 0 && cleaned_text[new_text_len-1] != '\n') rows++;
-        *offset += rows;
+        
     }
 
 
@@ -355,10 +355,16 @@ Bult_Ret bult(char* file_name){
         .string = 0
     };
 
-    int offset = 0;
+    int origin_rows = 0;
 
-    bult_rec(file_name, &visited_files, &buff, &offset);
+    bult_rec(file_name, &visited_files, &buff, &origin_rows, 1);
 
+    int final_rows = 0;
+    for (int i = 0; i < buff.len; i++) {
+        if (buff.string[i] == '\n') final_rows++;
+    }
+
+    int offset = final_rows - origin_rows;
 
     printf("\nvisited:\nsax:");
     for (int q = 0; q < visited_files.sax.top; q++){
@@ -467,6 +473,7 @@ Program tokenize(String str, int debug)
         }
         if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] != '*') {
             while (p < buff_len && buff[p] != '\n') p++;
+            line++;
             continue;
         }
         if (buff[p] == ';' || buff[p] == '{' || buff[p] == '}') {
@@ -2193,8 +2200,10 @@ int main(int argc, char **argv)
         pc_to_line[i] -= line_offset;
     }
     if (flag_debug) {
+        int last = 0;
         printf("[DEBUG] pc_to_line: \n");
         for (int i = 0; i < instruction_amount; i++) {
+            
             printf("%d  ", pc_to_line[i]);
             print_token_row(instructions[i]);
         }
