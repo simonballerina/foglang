@@ -1147,7 +1147,7 @@ void check_syntax(Program* program){
     }
 }
 
-void throw_error(int type, String err_str, Token *instruction){
+void throw_error(Err_Type type, String err_str, Token *instruction){
     char tick = '\'';  
     char colon = ':';
     print_red("Error at line ", strlen("Error at line "), 0);

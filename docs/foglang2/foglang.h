@@ -1,6 +1,6 @@
 #pragma once
 
-enum Var_Type
+typedef enum Var_Type
 {
     VAR_NONE,
     VAR_NUMBER,
@@ -9,7 +9,7 @@ enum Var_Type
     VAR_FUNCTION,
     VAR_LIST_NUMBER,
     VAR_LIST_STRING
-};
+} Var_Type;
 
 typedef struct Variable Variable;
 typedef struct Dynamic_Var Dynamic_Var;
@@ -22,7 +22,7 @@ typedef struct List
 
 typedef struct Variable
 {
-    int type;
+    Var_Type type;
     char *name;
     int name_len;
     double value;
@@ -34,7 +34,7 @@ typedef struct Variable
 typedef struct // 12 bytes?
 {
     char *name;
-    int type;
+    Var_Type type;
     int name_len;
 
 } Tok_Variable;
@@ -43,7 +43,7 @@ typedef struct
 {
     char loop_id;
     double value;
-    int type;
+    Tok_Type type;
     Tok_Variable var;
     List* list_ptr;
 } Token;
@@ -95,7 +95,7 @@ typedef struct Bult_file_types {
     } lib;
 } Bult_File_Types;
 
-enum Tok_Type
+typedef enum Tok_Type
 {
     NONE,          // 0
     TERMINATOR,    // 1
@@ -140,7 +140,8 @@ enum Tok_Type
     ANNARS,        // 40
     OM,            // 41
     DILL           // 42
-};
+} Tok_Type;
+
 
 typedef struct
 {
@@ -155,7 +156,7 @@ typedef struct {
     int max_size;        
 } Stack;
 
-enum Err_Type  {
+typedef enum Err_Type {
     
     ERR_MALLOC = 1,         // 1 - Out of memory
     ERR_SYNTAX,             // 2 - Syntax error
@@ -164,7 +165,7 @@ enum Err_Type  {
     ERR_NAME,               // 5 - Okänt värde hittas ej
     ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
     ERR_FILE,               // 7 - Läsning av fil misslyckades
-};
+} Err_Type;
 
 // utils, ex hjälpfunktioner
 double str_to_double(char *num);
@@ -215,7 +216,7 @@ err_str: generellt en beskrivning av felet. se main.c för exempel. Kan också i
 
 instruction: nuvarande instruktionen som orsakade felet
 */
-void throw_error(int type, String err_str, Token *instruction);
+void throw_error(Err_Type type, String err_str, Token *instruction);
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope);
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
