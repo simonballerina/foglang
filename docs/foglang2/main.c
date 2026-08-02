@@ -98,6 +98,21 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
     int file_name_len = strlen(file_name);
 
+    char* text = read_file(file_name); 
+    
+    if (!text) {
+        char* prefix = "Could not find imported file '";
+        int prefix_len = strlen(prefix);
+        char* err_msg = malloc(prefix_len+file_name_len+1);
+        if (!err_msg) goto malloc_error;
+        
+        memcpy(err_msg, prefix, prefix_len);
+        memcpy(err_msg+prefix_len, file_name, file_name_len);
+        err_msg[prefix_len+file_name_len] = '\'';
+
+        throw_error(ERR_FILE, (String){.len = prefix_len+file_name_len+1, .string = err_msg}, NULL);
+    }
+
     for (int i = file_name_len-1; i >= 0; i--) {
 
         if (file_name[i] == slash) {
@@ -106,16 +121,12 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
             memcpy(file_path, file_name, i);
             file_path[i] = '\0';
-            
             chdir(file_path);
 
             free(file_path);
             break;
         }
     }
-
-    char* text = read_file(file_name);
-    if (!text) throw_error(ERR_FILE, (String){.len = strlen("Could not find imported file"), .string = "Could not find imported file"}, NULL);
 
     int text_len = strlen(text);
 
@@ -285,8 +296,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         
     }
 
-
-    
 
     free(text);
 
