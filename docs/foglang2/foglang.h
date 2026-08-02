@@ -11,6 +11,64 @@ typedef enum Var_Type
     VAR_LIST_STRING
 } Var_Type;
 
+typedef enum Tok_Type
+{
+    NONE,          // 0
+    TERMINATOR,    // 1
+    FOUG,          // 2
+    BAND,          // 3
+    GIVET,         // 4
+    ATT,           // 5
+    NAER,          // 6
+    NUM,           // 7
+    STRING,        // 8
+    RIGHT_PAR,     // 9
+    LEFT_PAR,      // 10
+    VARIABLE,      // 11
+    EQUALS,        // 12
+    NUMBER,        // 13
+    SLIP,          // 14
+    PLUS,          // 15
+    MINUS,         // 16
+    MULTIPLIED,    // 17
+    DIVIDED,       // 18
+    EXPONENT,      // 19
+    MODULO,        // 20
+    GREATER_THAN,  // 21
+    LESS_THAN,     // 22
+    NOT_EQUAL_TO,  // 23
+    FUNCTION,      // 24
+    RETURN,        // 25
+    MAIN,          // 26
+    SVETS,         // 27
+    LEFT_BRACKET,  // 28
+    RIGHT_BRACKET, // 29
+    COMMA,         // 30
+    TPOS,          // 31
+    OPEN_LOOP,     // 32
+    CLOSE_LOOP,    // 33
+    GRIP,          // 34
+    OCH,           // 35
+    ELLER,         // 36
+    INTE,          // 37
+    JUNK,          // 38
+    LIST,          // 39    
+    ANNARS,        // 40
+    OM,            // 41
+    DILL           // 42
+} Tok_Type;
+
+typedef enum Err_Type {
+    
+    ERR_MALLOC = 1,         // 1 - Out of memory
+    ERR_SYNTAX,             // 2 - Syntax error
+    ERR_MATH,               // 3 - Ex division med noll
+    ERR_INDEX,              // 4 - Indexeringserror
+    ERR_NAME,               // 5 - Okänt värde hittas ej
+    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
+    ERR_FILE,               // 7 - Läsning av fil misslyckades
+} Err_Type;
+
 typedef struct Variable Variable;
 typedef struct Dynamic_Var Dynamic_Var;
 
@@ -95,53 +153,6 @@ typedef struct Bult_file_types {
     } lib;
 } Bult_File_Types;
 
-typedef enum Tok_Type
-{
-    NONE,          // 0
-    TERMINATOR,    // 1
-    FOUG,          // 2
-    BAND,          // 3
-    GIVET,         // 4
-    ATT,           // 5
-    NAER,          // 6
-    NUM,           // 7
-    STRING,        // 8
-    RIGHT_PAR,     // 9
-    LEFT_PAR,      // 10
-    VARIABLE,      // 11
-    EQUALS,        // 12
-    NUMBER,        // 13
-    SLIP,          // 14
-    PLUS,          // 15
-    MINUS,         // 16
-    MULTIPLIED,    // 17
-    DIVIDED,       // 18
-    EXPONENT,      // 19
-    MODULO,        // 20
-    GREATER_THAN,  // 21
-    LESS_THAN,     // 22
-    NOT_EQUAL_TO,  // 23
-    FUNCTION,      // 24
-    RETURN,        // 25
-    MAIN,          // 26
-    SVETS,         // 27
-    LEFT_BRACKET,  // 28
-    RIGHT_BRACKET, // 29
-    COMMA,         // 30
-    TPOS,          // 31
-    OPEN_LOOP,     // 32
-    CLOSE_LOOP,    // 33
-    GRIP,          // 34
-    OCH,           // 35
-    ELLER,         // 36
-    INTE,          // 37
-    JUNK,          // 38
-    LIST,          // 39    
-    ANNARS,        // 40
-    OM,            // 41
-    DILL           // 42
-} Tok_Type;
-
 
 typedef struct
 {
@@ -155,17 +166,6 @@ typedef struct {
     int top;
     int max_size;        
 } Stack;
-
-typedef enum Err_Type {
-    
-    ERR_MALLOC = 1,         // 1 - Out of memory
-    ERR_SYNTAX,             // 2 - Syntax error
-    ERR_MATH,               // 3 - Ex division med noll
-    ERR_INDEX,              // 4 - Indexeringserror
-    ERR_NAME,               // 5 - Okänt värde hittas ej
-    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
-    ERR_FILE,               // 7 - Läsning av fil misslyckades
-} Err_Type;
 
 // utils, ex hjälpfunktioner
 double str_to_double(char *num);
