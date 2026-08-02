@@ -82,28 +82,6 @@ int *loop_links;
 
 
 
-
-
-
-
-typedef struct Bult_file_types {
-    struct {
-        char** arr;
-        int cap;
-        int top;
-    } sax;
-    struct {
-        char** arr;
-        int cap;
-        int top;
-    } gung;
-    struct {
-        char** arr;
-        int cap;
-        int top;
-    } lib;
-} Bult_File_Types;
-
 void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin) {
 
     #ifdef _WIN32 
@@ -129,7 +107,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             memcpy(file_path, file_name, i);
             file_path[i] = '\0';
             
-            printf("        byter till %s\n", file_path);
             chdir(file_path);
 
             free(file_path);
@@ -155,7 +132,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
         if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
             
-            printf("bult ");
             i+=5;
             // hitta om det är sax eller gung
             int is_sax = 0, is_gung = 0;
@@ -163,13 +139,10 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             if (i+4 < text_len && !strncmp(text+i, "sax ", 4)) {
                 is_sax = 1;
                 i+=4;
-                printf("sax ");
             } else if (i+5 < text_len && !strncmp(text+i, "gung ", 5)) {
                 is_gung = 1;
                 i+=5;
-                printf("gung ");
             }
-            printf("hittad, \"");
 
             char*** v;
             int* cap;
@@ -203,7 +176,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             memcpy(pack_name, text+i, pack_len);
             pack_name[pack_len] = '\0';
 
-            printf("%s\"\n", pack_name);
             
             int cont = 0;
             for (int j = 0; j < *top; j++) { // kolla om filen redan finns i importlistan
@@ -328,7 +300,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
 
 
-Bult_Ret bult(char* file_name){
+Bult_Ret bult(char* file_name, int debug){
 
     char start_wd[PATH_MAX];
     getcwd(start_wd, PATH_MAX);
@@ -366,30 +338,24 @@ Bult_Ret bult(char* file_name){
 
     int offset = final_rows - origin_rows;
 
-    printf("\nvisited:\nsax:");
-    for (int q = 0; q < visited_files.sax.top; q++){
-        printf("    %s", (visited_files.sax.arr)[q]);
-    }
-    printf("\ngung:");
-    for (int q = 0; q < visited_files.gung.top; q++){
-        printf("    %s", (visited_files.gung.arr)[q]);
-    }
-    printf("\nlib:");
-    for (int q = 0; q < visited_files.lib.top; q++){
-        printf("    %s", (visited_files.lib.arr)[q]);
-    }
-    printf("\n\n");
+    if (debug) {
+        printf("\nvisited:\nsax:");
+        for (int q = 0; q < visited_files.sax.top; q++){
+            printf("    %s", (visited_files.sax.arr)[q]);
+        }
+        printf("\ngung:");
+        for (int q = 0; q < visited_files.gung.top; q++){
+            printf("    %s", (visited_files.gung.arr)[q]);
+        }
+        printf("\nlib:");
+        for (int q = 0; q < visited_files.lib.top; q++){
+            printf("    %s", (visited_files.lib.arr)[q]);
+        }
+        printf("\n\n");
 
-    printf("RESULTAT:\n[");
-    for (int i = 0; i < buff.len; i++) {
-        if (buff.string[i] == '\n') printf("\\n");
-        printf("%c", buff.string[i]);
     }
-    printf("]\n");
-
 
     chdir(start_wd);
-    printf("offset: %d\n", offset);
 
     return (Bult_Ret){.buff = (String){.string = buff.string, .len = buff.len}, .import_line_count = offset};
 }
@@ -2183,7 +2149,7 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    Bult_Ret bult_ret = bult(argv[1]);
+    Bult_Ret bult_ret = bult(argv[1], flag_debug);
     String buff = bult_ret.buff;
     
     int line_offset = bult_ret.import_line_count;

@@ -72,9 +72,28 @@ typedef struct
 
 typedef struct Bult_Ret
 {
-    char* buff;
+    String buff;
     int import_line_count;
 } Bult_Ret;
+
+
+typedef struct Bult_file_types {
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } sax;
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } gung;
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } lib;
+} Bult_File_Types;
 
 enum Tok_Type
 {
@@ -186,7 +205,7 @@ int get_var_type(char* name, int length, Scope *scope);
 String create_svets_string(char* str, int str_len, Scope* scope);
 void tpos_call(char* call, int is_dill, Token* instruction);
 
-Program tokenize(char* buff, int debug);
+Program tokenize(String buff, int debug);
 void check_syntax(Program* program);
 
 /*
@@ -202,6 +221,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
 void foug(Token *instruction, Scope *scope);
-Bult_Ret bult(char* file_name);
+Bult_Ret bult(char* file_name, int debug);
+void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin);
 void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last, int has_eval);
 void tpos(Token *instruction, Scope *scope);

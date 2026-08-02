@@ -49,7 +49,7 @@ char *read_file(const char *filename)
     //replace tilde
     char* home = getenv("HOME");
     if (home == NULL) printf("ofog");
-    char full_filename[strlen(home)+strlen(filename)];
+    char full_filename[strlen(home)+strlen(filename)+1];
     if (filename[0] == '~') {
         strcpy(full_filename, home);
         strcat(full_filename, &filename[1]);
@@ -452,59 +452,56 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
         {
             switch (args[j].type)
             {
-            case FOUG:
-                printf("'FOUG' ");
-                break;
-            case JUNK:
-                printf("'JUNK' ");
-                break;
-            case BAND:
-                printf("'BAND' ");
+            case GRIP:
+                printf("'GRIP'    ");
                 break;
             case SLIP:
-                printf("'SLIP' ");
+                printf("'SLIP'    ");
                 break;
-            case GRIP:
-                printf("'GRIP' ");
+            case FOUG:
+                printf("'FOUG'    ");
+                break;
+            case BAND:
+                printf("'BAND'    ");
                 break;
             case GIVET:
-                printf("'GIVET' ");
+                printf("'GIVET'    ");
                 break;
             case ATT:
-                printf("'ATT' ");
+                printf("'ATT'    ");
                 break;
             case NAER:
-                printf("'NAER' ");
+                printf("'NAER'    ");
                 break;
             case RIGHT_PAR:
-                printf("')' ");
+                printf("')'    ");
                 break;
             case LEFT_PAR:
-                printf("'(' ");
+                printf("'('    ");
                 break;
             case RIGHT_BRACKET:
-                printf("']' ");
+                printf("']'    ");
                 break;
             case LEFT_BRACKET:
-                printf("'[' ");
+                printf("'['    ");
                 break;
             case PLUS:
-                printf("'+' ");
+                printf("'+'    ");
                 break;
             case MINUS:
-                printf("'-' ");
+                printf("'-'    ");
                 break;
             case MULTIPLIED:
-                printf("'*' ");
+                printf("'*'    ");
                 break;
             case DIVIDED:
-                printf("'/' ");
+                printf("'/'    ");
                 break;
             case EXPONENT:
-                printf("'^' ");
+                printf("'^'    ");
                 break;
             case MODULO:
-                printf("'%%' ");
+                printf("'%%'    ");
                 break;
             case VARIABLE:
                 printf("'");
@@ -514,7 +511,7 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
                 {
                     printf("%c", *(args[j].var.name + k));
                 }
-                printf("' ");
+                printf("'    ");
                 break;
             case STRING:
                 printf("'");
@@ -522,58 +519,61 @@ for (int j = 0; args[j].type != TERMINATOR; j++)
                 {
                     printf("%c", *(args[j].var.name + k));
                 }
-                printf("' ");
+                printf("'    ");
                 break;
             case EQUALS:
-                printf("'=' ");
+                printf("'='    ");
                 break;
             case NOT_EQUAL_TO:
-                printf("'!=' ");
+                printf("'!='    ");
                 break;
             case GREATER_THAN:
-                printf("'>' ");
+                printf("'>'    ");
                 break;
             case LESS_THAN:
-                printf("'<' ");
+                printf("'<'    ");
                 break;
             case NUMBER:
-                printf("'%lf' ", args[j].value);
+                printf("'%lf'    ", args[j].value);
                 break;
             case TERMINATOR:
-                printf("'\\0' ");
+                printf("'\\0'    ");
                 break;
             case FUNCTION:
-                printf("'BOUL' ");
+                printf("'BOUL'    ");
                 break;
             case RETURN:
-                printf("'RETURN' ");
+                printf("'RETURN'    ");
                 break;
             case MAIN:
-                printf("'MAIN' ");
+                printf("'MAIN'    ");
                 break;
             case SVETS:
-                printf("'SVETS' ");
-                break;
-            case TPOS:
-                printf("'TPOS' ");
+                printf("'SVETS'    ");
                 break;
             case COMMA:
-                printf("',' ");
-                break;
-            case LIST:
-                printf("'<LIST>' ");
-                for (int k = 0; k < args[j].list_ptr->len; k++) {
-                    print_variable(args[j].list_ptr->items[k], 0);
-                    printf(" ");
-                }
-                printf("'</LIST>'");
+                printf("','    ");
                 break;
             case ANNARS:
-                printf("'ANNARS' ");
+                printf("'ANNARS'    ");
                 break;
             case OM:
-                printf("'OM' ");
+                printf("'OM'    ");
                 break;
+            case OPEN_LOOP:
+                printf("'OPEN'    ");
+                break;
+            case CLOSE_LOOP:
+                printf("'CLOSE'    ");
+                break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
+            case DILL:
+                printf("'TPOS'    ");
+                break;
+            default:
+                printf("'TKN'    ");
             }
         }
         printf("\n");
