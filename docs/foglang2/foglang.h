@@ -120,7 +120,9 @@ enum Tok_Type
     LIST,          // 39    
     ANNARS,        // 40
     OM,            // 41
-    DILL           // 42
+    DILL,          // 42
+    FOR,           // 43
+    IN,            // 44
 };
 
 typedef struct

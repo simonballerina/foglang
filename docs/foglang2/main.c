@@ -377,6 +377,16 @@ Program tokenize(char* buff, int debug)
             tok.type = FOUG;
             i += 5;
         }
+        else if (strncmp(&buff[i], "for ", 4) == 0)
+        {
+            tok.type = FOR;
+            i += 4;
+        }
+        else if (strncmp(&buff[i], "in ", 3) == 0)
+        {
+            tok.type = IN;
+            i += 3;
+        }
         else if (strncmp(&buff[i], "junk ", 5) == 0)
         {
             tok.type = JUNK;
@@ -1528,6 +1538,16 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
     return;
 }
 
+void for_loop(Token *instruction, Program program, Scope *scope) {
+    Token var = instruction[1];
+
+    int len = 0;
+    while (instruction[len+3].type != OPEN_LOOP) len++;
+
+
+
+}
+
 void tpos_call(char* call, int is_dill, Token* instruction){
 
     // skapa en sträng på execvp formen
@@ -1891,6 +1911,10 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
 
     case NAER:
         loop(current, (Program){instructions, instruction_amount}, scope, 1, 0, 1);
+        break;
+
+    case FOR:
+        
         break;
 
     case TPOS:

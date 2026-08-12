@@ -102,6 +102,12 @@ void print_tokens(Token** instructions, int instruction_amount)
             case SLIP:
                 printf("'SLIP'    ");
                 break;
+            case FOR:
+                printf("'FOR'    ");
+                break;
+            case IN:
+                printf("'IN'    ");
+                break;
             case FOUG:
                 printf("'FOUG'    ");
                 break;
