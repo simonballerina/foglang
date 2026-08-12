@@ -1356,17 +1356,14 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
 
     if (instruction[2+is_grip+is_slip+is_svets].type == LEFT_BRACKET) {
         modify_list_item = 1;
-        for (int i = 2+is_grip+is_slip+1+is_svets; instruction[i].type != TERMINATOR; i++) {
-            // count top-level index closures (']') to determine number of indices
+        for (int i = 2+is_grip+is_slip+is_svets; instruction[i].type != TERMINATOR; i++) {
+            // count top-level index openers ('[') to determine number of indices
             if (instruction[i].type == EQUALS) break;
-            if (instruction[i].type == LEFT_BRACKET) {
+            if (instruction[i].type == LEFT_BRACKET && (depth == 0)) {
                 depth++;
+                index_amount++;
             } else if (instruction[i].type == RIGHT_BRACKET) {
-                if (depth == 0) {
-                    index_amount++;
-                } else {
-                    depth--;
-                }
+                depth--;
             }
         }
         indicies = malloc(index_amount*sizeof(int));
@@ -1618,7 +1615,7 @@ void foug(Token *instruction, Scope *scope) {
                 else printf("\n");
                 i += 2;
             }
-            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
+            if (i + 1 < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
             {
                 if (is_junk)
                     print_red("%", 1, 0);
@@ -1627,7 +1624,7 @@ void foug(Token *instruction, Scope *scope) {
                 i += 2;
             }
 
-            if (instruction[2+is_junk].var.name[i] == '%')
+            if (i < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '%')
             {
                 // kolla längden på den
                 int len = 0;
@@ -1675,7 +1672,6 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
 }
 
 void tpos_call(char* call, int is_dill, Token* instruction){
-
     // skapa en sträng på execvp formen
     // räkna antal argument
     #ifndef _WIN32
@@ -1686,7 +1682,8 @@ void tpos_call(char* call, int is_dill, Token* instruction){
         if (call[i] == ' ') arg_amount++;
     }
 
-    char** args = malloc((arg_amount+2)*sizeof(char*));
+    size_t size = (arg_amount+2)*sizeof(char*);
+    char** args = malloc(size);
     if (!args) throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, instruction); 
 
     int argc = 0;
@@ -1765,26 +1762,27 @@ void tpos(Token *instruction, Scope *scope)
         else if (instruction[i].type == SVETS) is_svets++;
     }
 
-    int call_len = instruction[1 + (is_svets)].var.name_len + 1;
+    int call_len = instruction[1 + (is_svets) + is_dill].var.name_len + 1;
     char *call = malloc(call_len * sizeof(char));
     if (call == NULL)
     {
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
     }
-    call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
+
     int writer = 0;
     
     if (!is_svets) {
-        if (instruction[1+is_dill].type == STRING) {
+        if (instruction[1+is_dill].type == STRING) { 
             for (int i = 0; i < instruction[1+is_dill].var.name_len; i++) {
-                if (instruction[1+is_dill].var.name[i] == '\\' && instruction[1+is_dill].var.name[i + 1] == 'n') {
+                if (instruction[1+is_dill].var.name[i] == '\\' && i+1 < instruction[1+is_dill].var.name_len && instruction[1+is_dill].var.name[i + 1] == 'n') {
                     i += 2;
                 }
                 if (i < instruction[1+is_dill].var.name_len) {
-                    sprintf(call + writer, "%c", instruction[1+is_dill].var.name[i]);
+                    call[writer] = instruction[1+is_dill].var.name[i];
                     writer++;
-                }  
+                }
             }
+            call[writer] = '\0';
         }
         else if (instruction[1+is_dill].type == VARIABLE)
         {

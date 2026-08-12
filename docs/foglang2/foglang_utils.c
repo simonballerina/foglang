@@ -58,7 +58,7 @@ char *read_file(const char *filename)
     }
 
     FILE *f = fopen(full_filename, "rb");
-    if (!f)
+    if (!f) 
         return NULL;
 
     fseek(f, 0, SEEK_END);
@@ -76,6 +76,133 @@ char *read_file(const char *filename)
     return buffer;
 }
 
+void print_token(Token tok) {
+    switch(tok.type){
+        case GRIP:
+            printf("'GRIP'    ");
+            break;
+        case SLIP:
+            printf("'SLIP'    ");
+            break;
+            case FOUG:
+                printf("'FOUG'    ");
+                break;
+            case BAND:
+                printf("'BAND'    ");
+                break;
+            case GIVET:
+                printf("'GIVET'    ");
+                break;
+            case ATT:
+                printf("'ATT'    ");
+                break;
+            case NAER:
+                printf("'NAER'    ");
+                break;
+            case RIGHT_PAR:
+                printf("')'    ");
+                break;
+            case LEFT_PAR:
+                printf("'('    ");
+                break;
+            case RIGHT_BRACKET:
+                printf("']'    ");
+                break;
+            case LEFT_BRACKET:
+                printf("'['    ");
+                break;
+            case PLUS:
+                printf("'+'    ");
+                break;
+            case MINUS:
+                printf("'-'    ");
+                break;
+            case MULTIPLIED:
+                printf("'*'    ");
+                break;
+            case DIVIDED:
+                printf("'/'    ");
+                break;
+            case EXPONENT:
+                printf("'^'    ");
+                break;
+            case MODULO:
+                printf("'%%'    ");
+                break;
+            case VARIABLE:
+                printf("'");
+                if (tok.var.type == VAR_FUNCTION)
+                    printf("f ");
+                for (int k = 0; k < tok.var.name_len; k++)
+                {
+                    printf("%c", *(tok.var.name + k));
+                }
+                printf("'    ");
+                break;
+            case STRING:
+                printf("'");
+                for (int k = 0; k < tok.var.name_len; k++)
+                {
+                    printf("%c", *(tok.var.name + k));
+                }
+                printf("'    ");
+                break;
+            case EQUALS:
+                printf("'='    ");
+                break;
+            case NOT_EQUAL_TO:
+                printf("'!='    ");
+                break;
+            case GREATER_THAN:
+                printf("'>'    ");
+                break;
+            case LESS_THAN:
+                printf("'<'    ");
+                break;
+            case NUMBER:
+                printf("'%lf'    ", tok.value);
+                break;
+            case TERMINATOR:
+                printf("'\\0'    ");
+                break;
+            case FUNCTION:
+                printf("'BOUL'    ");
+                break;
+            case RETURN:
+                printf("'RETURN'    ");
+                break;
+            case MAIN:
+                printf("'MAIN'    ");
+                break;
+            case SVETS:
+                printf("'SVETS'    ");
+                break;
+            case COMMA:
+                printf("','    ");
+                break;
+            case ANNARS:
+                printf("'ANNARS'    ");
+                break;
+            case OM:
+                printf("'OM'    ");
+                break;
+            case OPEN_LOOP:
+                printf("'OPEN'    ");
+                break;
+            case CLOSE_LOOP:
+                printf("'CLOSE'    ");
+                break;
+            case TPOS:
+                printf("'TPOS'    ");
+                break;
+            case DILL:
+                printf("'TPOS'    ");
+                break;
+            default:
+                printf("'TKN'    ");
+            }
+
+}
 
 void print_tokens(Token** instructions, int instruction_amount)
 {
