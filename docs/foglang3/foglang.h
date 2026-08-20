@@ -105,6 +105,43 @@ typedef struct {
 
 } Token;
 
+typedef struct UnnamedVariable UnnamedVariable;
+
+struct UnnamedVariable {
+
+    TokType type;
+
+    union {
+        UnnamedVariable* list;
+        double number;
+        char* string;
+    };
+};
+
+typedef struct {
+    
+    char* name;
+    TokType type;
+    
+    union {
+        UnnamedVariable* list;
+        double number;
+        char* string;
+    };
+} Variable;
+
+typedef struct {
+    void *data;
+    int element_size;
+    int top;
+    int capacity;
+} Stack;
+
+Stack scopes;
+
+
+
+
 char *read_file(const char *filename);
 void help(int argc, char **argv);
 
@@ -124,3 +161,11 @@ Node* parse_band(Token* tokens, int tok_count);
 
 Node** build_ast(Token* tokens, int tok_count, int* ast_size);
 Token* tokenize(char* buff, int* tok_amount);
+
+Node* evaluate(Node* node);
+void foug(Node* block);
+
+
+void stack_init(Stack* stack, int element_size, int capacity);
+void stack_push(Stack* stack, void* value);
+void stack_pop(Stack* stack, void* out);

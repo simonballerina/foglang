@@ -40,6 +40,8 @@ Node* make_str(char* str) {
     // tokenized strings are on the heap
     ret->string.string = str;
     ret->type = NODE_STRING;
+
+    return ret;
 }
 
 Node* make_binary(Node* left, TokType op, Node* right){
@@ -443,8 +445,17 @@ Token* tokenize(char* buff, int* tok_amount){
 
                 if (!string) goto malloc_error;
 
-                strncpy(string, buff+i+1, len);
-                string[len] = '\0';
+                int w = 0;
+                char* tmp = buff+1+i;
+                for (int j = 0; j < len; j++) {
+                    if (tmp[j] == '\\' && j+1 < len && tmp[j+1] == 'n') {
+                        string[w++] = '\n';
+                        j++;
+                    } else {
+                        string[w++] = tmp[j];
+                    }
+                }
+                string[w] = '\0';
 
                 tokens[tok_top++].string = string;
                 i+=len+1;
