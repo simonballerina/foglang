@@ -9,7 +9,7 @@
 #include "foglang_debug.c"
 
 #include "foglang_ast.c"
-#include "stack.c"
+#include "foglang_stack.c"
 
 Node* evaluate(Node* node) {
     NodeType type = node->type;
@@ -87,6 +87,34 @@ void foug(Node* node){
     free(str);
 }
 
+void create_variable(Node* value, char* name, Scope* scope){
+
+    Variable v = {
+        .list = NULL,
+        .name = name,
+        .number = value->number.value,
+        .string = value->string.string,
+        .type = value->type
+    };
+
+
+}
+
+UnnamedVariable get_var_value(Scope* scope, char* name){
+
+    for (int i = 0; i < scope->top; i++){
+        printf("name: %s\n", scope->variables[i].name);
+        if (!strcmp(scope->variables[i].name, name)) 
+            return (UnnamedVariable){
+                .list = scope->variables[i].list,
+                .number = scope->variables[i].number,
+                .string = scope->variables[i].string,
+                .type = scope->variables[i].type
+            };
+        
+    }
+
+}
 
 
 void band(Node* node){
@@ -106,7 +134,6 @@ void interpret_ast(Node** ast, int ast_size){
                 
                 break;
             case NODE_BAND:
-                
                 break;
             case NODE_GIVET:
 
@@ -120,12 +147,22 @@ void interpret_ast(Node** ast, int ast_size){
 
 
 void create_scope() {
-    Stack scope;
 
-    stack_init(&scope, sizeof(Variable*), 8);
+    Scope s = {
+        .capacity = 8,
+        .top = 0,
+        .variables = malloc(8*sizeof(Variable))
+    };
+    if (!s.variables) goto malloc_error;
 
-    stack_push(&scopes, &scope);
-    
+    stack_push(&scopes, &s);
+
+    return;
+
+    malloc_error:
+        printf("Memory allocation failed\n");
+        exit(1);
+        
 }
 
 int main(int argc, char **argv){
@@ -182,12 +219,13 @@ int main(int argc, char **argv){
 
     // setup variable stack
     
-    stack_init(&scopes, sizeof(Stack*), 8);
+    stack_init(&scopes, sizeof(Scope), 8);
     // create main scope
     create_scope();
 
 
     interpret_ast(ast, ast_size);
+
 
     return 0;
 

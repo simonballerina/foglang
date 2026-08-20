@@ -137,6 +137,12 @@ typedef struct {
     int capacity;
 } Stack;
 
+typedef struct {
+    Variable* variables;
+    int top;
+    int capacity;
+} Scope;
+
 Stack scopes;
 
 
