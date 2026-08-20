@@ -9,6 +9,124 @@
 #include "foglang_debug.c"
 
 #include "foglang_ast.c"
+#include "stack.c"
+
+Node* evaluate(Node* node) {
+    NodeType type = node->type;
+    if (type == NODE_NUMBER || type == NODE_STRING) {
+        return node;
+    }
+    // bin expr
+    Node* left = evaluate(node->binary.left);
+    Node* right = evaluate(node->binary.right);
+    
+    TokType eval_type = left->type;
+
+    Node* ret;
+
+    switch (node->binary.op) {
+
+        case OP_ADD:
+            
+            if (eval_type == NODE_NUMBER) {
+                ret = make_num(left->number.value+right->number.value);
+            } else if (eval_type == NODE_STRING) {
+                int l_len = strlen(left->string.string);
+                int r_len = strlen(right->string.string);
+
+                char* summed_str = malloc(l_len+r_len+1);
+                if (!summed_str) goto malloc_error;
+                
+                memcpy(summed_str, left->string.string, l_len);
+                memcpy(summed_str+l_len, right->string.string, r_len);
+                summed_str[l_len+r_len] = '\0';
+
+                ret = make_str(summed_str);
+            }
+
+            return ret;
+            break;
+        case OP_DIV:
+            return make_num(left->number.value/right->number.value);
+            break;
+        case OP_MOD:
+            return make_num((int)(left->number.value)%(int)(right->number.value));
+            break;
+        case OP_MUL:
+            return make_num(left->number.value*right->number.value);
+            break;
+        case OP_SUB:
+            return make_num(left->number.value-right->number.value);
+            break;
+        case CMP_EQUALS:
+            if (eval_type == NODE_NUMBER) {
+                return make_num(left->number.value == right->number.value);
+            }
+            return make_num(!strcmp(left->string.string, right->string.string));
+            break;
+    }
+
+    malloc_error:
+        printf("Could not allocate memory\n");
+        exit(1);
+
+}
+
+void foug(Node* node){
+    Node* str = evaluate(node->foug.string);
+    TokType type = str->type;
+
+    if (type == NODE_STRING) {
+        printf("%s\n", str->string.string);
+        free(str->string.string);
+    }
+    else if (type == NODE_NUMBER) {
+        if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
+        else printf("%lf", str->number.value);
+    }
+    free(str);
+}
+
+
+
+void band(Node* node){
+    Node* value = evaluate(node->band.value);
+
+
+}
+
+void interpret_ast(Node** ast, int ast_size){
+    for (int i = 0; i < ast_size; i++) {
+        Node* block = ast[i];
+        switch (block->type) {
+            case NODE_FOUG:
+                foug(block);
+                break;
+            case NODE_TPOS:
+                
+                break;
+            case NODE_BAND:
+                
+                break;
+            case NODE_GIVET:
+
+                break;
+            case NODE_NAER:
+
+                break;
+        }
+    }
+}
+
+
+void create_scope() {
+    Stack scope;
+
+    stack_init(&scope, sizeof(Variable*), 8);
+
+    stack_push(&scopes, &scope);
+    
+}
 
 int main(int argc, char **argv){
     //check for flags
@@ -62,7 +180,14 @@ int main(int argc, char **argv){
     Node** ast = build_ast(tokens, tok_count, &ast_size);
     print_ast(ast, "", 0, ast_size);
 
+    // setup variable stack
+    
+    stack_init(&scopes, sizeof(Stack*), 8);
+    // create main scope
+    create_scope();
 
+
+    interpret_ast(ast, ast_size);
 
     return 0;
 
