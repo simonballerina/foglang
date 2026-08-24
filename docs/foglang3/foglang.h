@@ -1,6 +1,7 @@
 #pragma once
 
 typedef enum {
+    NODE_NULL,
     NODE_NUMBER,
     NODE_STRING,
     NODE_BINARY,
@@ -10,6 +11,7 @@ typedef enum {
     NODE_NAER,
     NODE_FOUG,
     NODE_TPOS,
+    NODE_LIST,
 } NodeType;
 
 
@@ -50,6 +52,27 @@ typedef enum {
 
 } TokType;
 
+typedef struct UnnamedVariable UnnamedVariable;
+
+typedef struct {
+    UnnamedVariable* list;
+    int len;
+} List;
+
+struct UnnamedVariable {
+
+    NodeType type;
+
+    union {
+        List list;
+        double number;
+        char* string;
+    };
+};
+
+
+
+
 typedef struct Node Node;
 
 struct Node {
@@ -64,6 +87,8 @@ struct Node {
         struct {
             char* string;
         } string;
+
+        List list;
 
         struct {
             char* name;
@@ -105,26 +130,15 @@ typedef struct {
 
 } Token;
 
-typedef struct UnnamedVariable UnnamedVariable;
 
-struct UnnamedVariable {
-
-    TokType type;
-
-    union {
-        UnnamedVariable* list;
-        double number;
-        char* string;
-    };
-};
 
 typedef struct {
     
     char* name;
-    TokType type;
+    NodeType type;
     
     union {
-        UnnamedVariable* list;
+        List list;
         double number;
         char* string;
     };
@@ -145,32 +159,40 @@ typedef struct {
 
 Stack scopes;
 
-
-
-
 char *read_file(const char *filename);
 void help(int argc, char **argv);
 
-Node* make_num(double number);
-Node* make_str(char* str);
+void print_indent(int indent);
+char* op_to_str(TokType op);
+void print_ast_statement(Node* node, const char* prefix, int is_left);
+void print_ast(Node** ast, const char* prefix, int is_left, int ast_size);
+void print_tokens(Token* instructions, int instruction_amount);
 
+Node* make_num(double number);
+Node* make_identifier(char* name);
+Node* make_str(char* str);
 Node* make_binary(Node* left, TokType op, Node* right);
 Node* parse_exp(Token* tokens, int tok_count);
 Node* parse_factor(Token* tokens, int tok_count);
 Node* parse_term(Token* tokens, int tok_count);
-Node* parse_expression(Token* tokens, int tok_count);
 Node* parse_cmp(Token* tokens, int tok_count);
-Node* parse_statement(Token* tokens, int tok_count);
-
+Node* parse_expression(Token* tokens, int tok_count);
 Node* parse_cond_block(Token* tokens, int tok_count, TokType type);
 Node* parse_band(Token* tokens, int tok_count);
-
+Node* parse_output_statement(Token* tokens, int tok_count, TokType type);
+Node* parse_statement(Token* tokens, int tok_count);
 Node** build_ast(Token* tokens, int tok_count, int* ast_size);
 Token* tokenize(char* buff, int* tok_amount);
 
-Node* evaluate(Node* node);
-void foug(Node* block);
-
+Node* evaluate(Node* node, Scope* scope);
+void foug(Node* node, Scope* scope);
+void create_variable(Node* value, char* name, Scope* scope);
+void change_var_value(Scope* scope, char* name, Node* new_value);
+UnnamedVariable get_var_value(Scope* scope, char* name);
+void band(Node* node, Scope* scope);
+void interpret_block(Node* block, Scope* scope);
+void interpret_ast(Node** ast, int ast_size, Scope* main_scope);
+void create_scope(void);
 
 void stack_init(Stack* stack, int element_size, int capacity);
 void stack_push(Stack* stack, void* value);

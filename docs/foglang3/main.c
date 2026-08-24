@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "foglang.h"
 
@@ -11,16 +12,25 @@
 #include "foglang_ast.c"
 #include "foglang_stack.c"
 
-Node* evaluate(Node* node) {
+Node* evaluate(Node* node, Scope* scope) {
+    // todo, skapa modiferabar kopia av node
     NodeType type = node->type;
+    if (type == NODE_IDENTIFIER) {
+        UnnamedVariable v = get_var_value(scope, node->string.string);
+        node->type = v.type;
+        if (v.type == NODE_NUMBER) node->number.value = v.number;
+        else if (v.type == NODE_STRING) node->string.string = v.string;
+        else if (v.type == NODE_LIST) node->list = v.list;
+
+    }
     if (type == NODE_NUMBER || type == NODE_STRING) {
         return node;
     }
     // bin expr
-    Node* left = evaluate(node->binary.left);
-    Node* right = evaluate(node->binary.right);
+    Node* left = evaluate(node->binary.left, scope);
+    Node* right = evaluate(node->binary.right, scope);
     
-    TokType eval_type = left->type;
+    NodeType eval_type = left->type;
 
     Node* ret;
 
@@ -58,11 +68,19 @@ Node* evaluate(Node* node) {
         case OP_SUB:
             return make_num(left->number.value-right->number.value);
             break;
+        case OP_EXP:
+            return make_num(pow(left->number.value, right->number.value));
+            break;
         case CMP_EQUALS:
             if (eval_type == NODE_NUMBER) {
                 return make_num(left->number.value == right->number.value);
             }
             return make_num(!strcmp(left->string.string, right->string.string));
+            break;
+        case CMP_NOT_EQUALS:
+            if (eval_type == NODE_NUMBER) {
+                return make_num(left->number.value != right->number.value);
+            }
             break;
     }
 
@@ -72,9 +90,9 @@ Node* evaluate(Node* node) {
 
 }
 
-void foug(Node* node){
-    Node* str = evaluate(node->foug.string);
-    TokType type = str->type;
+void foug(Node* node, Scope* scope){
+    Node* str = evaluate(node->foug.string, scope);
+    NodeType type = str->type;
 
     if (type == NODE_STRING) {
         printf("%s\n", str->string.string);
@@ -90,58 +108,111 @@ void foug(Node* node){
 void create_variable(Node* value, char* name, Scope* scope){
 
     Variable v = {
-        .list = NULL,
         .name = name,
-        .number = value->number.value,
-        .string = value->string.string,
         .type = value->type
     };
+    if (value->type == NODE_NUMBER) v.number = value->number.value;
+    else if (value->type == NODE_STRING) v.string = value->string.string;
+    else if (value->type == NODE_LIST) v.list = value->list;
 
+    if (scope->top >= scope->capacity) {
+        Variable* tmp = realloc(scope->variables, (scope->capacity*2)*sizeof(Variable));
+        if (!tmp) goto malloc_error;
+        scope->variables = tmp;
+        scope->capacity *= 2;
+    }
+    scope->variables[scope->top++] = v;
+    
+    return;
 
+    malloc_error:
+        printf("Memory allocation failed\n");
+        exit(1);
+}
+
+void change_var_value(Scope* scope, char* name, Node* new_value){
+    for (int i = 0; i < scope->top; i++){
+        if (!strcmp(scope->variables[i].name, name)) {
+
+            NodeType old_type = scope->variables[i].type;
+            if (old_type == NODE_STRING){ // när listor implementeras: free:a dem!
+                free(scope->variables[i].string);
+            }
+
+            NodeType type = new_value->type;
+            if (type == NODE_STRING) scope->variables[i].string = new_value->string.string;
+            else if (type == NODE_NUMBER) scope->variables[i].number = new_value->number.value;
+            else if (type == NODE_LIST) scope->variables[i].list = new_value->list;
+
+            scope->variables[i].type = type;
+        }
+    }
 }
 
 UnnamedVariable get_var_value(Scope* scope, char* name){
 
     for (int i = 0; i < scope->top; i++){
         printf("name: %s\n", scope->variables[i].name);
-        if (!strcmp(scope->variables[i].name, name)) 
-            return (UnnamedVariable){
-                .list = scope->variables[i].list,
-                .number = scope->variables[i].number,
-                .string = scope->variables[i].string,
+        if (!strcmp(scope->variables[i].name, name)) {
+            UnnamedVariable v = {
                 .type = scope->variables[i].type
             };
+
+            if (scope->variables[i].type == NODE_NUMBER) v.number = scope->variables[i].number;
+            else if (scope->variables[i].type == NODE_STRING) v.string = scope->variables[i].string;
+            else if (scope->variables[i].type == NODE_LIST) v.list = scope->variables[i].list;
+
+            return v;
+        }
         
+    }
+    return (UnnamedVariable){.type = NODE_NULL};
+
+}
+
+
+void band(Node* node, Scope* scope){
+    Node* value = evaluate(node->band.value, scope);
+
+    // ta reda på om en ny variabel ska skapas
+    NodeType t = get_var_value(scope, node->band.name).type;
+    if (t == NODE_NULL) {
+        printf("createing variabeline with name %s\n", node->band.name);
+        create_variable(value, node->band.name, scope);
+        return;
+    }  
+    change_var_value(scope, node->band.name, value);
+    // uppdatera istället
+
+    
+
+}
+
+void interpret_block(Node* block, Scope* scope) {
+    switch (block->type) {
+        case NODE_FOUG:
+            foug(block, scope);
+            break;
+        case NODE_TPOS:
+                
+            break;
+        case NODE_BAND:
+            band(block, scope);
+            break;
+        case NODE_GIVET:
+
+            break;
+        case NODE_NAER:
+
+            break;
     }
 
 }
 
-
-void band(Node* node){
-    Node* value = evaluate(node->band.value);
-
-
-}
-
-void interpret_ast(Node** ast, int ast_size){
+void interpret_ast(Node** ast, int ast_size, Scope* main_scope){
     for (int i = 0; i < ast_size; i++) {
         Node* block = ast[i];
-        switch (block->type) {
-            case NODE_FOUG:
-                foug(block);
-                break;
-            case NODE_TPOS:
-                
-                break;
-            case NODE_BAND:
-                break;
-            case NODE_GIVET:
-
-                break;
-            case NODE_NAER:
-
-                break;
-        }
+        interpret_block(block, main_scope);
     }
 }
 
@@ -223,8 +294,10 @@ int main(int argc, char **argv){
     // create main scope
     create_scope();
 
+    Scope main_scope;
+    stack_pop(&scopes, &main_scope);
 
-    interpret_ast(ast, ast_size);
+    interpret_ast(ast, ast_size, &main_scope);
 
 
     return 0;
