@@ -18,6 +18,7 @@ Node* evaluate(Node* node, Scope* scope) {
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
         node->type = v.type;
+        type = v.type;
         if (v.type == NODE_NUMBER) node->number.value = v.number;
         else if (v.type == NODE_STRING) node->string.string = v.string;
         else if (v.type == NODE_LIST) node->list = v.list;
@@ -29,7 +30,6 @@ Node* evaluate(Node* node, Scope* scope) {
     // bin expr
     Node* left = evaluate(node->binary.left, scope);
     Node* right = evaluate(node->binary.right, scope);
-    
     NodeType eval_type = left->type;
 
     Node* ret;
@@ -83,7 +83,7 @@ Node* evaluate(Node* node, Scope* scope) {
             }
             break;
     }
-
+    return NULL;
     malloc_error:
         printf("Could not allocate memory\n");
         exit(1);
@@ -93,10 +93,8 @@ Node* evaluate(Node* node, Scope* scope) {
 void foug(Node* node, Scope* scope){
     Node* str = evaluate(node->foug.string, scope);
     NodeType type = str->type;
-
     if (type == NODE_STRING) {
         printf("%s\n", str->string.string);
-        free(str->string.string);
     }
     else if (type == NODE_NUMBER) {
         if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
@@ -107,12 +105,26 @@ void foug(Node* node, Scope* scope){
 
 void create_variable(Node* value, char* name, Scope* scope){
 
+    int len = strlen(name);
+    char* new_name = malloc(len+1);
+    if (!new_name) goto malloc_error;
+    memcpy(new_name, name, len+1);
+
     Variable v = {
-        .name = name,
+        .name = new_name,
         .type = value->type
     };
+
     if (value->type == NODE_NUMBER) v.number = value->number.value;
-    else if (value->type == NODE_STRING) v.string = value->string.string;
+    else if (value->type == NODE_STRING) {
+
+        int len = strlen(value->string.string);
+        char* new_str = malloc(len+1);
+        if (!new_str) goto malloc_error;
+        memcpy(new_str, value->string.string, len+1);
+        
+        v.string = new_str;
+    }
     else if (value->type == NODE_LIST) v.list = value->list;
 
     if (scope->top >= scope->capacity) {
@@ -140,19 +152,30 @@ void change_var_value(Scope* scope, char* name, Node* new_value){
             }
 
             NodeType type = new_value->type;
-            if (type == NODE_STRING) scope->variables[i].string = new_value->string.string;
+            if (type == NODE_STRING) {
+                int len = strlen(new_value->string.string);
+                char* new_str = malloc(len+1);
+                if (!new_str) goto malloc_error;
+                memcpy(new_str, new_value->string.string, len+1);
+                
+                scope->variables[i].string = new_str;
+            }
+
             else if (type == NODE_NUMBER) scope->variables[i].number = new_value->number.value;
             else if (type == NODE_LIST) scope->variables[i].list = new_value->list;
 
             scope->variables[i].type = type;
         }
     }
+
+    return;
+    malloc_error:
+        printf("Memory allocation failed\n");
+        exit(1);
 }
 
 UnnamedVariable get_var_value(Scope* scope, char* name){
-
     for (int i = 0; i < scope->top; i++){
-        printf("name: %s\n", scope->variables[i].name);
         if (!strcmp(scope->variables[i].name, name)) {
             UnnamedVariable v = {
                 .type = scope->variables[i].type
@@ -177,7 +200,6 @@ void band(Node* node, Scope* scope){
     // ta reda på om en ny variabel ska skapas
     NodeType t = get_var_value(scope, node->band.name).type;
     if (t == NODE_NULL) {
-        printf("createing variabeline with name %s\n", node->band.name);
         create_variable(value, node->band.name, scope);
         return;
     }  
