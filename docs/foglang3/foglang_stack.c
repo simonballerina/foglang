@@ -37,8 +37,9 @@ void stack_push(Stack* stack, void* value){
 }
 
 void stack_pop(Stack* stack, void* out) {
-    memcpy(out, (char*)stack->data+stack->top*stack->element_size, stack->element_size);
-        
-    (stack->top)--;
+    // copy the last pushed element (top - 1)
+    if (stack->top <= 0) return;
+    memcpy(out, (char*)stack->data + (stack->top - 1) * stack->element_size, stack->element_size);
+    stack->top--;
     return;
 }

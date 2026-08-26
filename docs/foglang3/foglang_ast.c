@@ -388,6 +388,10 @@ Token* tokenize(char* buff, int* tok_amount){
                 tokens[tok_top++].type = RIGHT_PAR;
                 continue;
 
+            case ',':
+                tokens[tok_top++].type = COMMA;
+                continue;
+
             case '+':
                 tokens[tok_top++].type = OP_ADD;
                 continue;
@@ -480,6 +484,9 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "junk ", 5) == 0){
             tokens[tok_top++].type = JUNK;
             i+=4;
+        } else if (strncmp(buff+i, "boul ", 5) == 0){
+            tokens[tok_top++].type = BOUL;
+            i+=4;
         } else if (strncmp(buff+i, "givet att ", 10) == 0) {
             i+=9;
             tokens[tok_top++].type = GIVET;
@@ -501,6 +508,8 @@ Token* tokenize(char* buff, int* tok_amount){
             tok_top++;
             i+=j-1;
         }
+        
+        printf("added token: '%.*s', type: '%d'\n", (int)3, buff+i, tokens[tok_top-1].type);
         
         
     }

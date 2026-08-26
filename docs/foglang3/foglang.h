@@ -43,6 +43,8 @@ typedef enum {
     SVETS,      // 19
     JUNK,       // 20
     TPOS,       // 21
+    BOUL,       // 22
+    COMMA,      // 23
 
     OPEN_BLOCK,
     CLOSE_BLOCK,

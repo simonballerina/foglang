@@ -12,7 +12,11 @@
 #include "foglang_ast.c"
 #include "foglang_stack.c"
 
+#include "foglang_var.c"
+
+
 Node* evaluate(Node* node, Scope* scope) {
+    // debug print
     // todo, skapa modiferabar kopia av node
     NodeType type = node->type;
     if (type == NODE_IDENTIFIER) {
@@ -24,7 +28,7 @@ Node* evaluate(Node* node, Scope* scope) {
         else if (v.type == NODE_LIST) node->list = v.list;
 
     }
-    if (type == NODE_NUMBER || type == NODE_STRING) {
+    if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_NULL) {
         return node;
     }
     // bin expr
