@@ -1888,7 +1888,11 @@ usage: foglang2 [--version] [--help] \n\
                 <filepath> [--debug] [--unchecked]\n\
                 <command> [<args>]\n\
 \n\
-Interpret a Foglang2 program: foglang2 <filepath>\n");
+Interpret a Foglang2 program: foglang2 <filepath>\n\
+\n\
+Links:\n\
+- Documentation: https://foglang.readthedocs.io\n\
+- Github: https://github.com/simonballerina/foglang\n");
 }
 
 int main(int argc, char **argv)
