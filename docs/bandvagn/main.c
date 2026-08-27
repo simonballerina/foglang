@@ -403,6 +403,23 @@ int get_highlighter() {
     return EXIT_CODE;
 }
 
+int help() {
+    int EXIT_CODE = 0;
+    printf("\
+usage: vagn [--help] \n\
+            install <package_name>\n\
+            remove <package_name>\n\
+            update <package_name>\n\
+            highlight\n\
+\n\
+Install primtalsletaren: vagn install primtalsletaren\n\
+\n\
+Links:\n\
+- Documentation: https://foglang.readthedocs.io\n\
+- Github: https://github.com/simonballerina/foglang\n");
+    return EXIT_CODE;
+}
+
 int main(int argc, char *argv[]) {
     int EXIT_CODE = 0;
 
@@ -410,6 +427,7 @@ int main(int argc, char *argv[]) {
     int do_remove = 0;
     int do_update = 0;
     int do_highlight = 0;
+    int flag_help = 0;
     char* package_to_modify = NULL;
 
     if (argc > 1) {
@@ -433,15 +451,17 @@ int main(int argc, char *argv[]) {
             do_update = 1;
         } else if (strcmp(argv[1], "highlight") == 0) {
             do_highlight = 1;
+        } else if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+            flag_help = 1;
         } else {
             printf("Unknown command '%s'\n", argv[1]);
             return -1;
         }
     } else {
-        printf("No command provided\n");
-        // todo: help
+        //printf("No command provided\n");
+        flag_help = 1;
 
-        return -1;
+        //return -1;
     }
 
     if (do_install) {
@@ -452,6 +472,8 @@ int main(int argc, char *argv[]) {
         EXIT_CODE = update_packages();
     } else if (do_highlight) {
         EXIT_CODE = get_highlighter();
+    } else if (flag_help) {
+        EXIT_CODE = help();
     }
 
     return EXIT_CODE;
