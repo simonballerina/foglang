@@ -458,10 +458,7 @@ int main(int argc, char *argv[]) {
             return -1;
         }
     } else {
-        //printf("No command provided\n");
         flag_help = 1;
-
-        //return -1;
     }
 
     if (do_install) {
