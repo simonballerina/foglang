@@ -1,6 +1,6 @@
 #pragma once
 
-enum Var_Type
+typedef enum Var_Type
 {
     VAR_NONE,
     VAR_NUMBER,
@@ -9,74 +9,9 @@ enum Var_Type
     VAR_FUNCTION,
     VAR_LIST_NUMBER,
     VAR_LIST_STRING
-};
+} Var_Type;
 
-typedef struct Variable Variable;
-typedef struct Dynamic_Var Dynamic_Var;
-
-typedef struct List
-{
-    int len;
-    Dynamic_Var* items;
-} List;
-
-typedef struct Variable
-{
-    int type;
-    char *name;
-    int name_len;
-    double value;
-    int len;     // längden på listan / strängen
-    char *str_ptr;
-    Dynamic_Var* list_ptr;
-} Variable;
-
-typedef struct // 12 bytes?
-{
-    char *name;
-    int type;
-    int name_len;
-
-} Tok_Variable;
-
-typedef struct
-{
-    char loop_id;
-    double value;
-    int type;
-    Tok_Variable var;
-    List* list_ptr;
-} Token;
-
-typedef struct
-{
-    char* string;
-    int len;
-} String;
-
-typedef struct Dynamic_Var
-{
-    char* string;
-    int str_len;
-    double value;
-    int type;
-    struct Dynamic_Var* list_ptr;
-} Dynamic_Var;
-
-typedef struct
-{
-    Variable *variables;
-    int index;
-    int capacity;
-} Scope;
-
-typedef struct Bult_Ret
-{
-    char* buff;
-    int import_line_count;
-} Bult_Ret;
-
-enum Tok_Type
+typedef enum Tok_Type
 {
     NONE,          // 0
     TERMINATOR,    // 1
@@ -121,7 +56,103 @@ enum Tok_Type
     ANNARS,        // 40
     OM,            // 41
     DILL           // 42
-};
+} Tok_Type;
+
+typedef enum Err_Type {
+    
+    ERR_MALLOC = 1,         // 1 - Out of memory
+    ERR_SYNTAX,             // 2 - Syntax error
+    ERR_MATH,               // 3 - Ex division med noll
+    ERR_INDEX,              // 4 - Indexeringserror
+    ERR_NAME,               // 5 - Okänt värde hittas ej
+    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
+    ERR_FILE,               // 7 - Läsning av fil misslyckades
+} Err_Type;
+
+typedef struct Variable Variable;
+typedef struct Dynamic_Var Dynamic_Var;
+
+typedef struct List
+{
+    int len;
+    Dynamic_Var* items;
+} List;
+
+typedef struct Variable
+{
+    Var_Type type;
+    char *name;
+    int name_len;
+    double value;
+    int len;     // längden på listan / strängen
+    char *str_ptr;
+    Dynamic_Var* list_ptr;
+} Variable;
+
+typedef struct // 12 bytes?
+{
+    char *name;
+    Var_Type type;
+    int name_len;
+
+} Tok_Variable;
+
+typedef struct
+{
+    char loop_id;
+    double value;
+    Tok_Type type;
+    Tok_Variable var;
+    List* list_ptr;
+} Token;
+
+typedef struct
+{
+    char* string;
+    int len;
+} String;
+
+typedef struct Dynamic_Var
+{
+    char* string;
+    int str_len;
+    double value;
+    int type;
+    struct Dynamic_Var* list_ptr;
+} Dynamic_Var;
+
+typedef struct
+{
+    Variable *variables;
+    int index;
+    int capacity;
+} Scope;
+
+typedef struct Bult_Ret
+{
+    String buff;
+    int import_line_count;
+} Bult_Ret;
+
+
+typedef struct Bult_file_types {
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } sax;
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } gung;
+    struct {
+        char** arr;
+        int cap;
+        int top;
+    } lib;
+} Bult_File_Types;
+
 
 typedef struct
 {
@@ -135,17 +166,6 @@ typedef struct {
     int top;
     int max_size;        
 } Stack;
-
-enum Err_Type  {
-    
-    ERR_MALLOC = 1,         // 1 - Out of memory
-    ERR_SYNTAX,             // 2 - Syntax error
-    ERR_MATH,               // 3 - Ex division med noll
-    ERR_INDEX,              // 4 - Indexeringserror
-    ERR_NAME,               // 5 - Okänt värde hittas ej
-    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
-    ERR_FILE,               // 7 - Läsning av fil misslyckades
-};
 
 // utils, ex hjälpfunktioner
 double str_to_double(char *num);
@@ -186,7 +206,7 @@ int get_var_type(char* name, int length, Scope *scope);
 String create_svets_string(char* str, int str_len, Scope* scope);
 void tpos_call(char* call, int is_dill, Token* instruction);
 
-Program tokenize(char* buff, int debug);
+Program tokenize(String buff, int debug);
 void check_syntax(Program* program);
 
 /*
@@ -196,12 +216,13 @@ err_str: generellt en beskrivning av felet. se main.c för exempel. Kan också i
 
 instruction: nuvarande instruktionen som orsakade felet
 */
-void throw_error(int type, String err_str, Token *instruction);
+void throw_error(Err_Type type, String err_str, Token *instruction);
 
 void band(Token *instruction, Token **instructions, int instruction_amount, Scope *scope);
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope);
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope);
 void foug(Token *instruction, Scope *scope);
-Bult_Ret bult(char* file_name);
+Bult_Ret bult(char* file_name, int debug);
+void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin);
 void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last, int has_eval);
 void tpos(Token *instruction, Scope *scope);

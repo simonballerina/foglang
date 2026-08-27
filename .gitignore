@@ -1,5 +1,5 @@
 *.fg
-!docs/foglang2/lib/*.fg
+!docs/foglang2/lib/*/*.fg
 docs/readthedocs/build/*
 docs/foglang2/build/*
 .vscode/*

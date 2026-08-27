@@ -4,6 +4,8 @@
 #include <math.h>
 #include <unistd.h>
 
+
+
 #ifndef _WIN32
     #include <sys/wait.h>
 #endif
@@ -80,152 +82,299 @@ int *loop_links;
 
 
 
-Bult_Ret bult(char* file_name){
+void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin) {
 
-    char *buff = read_file(file_name);
-    int imports_capacity = 32;
-    char *imports = malloc(imports_capacity);
+    #ifdef _WIN32 
+        const char slash = '\\';
+    #else
+        const char slash = '/';
+    #endif
+
+    // spara origin wd
+    char start_wd[PATH_MAX];
+    getcwd(start_wd, PATH_MAX);
+
+    // här cddir:ar man till den nya filen
+
+    int file_name_len = strlen(file_name);
+
+    char* text = read_file(file_name); 
     
-    if (!buff) {
-        String str = {.len = strlen("Unknown file"), .string = "Unknown file"};
-        throw_error(ERR_FILE, str, NULL);
+    if (!text) {
+        char* prefix = "Could not find imported file '";
+        int prefix_len = strlen(prefix);
+        char* err_msg = malloc(prefix_len+file_name_len+1);
+        if (!err_msg) goto malloc_error;
+        
+        memcpy(err_msg, prefix, prefix_len);
+        memcpy(err_msg+prefix_len, file_name, file_name_len);
+        err_msg[prefix_len+file_name_len] = '\'';
+
+        throw_error(ERR_FILE, (String){.len = prefix_len+file_name_len+1, .string = err_msg}, NULL);
     }
-    int len = strlen(buff);
-    int found;
-    int search = 1;
-    int import_line_count = 0;
 
-    char lib[] = LIBPATH;
-    char pack[] = PACKPATH;
-    char *source;
+    for (int i = file_name_len-1; i >= 0; i--) {
 
-    while (search){
-        found = 0;
-        for (int i = 0; i < len; i++){
+        if (file_name[i] == slash) {
+            char* file_path = malloc(i+1);
+            if (!file_path) goto malloc_error;
 
-            if (i + 2 < len && !strncmp(buff+i, "#*", 2)) {
-                while (strncmp(buff+i, "*#", 2)) {
-                    i++;
-                }
-            } else if (i + 1 < len && !strncmp(buff+i, "#", 1)) {
-                while (strncmp(buff+i, "\n", 1)) {
-                    i++;
-                }
-            }
-            if (i + 5 < len && !strncmp(buff+i, "bult ", 5)) {
+            memcpy(file_path, file_name, i);
+            file_path[i] = '\0';
+            chdir(file_path);
 
-                source = lib;
-                int is_sax = 0;
-                int is_gung = 0;
-                char origin_wd[PATH_MAX];
-                if (i + 9 < len && !strncmp(buff+i+5, "sax ", 4))
-                {
-                    is_sax = 1;
-                    i += 4;
-                    //move to relative position
-                    getcwd(origin_wd, PATH_MAX);
-                    chdir(path_diff);
-                } else if (i + 10 < len && !strncmp(buff+i+5, "gung ", 5)) {
-                    //gung
-                    is_gung = 1;
-                    source = pack;
-                    i += 5;
-                }
-                int name_len = 0;
-                // hitta längden på importnamnet
-                name_len = i+5;
-                while (name_len < len && buff[name_len] != ';')
-                    name_len++;
-                name_len-=(i+5);
-                char* import_file_name = malloc((name_len+1+5+4*is_sax+5*is_gung+strlen(source))*sizeof(char));
-                if (import_file_name == NULL) goto malloc_error;
-                buff[i + name_len + 5] = '\0';
-                if (is_sax) {
-                    memcpy(import_file_name, buff+i+5, name_len*sizeof(char));
-                } else {
-                    sprintf(import_file_name, "%s%s.fg", source, buff+i+5);
-                }
-                int is_dupe = 1;
-                char import_file_name_prefix[name_len+7*!is_sax+strlen(source)*(!is_sax)+1];
-                strcpy(import_file_name_prefix, "#");
-                import_file_name[name_len+7*!is_sax+strlen(source)*(!is_sax)] = '\0';
-                strcat(import_file_name_prefix, import_file_name);
-                char* import_buff = read_file(import_file_name);
-                if (!import_buff) {
-                    if (is_gung) {
-                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file\nIs the package installed?"), .string = "Unknown file\nIs the package installed?"}, NULL);
-                    } else {
-                        throw_error(ERR_FILE, (String){.len = strlen("Unknown file"), .string = "Unknown file"}, NULL);
-                    }               
-                }
-                // räkna antalet rader i importfilen
-                for (int k = 0; k < strlen(import_buff); k++) {
-                    if (import_buff[k] == '\n') {
-                        import_line_count++;
-                    }
-                }
-
-                if (find_substring(imports, import_file_name_prefix) == -1) {
-                    is_dupe = 0;
-                    imports_capacity += name_len+((3+strlen(source))*(!is_sax))+1;
-                    imports = realloc(imports, imports_capacity);
-                    strcat(imports, import_file_name);
-                }
-                free(import_file_name);
-                int import_end = i + 5 + name_len + 1;
-                int left_side_len = i - 4*is_sax-5*is_gung;
-                int right_side_len = len - import_end;
-                int import_buff_len = strlen(import_buff);
-                // skapa ny sträng
-                char* new_buff = malloc(left_side_len + import_buff_len + right_side_len + 1);
-                if (new_buff == NULL) goto malloc_error;
-
-                memcpy(new_buff, buff, left_side_len*sizeof(char));
-                memcpy(new_buff+left_side_len, import_buff, import_buff_len*sizeof(char));
-                memcpy(new_buff + left_side_len + (import_buff_len)*!is_dupe, buff + import_end, right_side_len);
-
-                new_buff[left_side_len + import_buff_len + right_side_len] = '\0';
-                char *old_buff = buff;
-                buff = new_buff;
-                len = left_side_len + import_buff_len + right_side_len;
-                found = 1;
-
-                free(old_buff);
-                free(import_buff);
-
-                //move back
-                if (is_sax) {
-                    chdir(origin_wd);
-                }
-
-                break;
-            }
+            free(file_path);
+            break;
         }
-        if (found)
-            search = 1;
-        else search = 0;
+    }
 
+    int text_len = strlen(text);
+
+    // räkna originfilrader
+    if (is_origin) {
+        for (int i = 0; i < text_len; i++) {
+            if (text[i] == '\n') (*origin_rows)++;
+        }
     }
 
 
+    for (int i = 0; i < text_len; i++) {
 
-    free(imports);
-    imports = NULL;
 
-    Bult_Ret ret = {.buff = buff, .import_line_count = import_line_count};
+        if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
+            
+            i+=5;
+            // hitta om det är sax eller gung
+            int is_sax = 0, is_gung = 0;
 
-    return ret;
+            if (i+4 < text_len && !strncmp(text+i, "sax ", 4)) {
+                is_sax = 1;
+                i+=4;
+            } else if (i+5 < text_len && !strncmp(text+i, "gung ", 5)) {
+                is_gung = 1;
+                i+=5;
+            }
+
+            char*** v;
+            int* cap;
+            int* top;
+
+            if (is_sax) {
+                v = &visited_files->sax.arr;
+                cap = &visited_files->sax.cap;
+                top = &visited_files->sax.top;
+            } else if (is_gung) {
+                v = &visited_files->gung.arr;
+                cap = &visited_files->gung.cap;
+                top = &visited_files->gung.top;
+            } else {
+                v = &visited_files->lib.arr;
+                cap = &visited_files->lib.cap;
+                top = &visited_files->lib.top;
+            }
+
+
+            // hitta importnamnet
+            int pack_len = 0;
+            for (int j = i; j < text_len; j++) {
+                if (text[j] == ';') break;
+                pack_len++;
+            }
+
+            // kopiera namn
+            char* pack_name = malloc(pack_len+1); // free:a senare!!
+            if (!pack_name) goto malloc_error;
+            memcpy(pack_name, text+i, pack_len);
+            pack_name[pack_len] = '\0';
+
+            
+            int cont = 0;
+            for (int j = 0; j < *top; j++) { // kolla om filen redan finns i importlistan
+                if (!strcmp(pack_name, (*v)[j])) {
+                    cont = 1;
+                }
+            }
+            if (cont) continue;
+
+            // lägg till i listan
+            if (*top >= *cap) {
+                char** new = realloc(*v, ((*cap)*2)*sizeof(char*));
+                if (!new) goto malloc_error;
+
+                *cap *= 2;
+                *v = new;
+            }
+
+            // givet sax, lägg till getcwd
+
+            char wd[PATH_MAX];
+            getcwd(wd, PATH_MAX);
+
+            if (is_sax && pack_name[0] != slash) { // absoluta sökvägar behöver inte få getcwd
+                // lägg på getcwd på namn
+                int wd_len = strlen(wd);
+
+                char* new_name = malloc(wd_len + pack_len + 2);
+                if (!new_name) goto malloc_error;
+
+                memcpy(new_name, wd, wd_len);
+                new_name[wd_len] = slash;
+                memcpy(new_name + wd_len + 1, pack_name, pack_len);
+                new_name[wd_len + 1 + pack_len] = '\0';
+                
+                free(pack_name);
+                pack_name = new_name;
+            } else if (!is_sax){
+                char* prefix = LIBPATH;
+                if (is_gung) prefix = PACKPATH;
+
+                int prefix_len = strlen(prefix);
+                // prefixlen + packlen + / + strlen(main.fg)
+                int new_name_len = prefix_len+pack_len+1+7;
+                char* new_name = malloc(new_name_len+1);
+                if (!new_name) goto malloc_error;
+
+                memcpy(new_name, prefix, prefix_len);
+
+                memcpy(new_name+prefix_len, pack_name, pack_len);
+
+                new_name[prefix_len+pack_len] = slash;
+
+                memcpy(new_name+prefix_len+1+pack_len, "main.fg", 7);
+                new_name[new_name_len] = '\0';
+
+                free(pack_name);
+                pack_name = new_name;
+
+            }
+
+
+            (*v)[*top] = pack_name;
+            (*top)++;
+
+            
+            bult_rec(pack_name, visited_files, buff, origin_rows, 0);
+
+        }
+        
+    }
+
+    // lägg till filinnehållet i buff
+    // hitta var programmet börjar utan import statements
+    char* cleaned_text = text;
+    int new_text_len = text_len;
+
+    for (int i = 0; i < text_len; i++){
+        if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
+            while (text[i] != ';') i++;
+            cleaned_text = text+i+1+(i+1 < text_len && text[i+1] == '\n'); // +1 tar bort ;     +2 tar bort ; och \n
+        }
+    }
+    new_text_len = text_len-(cleaned_text-text);
+
+    // allokera och kopiera
+    if (!(buff->string)) { // första gången
+        buff->string = malloc(new_text_len+1);
+        if (!(buff->string)) goto malloc_error;
+        buff->len = new_text_len;
+        
+        memcpy(buff->string, cleaned_text, new_text_len);
+        buff->string[new_text_len] = '\0';
+
+    } else {
+
+        char *tmp = realloc(buff->string, buff->len+new_text_len+2);
+        if (!tmp)
+            goto malloc_error;
+        buff->string = tmp;
+        
+        int old_len = buff->len;
+        memcpy(buff->string+buff->len+1, cleaned_text, new_text_len);
+        buff->string[buff->len] = '\n';
+        buff->len = buff->len+new_text_len+1;
+        buff->string[buff->len] = '\0';
+        
+    }
+
+
+    free(text);
+
+    chdir(start_wd);
+
+    return;
 
     malloc_error:
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
-    return ret;
 }
 
 
-Program tokenize(char* buff, int debug)
+
+Bult_Ret bult(char* file_name, int debug){
+
+    char start_wd[PATH_MAX];
+    getcwd(start_wd, PATH_MAX);
+
+    const int visited_capacity = 16;
+
+    Bult_File_Types visited_files = {
+
+        .sax.arr = malloc(visited_capacity*sizeof(char*)), // realloca vid behov
+        .gung.arr = malloc(visited_capacity*sizeof(char*)), 
+        .lib.arr = malloc(visited_capacity*sizeof(char*)),
+
+        .sax.cap = visited_capacity,
+        .gung.cap = visited_capacity,
+        .lib.cap = visited_capacity,
+
+        .sax.top = 0,
+        .gung.top = 0,
+        .lib.top = 0
+    };
+
+    String buff = {
+        .len = 0,
+        .string = 0
+    };
+
+    int origin_rows = 0;
+
+    bult_rec(file_name, &visited_files, &buff, &origin_rows, 1);
+
+    int final_rows = 0;
+    for (int i = 0; i < buff.len; i++) {
+        if (buff.string[i] == '\n') final_rows++;
+    }
+
+    int offset = final_rows - origin_rows;
+
+    if (debug) {
+        printf("\nvisited:\nsax:");
+        for (int q = 0; q < visited_files.sax.top; q++){
+            printf("    %s", (visited_files.sax.arr)[q]);
+        }
+        printf("\ngung:");
+        for (int q = 0; q < visited_files.gung.top; q++){
+            printf("    %s", (visited_files.gung.arr)[q]);
+        }
+        printf("\nlib:");
+        for (int q = 0; q < visited_files.lib.top; q++){
+            printf("    %s", (visited_files.lib.arr)[q]);
+        }
+        printf("\n\n");
+
+    }
+
+    chdir(start_wd);
+
+    return (Bult_Ret){.buff = (String){.string = buff.string, .len = buff.len}, .import_line_count = offset};
+}
+
+
+Program tokenize(String str, int debug)
 {
 
-    int buff_len = strlen(buff);
+    int buff_len = str.len;
+    char* buff = str.string;
     if (debug) printf("BUFF: -----------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
     // räkna antal instr SKIPPA TECKEN I STRÄNGAR!!!!
@@ -299,16 +448,12 @@ Program tokenize(char* buff, int debug)
         }
         if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] != '*') {
             while (p < buff_len && buff[p] != '\n') p++;
+            line++;
             continue;
         }
         if (buff[p] == ';' || buff[p] == '{' || buff[p] == '}') {
             pc_to_line[instruction_index++] = line;
         }
-    }
-    if (debug) {
-        printf("[DEBUG] pc_to_line: ");
-        for (int i = 0; i < instruction_amount; i++)
-            printf("%d\n", pc_to_line[i]);
     }
 
     // skapa instruktionsarray
@@ -700,12 +845,13 @@ Program tokenize(char* buff, int debug)
     }
 
     Program program = {instructions, instruction_amount};
+    
     if (debug) printf("[DEBUG] Tokenize finished. Program.data: %p, instruction_amount: %d\n", program.data, program.instruction_amount);
 
     // free the grabb
     free((&loops)->arr);
     (&loops)->arr = NULL;
-    
+
     return program;
 
     malloc_error:
@@ -1001,7 +1147,7 @@ void check_syntax(Program* program){
     }
 }
 
-void throw_error(int type, String err_str, Token *instruction){
+void throw_error(Err_Type type, String err_str, Token *instruction){
     char tick = '\'';  
     char colon = ':';
     print_red("Error at line ", strlen("Error at line "), 0);
@@ -1210,17 +1356,14 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
 
     if (instruction[2+is_grip+is_slip+is_svets].type == LEFT_BRACKET) {
         modify_list_item = 1;
-        for (int i = 2+is_grip+is_slip+1+is_svets; instruction[i].type != TERMINATOR; i++) {
-            // count top-level index closures (']') to determine number of indices
+        for (int i = 2+is_grip+is_slip+is_svets; instruction[i].type != TERMINATOR; i++) {
+            // count top-level index openers ('[') to determine number of indices
             if (instruction[i].type == EQUALS) break;
-            if (instruction[i].type == LEFT_BRACKET) {
+            if (instruction[i].type == LEFT_BRACKET && (depth == 0)) {
                 depth++;
+                index_amount++;
             } else if (instruction[i].type == RIGHT_BRACKET) {
-                if (depth == 0) {
-                    index_amount++;
-                } else {
-                    depth--;
-                }
+                depth--;
             }
         }
         indicies = malloc(index_amount*sizeof(int));
@@ -1472,7 +1615,7 @@ void foug(Token *instruction, Scope *scope) {
                 else printf("\n");
                 i += 2;
             }
-            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
+            if (i + 1 < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
             {
                 if (is_junk)
                     print_red("%", 1, 0);
@@ -1481,7 +1624,7 @@ void foug(Token *instruction, Scope *scope) {
                 i += 2;
             }
 
-            if (instruction[2+is_junk].var.name[i] == '%')
+            if (i < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '%')
             {
                 // kolla längden på den
                 int len = 0;
@@ -1529,7 +1672,6 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
 }
 
 void tpos_call(char* call, int is_dill, Token* instruction){
-
     // skapa en sträng på execvp formen
     // räkna antal argument
     #ifndef _WIN32
@@ -1540,7 +1682,8 @@ void tpos_call(char* call, int is_dill, Token* instruction){
         if (call[i] == ' ') arg_amount++;
     }
 
-    char** args = malloc((arg_amount+2)*sizeof(char*));
+    size_t size = (arg_amount+2)*sizeof(char*);
+    char** args = malloc(size);
     if (!args) throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, instruction); 
 
     int argc = 0;
@@ -1619,26 +1762,27 @@ void tpos(Token *instruction, Scope *scope)
         else if (instruction[i].type == SVETS) is_svets++;
     }
 
-    int call_len = instruction[1 + (is_svets)].var.name_len + 1;
+    int call_len = instruction[1 + (is_svets) + is_dill].var.name_len + 1;
     char *call = malloc(call_len * sizeof(char));
     if (call == NULL)
     {
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
     }
-    call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
+
     int writer = 0;
     
     if (!is_svets) {
-        if (instruction[1+is_dill].type == STRING) {
+        if (instruction[1+is_dill].type == STRING) { 
             for (int i = 0; i < instruction[1+is_dill].var.name_len; i++) {
-                if (instruction[1+is_dill].var.name[i] == '\\' && instruction[1+is_dill].var.name[i + 1] == 'n') {
+                if (instruction[1+is_dill].var.name[i] == '\\' && i+1 < instruction[1+is_dill].var.name_len && instruction[1+is_dill].var.name[i + 1] == 'n') {
                     i += 2;
                 }
                 if (i < instruction[1+is_dill].var.name_len) {
-                    sprintf(call + writer, "%c", instruction[1+is_dill].var.name[i]);
+                    call[writer] = instruction[1+is_dill].var.name[i];
                     writer++;
-                }  
+                }
             }
+            call[writer] = '\0';
         }
         else if (instruction[1+is_dill].type == VARIABLE)
         {
@@ -2012,12 +2156,11 @@ int main(int argc, char **argv)
         goto malloc_error;
 
 
-    Bult_Ret bult_ret = bult(argv[1]);
-    char* buff = bult_ret.buff;
+    Bult_Ret bult_ret = bult(argv[1], flag_debug);
+    String buff = bult_ret.buff;
+    
     int line_offset = bult_ret.import_line_count;
 
-
-    
     Program program = tokenize(buff, flag_debug);
     
     Token **instructions = program.data;
@@ -2028,6 +2171,15 @@ int main(int argc, char **argv)
     // lägg på offset
     for (int i = 0; i < instruction_amount; i++) {
         pc_to_line[i] -= line_offset;
+    }
+    if (flag_debug) {
+        int last = 0;
+        printf("[DEBUG] pc_to_line: \n");
+        for (int i = 0; i < instruction_amount; i++) {
+            
+            printf("%d  ", pc_to_line[i]);
+            print_token_row(instructions[i]);
+        }
     }
 
     // hitta entry point (main)
@@ -2045,7 +2197,6 @@ int main(int argc, char **argv)
     while (program_counter < instruction_amount)
     {
         Token *current = instructions[program_counter];
-
         interpret_instruction(current, instructions, instruction_amount, &scope);
 
         program_counter++;

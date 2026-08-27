@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS =
+CFLAGS = -lm -Wno-switch
+SFLAGS = -fsanitize=address -static-libasan -g
 TARGET = build/foglang3
 
 $(TARGET): main.c foglang_ast.c foglang_debug.c foglang_utils.c foglang.h
@@ -7,3 +8,6 @@ $(TARGET): main.c foglang_ast.c foglang_debug.c foglang_utils.c foglang.h
 
 clean:
 	rm -f $(TARGET)
+
+sanitize:
+	$(CC) -o $(TARGET) main.c $(CFLAGS) $(SFLAGS)

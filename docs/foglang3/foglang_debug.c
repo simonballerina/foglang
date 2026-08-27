@@ -47,7 +47,12 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
         case NODE_STRING:
 
-            printf("'%s'\n", node->string.string);
+            printf("s'");
+            for (int i = 0; i < strlen(node->string.string); i++) {
+                if (node->string.string[i] == '\n') printf("\\n");
+                else printf("%c", node->string.string[i]);
+            }
+            printf("'\n");
 
             break;
 
@@ -324,7 +329,14 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'%lf'    ", instructions[i].value);
             break;
         case STRING:
-            printf("s'%s'    ", instructions[i].string);
+            printf("s'");
+            for (int j = 0; j < strlen(instructions[i].string); j++){
+                char c = instructions[i].string[j];
+                if (c == '\n') printf("\\n");
+                else printf("%c", c);
+            }
+            printf("'    ");
+
             break;
         case TERMINATOR:
             printf(";\n");

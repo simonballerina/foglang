@@ -40,6 +40,8 @@ Node* make_str(char* str) {
     // tokenized strings are on the heap
     ret->string.string = str;
     ret->type = NODE_STRING;
+
+    return ret;
 }
 
 Node* make_binary(Node* left, TokType op, Node* right){
@@ -386,6 +388,10 @@ Token* tokenize(char* buff, int* tok_amount){
                 tokens[tok_top++].type = RIGHT_PAR;
                 continue;
 
+            case ',':
+                tokens[tok_top++].type = COMMA;
+                continue;
+
             case '+':
                 tokens[tok_top++].type = OP_ADD;
                 continue;
@@ -443,8 +449,17 @@ Token* tokenize(char* buff, int* tok_amount){
 
                 if (!string) goto malloc_error;
 
-                strncpy(string, buff+i+1, len);
-                string[len] = '\0';
+                int w = 0;
+                char* tmp = buff+1+i;
+                for (int j = 0; j < len; j++) {
+                    if (tmp[j] == '\\' && j+1 < len && tmp[j+1] == 'n') {
+                        string[w++] = '\n';
+                        j++;
+                    } else {
+                        string[w++] = tmp[j];
+                    }
+                }
+                string[w] = '\0';
 
                 tokens[tok_top++].string = string;
                 i+=len+1;
@@ -469,6 +484,9 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "junk ", 5) == 0){
             tokens[tok_top++].type = JUNK;
             i+=4;
+        } else if (strncmp(buff+i, "boul ", 5) == 0){
+            tokens[tok_top++].type = BOUL;
+            i+=4;
         } else if (strncmp(buff+i, "givet att ", 10) == 0) {
             i+=9;
             tokens[tok_top++].type = GIVET;
@@ -490,6 +508,8 @@ Token* tokenize(char* buff, int* tok_amount){
             tok_top++;
             i+=j-1;
         }
+        
+        printf("added token: '%.*s', type: '%d'\n", (int)3, buff+i, tokens[tok_top-1].type);
         
         
     }
