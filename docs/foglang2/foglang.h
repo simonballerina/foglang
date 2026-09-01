@@ -167,6 +167,18 @@ typedef struct {
     int max_size;        
 } Stack;
 
+typedef struct {
+    char *filename;
+    int start_line;
+    int line_count;
+} FileRange;
+
+typedef struct {
+    FileRange* arr;
+    int cap;
+    int top;
+} FileRangeList;
+
 // utils, ex hjälpfunktioner
 double str_to_double(char *num);
 char *read_file(const char *filename);

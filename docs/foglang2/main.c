@@ -76,10 +76,31 @@ int last_givet_res = 0;
 int* row_lengths;
 int *loop_links;
 
+FileRangeList file_map;
+
 #include "foglang_utils.c"
 #include "foglang_eval.c" 
 #include "foglang_var.c"
 
+
+char* get_file_name_from_pc() {
+    
+    
+    if (!pc_to_line || !file_map.arr || file_map.top < 0 || program_counter < 0) {
+        return NULL;
+    }
+
+
+    int line = pc_to_line[program_counter];
+    for (int i = 0; i <= file_map.top; i++) {
+        FileRange fr = file_map.arr[i];
+        if (line >= fr.start_line && line < fr.start_line + fr.line_count) {
+            return fr.filename;
+        }
+    }
+    return NULL;
+
+}
 
 
 void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin) {
@@ -259,6 +280,12 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         
     }
 
+    // räkna '\n' innan
+    int line_count_pre = 0;
+    for (int i = 0; i < buff->len; i++) {
+        if (buff->string[i] == '\n') line_count_pre++;
+    }
+
     // lägg till filinnehållet i buff
     // hitta var programmet börjar utan import statements
     char* cleaned_text = text;
@@ -266,18 +293,26 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
     for (int i = 0; i < text_len; i++){
         if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
+
             while (text[i] != ';') i++;
             cleaned_text = text+i+1+(i+1 < text_len && text[i+1] == '\n'); // +1 tar bort ;     +2 tar bort ; och \n
         }
     }
     new_text_len = text_len-(cleaned_text-text);
 
+    int current_start_line = line_count_pre + 1;
+    int chunk_line_count = 0;
+    for (int i = 0; i < new_text_len; i++) {
+        if (cleaned_text[i] == '\n') chunk_line_count++;
+    }
+    if (new_text_len > 0 && cleaned_text[new_text_len-1] != '\n') chunk_line_count++;
+
     // allokera och kopiera
     if (!(buff->string)) { // första gången
         buff->string = malloc(new_text_len+1);
         if (!(buff->string)) goto malloc_error;
         buff->len = new_text_len;
-        
+
         memcpy(buff->string, cleaned_text, new_text_len);
         buff->string[new_text_len] = '\0';
 
@@ -287,14 +322,28 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         if (!tmp)
             goto malloc_error;
         buff->string = tmp;
-        
-        int old_len = buff->len;
+
         memcpy(buff->string+buff->len+1, cleaned_text, new_text_len);
         buff->string[buff->len] = '\n';
         buff->len = buff->len+new_text_len+1;
         buff->string[buff->len] = '\0';
-        
+
     }
+
+    if (file_map.top + 1 >= file_map.cap) {
+        int new_cap = file_map.cap ? file_map.cap * 2 : 8;
+        FileRange* new_arr = realloc(file_map.arr, new_cap * sizeof(FileRange));
+        if (!new_arr) goto malloc_error;
+        file_map.arr = new_arr;
+        file_map.cap = new_cap;
+    }
+
+    file_map.top++;
+    file_map.arr[file_map.top] = (FileRange){
+        .filename = file_name,
+        .start_line = current_start_line,
+        .line_count = chunk_line_count
+    };
 
 
     free(text);
@@ -336,37 +385,56 @@ Bult_Ret bult(char* file_name, int debug){
         .string = 0
     };
 
-    int origin_rows = 0;
 
+    file_map.cap = 8;
+    file_map.top = -1;
+    file_map.arr = NULL;
+    
+    file_map.arr = malloc(file_map.cap*sizeof(FileRange));
+    if (!file_map.arr || !visited_files.gung.arr || !visited_files.lib.arr || !visited_files.sax.arr) goto malloc_error;
+
+
+
+    int origin_rows = 0;
     bult_rec(file_name, &visited_files, &buff, &origin_rows, 1);
 
-    int final_rows = 0;
+    int lines = 0;
     for (int i = 0; i < buff.len; i++) {
-        if (buff.string[i] == '\n') final_rows++;
+        if (buff.string[i] == '\n') lines++;
     }
 
-    int offset = final_rows - origin_rows;
+    printf("offset: %d\n", lines - origin_rows);
 
     if (debug) {
-        printf("\nvisited:\nsax:");
+        printf("\nvisited:\n    sax:\n    ");
         for (int q = 0; q < visited_files.sax.top; q++){
             printf("    %s", (visited_files.sax.arr)[q]);
         }
-        printf("\ngung:");
+        printf("\n    gung:\n    ");
         for (int q = 0; q < visited_files.gung.top; q++){
             printf("    %s", (visited_files.gung.arr)[q]);
         }
-        printf("\nlib:");
+        printf("\n    lib:\n    ");
         for (int q = 0; q < visited_files.lib.top; q++){
             printf("    %s", (visited_files.lib.arr)[q]);
         }
         printf("\n\n");
 
+        printf("file_map:\n");
+        for (int i = 0; i <= file_map.top; i++) {
+            printf("    %s:\n        start_line = %d, line_count = %d\n", file_map.arr[i].filename, file_map.arr[i].start_line, file_map.arr[i].line_count);
+        }
+
     }
 
     chdir(start_wd);
 
-    return (Bult_Ret){.buff = (String){.string = buff.string, .len = buff.len}, .import_line_count = offset};
+    return (Bult_Ret){.buff = (String){.string = buff.string, .len = buff.len}, .import_line_count = lines - origin_rows};
+
+    malloc_error:
+        throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);
+
+    return (Bult_Ret){.buff = (String){.string = NULL, .len = 0}, .import_line_count = 0};
 }
 
 
@@ -690,7 +758,6 @@ Program tokenize(String str, int debug)
             (&loops)->arr[++(&loops)->top] = instructions_OUTER_arr_index*loop_type;
             (&loops)->size++;
 
-            if (debug) printf("[DEBUG] Found OPEN_LOOP: _ at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index);
             //add terminator after
             Token next;
             next.type = TERMINATOR;
@@ -715,7 +782,6 @@ Program tokenize(String str, int debug)
                 loop_links[instructions_OUTER_arr_index] = instructions_OUTER_arr_index+1;
             }
             loop_links[other]=instructions_OUTER_arr_index;
-            if (debug) printf("[DEBUG] Found CLOSE_LOOP: %d at instructions[%d][%d]\n", loop_links[instructions_OUTER_arr_index], instructions_OUTER_arr_index, instructions_INNER_arr_index);
             
             Token next;
             next.type = TERMINATOR;
@@ -780,7 +846,6 @@ Program tokenize(String str, int debug)
         {
             tok.type = TERMINATOR;
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
-            if (debug) printf("[DEBUG] TERMINATOR at instructions[%d][%d]\n", instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
             i++;
             instructions_INNER_arr_index = 0;
             instructions_OUTER_arr_index++;
@@ -814,7 +879,6 @@ Program tokenize(String str, int debug)
         if (tok.type != TERMINATOR)
         {
             instructions[instructions_OUTER_arr_index][instructions_INNER_arr_index++] = tok;
-            if (debug) printf("[DEBUG] Added token type %d at instructions[%d][%d]\n", tok.type, instructions_OUTER_arr_index, instructions_INNER_arr_index - 1);
         }
     }
 
@@ -824,7 +888,6 @@ Program tokenize(String str, int debug)
         if (instructions[i][0].type == FUNCTION)
         {
             instructions[i][1].var.type = VAR_FUNCTION;
-            if (debug) printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
             // sätt funktionsflaggan på faktiska funktionsanrop (variabel följt av parantes)
             for (int j = i + 1; j < instruction_amount; j++)
             { // rad-loop
@@ -1150,7 +1213,12 @@ void check_syntax(Program* program){
 void throw_error(Err_Type type, String err_str, Token *instruction){
     char tick = '\'';  
     char colon = ':';
-    print_red("Error at line ", strlen("Error at line "), 0);
+
+    print_red("Error in: ", strlen("Error in: "), 0);
+    char* file_name = get_file_name_from_pc();
+    print_red(file_name, strlen(file_name), 0);
+    print_red(&colon, 1, 0);
+
 
     if (pc_to_line && program_counter >= 0) {
         int number_of_digits = floor(log10(abs(pc_to_line[program_counter]))) + 1;
