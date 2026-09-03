@@ -4,7 +4,7 @@
 void cleanup_args(Token* args, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     
     for (int i = 0; i < args_amount; i++){
-        /*if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals
+        /*if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // find list literals
             int depth = 0;
             int len = 0;
             for (int j = i; args[j].type != TERMINATOR; j++){
@@ -18,9 +18,9 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
             }
         }*/
         if (args[i].type == VARIABLE && args[i].var.type != VAR_FUNCTION){
-            // kolla om det är en indexering av en variabel
+            // check if it's indexing a variable
 
-            // hitta om nästa token är en vänsterklammer
+            // check if next token is LEFT_BRACKET
             int perform_indexing = 0;
             for (int j = i+1; j < args_amount; j++){
                 if (args[j].type == LEFT_BRACKET){
@@ -92,7 +92,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     args[i].type = NUMBER;
                     args[i].value = current.value;
                 } else if (current.type == VAR_LIST) {
-                    // token.list_ptr finns!
+                    // token.list_ptr exists!
                     args[i].type = LIST;
                     args[i].list_ptr = malloc(sizeof(List));
                     if (!args[i].list_ptr) {
@@ -102,10 +102,6 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                     args[i].list_ptr->len = current.str_len;
                 }
             } else {
-                //printf("----§§§§§§----\nNu ska jag hitta en variabel, info: \nNamn: ");
-                //printf("%.*s\nScope:\n", args[i].var.name_len, args[i].var.name);
-                //print_variables(scope);
-                //printf("----§§§§§§----\n");
                 Dynamic_Var var = get_var_value(args[i].var.name, args[i].var.name_len, 0, 0, scope);
                 args[i].type = NONE;
                 if (var.type == VAR_STRING) {
@@ -137,7 +133,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
             int depth = 0;
             int end = i;
 
-            // hitta första (
+            // find first (
             while (end < args_amount && args[end].type != LEFT_PAR)
                 end++;
 
@@ -146,7 +142,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
             }
 
             depth = 1;
-            end++; // gå in i parentes
+            end++; // step into parenthesis
 
             while (end < args_amount && depth > 0) {
                 if (args[end].type == LEFT_PAR) depth++;
@@ -154,7 +150,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                 end++;
             }
 
-            end--; // backa till sista ')'
+            end--; // step back to last ')'
 
 
             
@@ -162,7 +158,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
             Dynamic_Var value = call_function(args[i].var.name, args[i].var.name_len, program_counter, instructions, instruction_amount, args+start, scope);
             program_counter = saved_pc;
 
-            // ersätt hela token-strängen med returvärdet
+            // replace whole token string with return value
             if (value.type == VAR_NUMBER) {
                 args[i].type = NUMBER;
                 args[i].value = value.value;
@@ -179,7 +175,7 @@ void cleanup_args(Token* args, int args_amount, Token **instructions, int instru
                 args[i].list_ptr->len = value.str_len;
             }
 
-            // sätt resten till NONE
+            // set the rest to NONE
             for (int j = i+1; j <= end && j < args_amount; j++) {
                 args[j].type = NONE;
             }
@@ -213,12 +209,12 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
     printf("\n");*/
 
     Token args[args_amount];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+    memcpy(args, args_old, args_amount * sizeof(Token)); // for some weird reason, it requires a local copy
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
-    // kolla efter negativa tal
-    for (int i = 1; i < args_amount; i++){ // i = 1 för att inte läsa utanför buffer
+    // check for negative numbers
+    for (int i = 1; i < args_amount; i++){ // i = 1 to not exceed buffer
         if (args[i].type == NUMBER && args[i-1].type == MINUS){
             if (i <= 2 && args[i-2].type == NUMBER) continue;
 
@@ -231,7 +227,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
     while (1)
     {
 
-        // räkna mängden tokens med värden
+        // count amount of tokens with values
         int valid_token_count = 0;
         for (int i = 0; i < args_amount; i++)
         {
@@ -249,7 +245,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
 
-        // hitta paranteser
+        // find parenthesies
         int start_par_index = -1;
         int stop_par_index = -1;
         for (int i = args_amount - 1; i >= 0; i--)
@@ -279,14 +275,14 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
         }
         else
         {
-            // ta bort paranteserna
+            // remove parenthesies
             args[start_par_index].type = NONE;
             args[stop_par_index].type = NONE;
         }
 
         double first_arg, second_arg;
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta exponenter
+        { // find exponents
             if (args[i].type == EXPONENT)
             {
                 for (int j = i + 1; j < args_amount; j++)
@@ -315,7 +311,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta multiplikationer/divisioner
+        { // find multiplication/division
             if (args[i].type == MULTIPLIED || args[i].type == DIVIDED || args[i].type == MODULO)
             {
                 for (int j = i + 1; j < args_amount; j++)
@@ -359,7 +355,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta +-
+        { // find +-
             if (args[i].type == PLUS || args[i].type == MINUS)
             {
                 for (int j = i + 1; j < args_amount; j++)
@@ -391,8 +387,8 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta bool
-                if (args[i].type == OCH) // AND högst prio
+        { // find bool
+                if (args[i].type == OCH) // AND takes priority
             {
                 for (int j = i + 1; j < args_amount; j++)
                 {
@@ -421,7 +417,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta ELLER 
+        { // find OR 
             if (args[i].type == ELLER)
             {
                 for (int j = i + 1; j < args_amount; j++)
@@ -449,7 +445,7 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
             }
         }
         for (int i = start_par_index + 1; i < stop_par_index; i++)
-        { // hitta INTE 
+        { // find NOT 
             if (args[i].type == INTE)
             {
                 for (int j = i + 1; j < args_amount; j++)
@@ -489,14 +485,14 @@ double evaluate_expression(Token *args_old, int args_amount, Token **instruction
 
 String evaluate_str_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
 
-    // konkatenera strängar. free:a gamla strängar!
+    // concatenate strings. free upp old strings!
     Token args[args_amount];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // av någon skum anledning måste den ha en lokal kopia
+    memcpy(args, args_old, args_amount * sizeof(Token)); // for some weird reason, it requires a local copy
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
 
-    // räkna ut den totala längden som krävs
+    // calculate total neeeded length
     int final_len = 0;
 
     for (int i = 0; i < args_amount; i++){
@@ -520,7 +516,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
     }
     int copied_chars = 0;
 
-    // konkatenera samtliga strängar
+    // concatenate all strings
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == STRING){
             memcpy(result_str+copied_chars, args[i].var.name, args[i].var.name_len*sizeof(char));
@@ -544,7 +540,7 @@ String evaluate_str_expression(Token *args_old, int args_amount, Token **instruc
 
 
 List evaluate_list_expression(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
-    // denna tuffa funktion syftar till att skapa en lista i formatet [värde, värde, värde], så det inte är massa aritmetiska operationer som ska hanteras
+    // this function creates a list formatted as [value, value, value], so no arithmetic operations remain
     Token args[args_amount];
     memcpy(args, args_old, args_amount * sizeof(Token));
 
@@ -618,14 +614,14 @@ List evaluate_list_expression(Token *args_old, int args_amount, Token **instruct
 
 Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
     Token args[args_amount + 1];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // lokal kopia av de faktiska token
+    memcpy(args, args_old, args_amount * sizeof(Token)); // local copy of real token
     args[args_amount].type = TERMINATOR;
 
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
     Dynamic_Var ret;
     for (int i = 0; i < args_amount; i++) {
-        if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // leta list literals
+        if (args[i].type == LEFT_BRACKET && ((i > 0 && args[i-1].type != VARIABLE) || i == 0)){ // find list literals
             int depth = 0;
             int len = 0;
             for (int j = i; args[j].type != TERMINATOR; j++){
@@ -654,7 +650,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
     int type = VAR_STRING;
     for (int i = 0; i < args_amount; i++){
         if (args[i].type == NUMBER) {
-            type = VAR_NUMBER; // finns ett nummer -> använd eval_expr
+            type = VAR_NUMBER; // there exists a number -> use eval_expr
             break;
         }
 
@@ -666,7 +662,7 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
             if (var_ret.type == VAR_STRING) type = VAR_STRING;
         }
         if (args[i].type == LIST) {
-            // anta att man konkatenerar i framtiden, så att [1,2] + [3,4] blir [1,2,3,4]
+            // for future concatenations ie: [1,2] + [3,4] makes [1,2,3,4]
             if (args_amount == 1 || 1==1) {
                 ret.type = VAR_LIST;
                 ret.list_ptr = args[i].list_ptr->items;
@@ -708,10 +704,10 @@ Dynamic_Var dynamic_eval(Token *args_old, int args_amount, Token **instructions,
 
 
 int logic_eval(Token* args_old, int args_amount, Token **instructions, int instruction_amount, Scope *scope){
-    // x*2 < 8 och x+1 = 2
+    // x*2 < 8 and x+1 = 2
     //printf("LOGIC EVAL, ARGS AMOUNT :%d\n", args_amount);
     Token args[args_amount + 1];
-    memcpy(args, args_old, args_amount * sizeof(Token)); // lokal kopia av de faktiska token
+    memcpy(args, args_old, args_amount * sizeof(Token)); // local copy of real token
     args[args_amount].type = TERMINATOR;
     cleanup_args(args, args_amount, instructions, instruction_amount, scope);
 
@@ -746,7 +742,7 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
         eval_args_amount -= i;
         //printf("ARGSAMOUNT: %d\n", eval_args_amount);
         
-        // räkna ut jämförelsen
+        // calculate comparison
         int op_type = -1;
         int op_index = -1;
         int scan_depth = 0;
@@ -850,9 +846,9 @@ int logic_eval(Token* args_old, int args_amount, Token **instructions, int instr
         i += eval_args_amount+1;
     }
 
-    // printa bool_eval_arr
+    // print bool_eval_arr
 
-    // räkna ut hela bool_eval_arr
+    // calculate all of bool_eval_arr
     double res = evaluate_expression(bool_eval_arr, bool_eval_top, instructions, instruction_amount, scope);
     //printf("RES: %lf\n", res);
     res = (int)res;

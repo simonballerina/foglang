@@ -9,7 +9,7 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
     //printf("\n");
     
     for (int i = 0; i < (*scope).index; i++){
-        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
+        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // found a var
             if (type == VAR_LIST){
                 int ret_type = VAR_STRING;
                 Variable list_var = (*scope).variables[i];
@@ -72,7 +72,7 @@ Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope 
 int get_var_type(char* name, int length, Scope *scope){
 
     for (int i = 0; i < (*scope).index; i++){
-        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // hittat en variabel
+        if (length == (*scope).variables[i].name_len && strncmp(name, (*scope).variables[i].name, length) == 0){ // found a var
 
             return (*scope).variables[i].type;
         }
@@ -117,7 +117,7 @@ void create_num_var(char *name, int name_len, double value, Scope *scope)
                     .str_ptr = 0};
 
     if ((*scope).index >= (*scope).capacity)
-    { // kolla att strl är ok
+    { // check if strl is ok
         (*scope).variables = realloc((*scope).variables, (*scope).capacity + 1 + 64);
         (*scope).capacity += 1 + 64;
         if ((*scope).variables == NULL)
@@ -132,7 +132,7 @@ void create_num_var(char *name, int name_len, double value, Scope *scope)
 
 void create_str_var(char *name, int name_len, int len, char *string, Scope *scope)
 {
-    // reservera minne till strängen
+    // reserve memory for str
 
     Variable var = {
         // init var
@@ -149,13 +149,13 @@ void create_str_var(char *name, int name_len, int len, char *string, Scope *scop
         throw_error(ERR_MALLOC, (String){"Memory allocation failed", strlen("Memory allocation failed")}, NULL);    
     }
 
-    // spara inputsträngen i nyreserverade området
+    // save inputstr in new memory
     memcpy(string_ptr, string, len * sizeof(char));
 
     var.str_ptr = string_ptr;
     var.type = VAR_STRING;
     if ((*scope).index >= (*scope).capacity)
-    { // kolla att strl är ok
+    { // check if strl is ok
         (*scope).variables = realloc((*scope).variables, (*scope).capacity + 1 + 64);
         (*scope).capacity += 1 + 64;
         if ((*scope).variables == NULL)
@@ -189,7 +189,7 @@ void change_str_char(char* var_name, int name_len, int index, char new_char, Sco
                 parent->str_ptr = new_str;
             } 
             else if (index < 0 || index > parent->len) throw_error(ERR_INDEX, (String){var_name, name_len}, NULL);
-            else { // byt ut bokstav
+            else { // change letter
                 parent->str_ptr[index] = new_char;
             }
         }
@@ -253,7 +253,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                             exit(1);
                         }
                         current_item->list_ptr = new_ptr;
-                        // init maxxa
+                        // init
                         current_item->list_ptr[current_item->str_len].string = NULL;
                         current_item->list_ptr[current_item->str_len].str_len = 0;
                         current_item->list_ptr[current_item->str_len].value = 0;
@@ -267,7 +267,7 @@ void change_list_item(char* name, int name_len, int* indices, Variable new_var, 
                             exit(1);
                         }
                         current_item->string = new_str;
-                        // charändring fixas senare i koden
+                        // charchange happens later in the code
                         current_item->str_len++;
                     }
                 }
