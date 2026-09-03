@@ -194,10 +194,10 @@ void create_num_var(char *name, int name_len, double value, Scope *scope);
 void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope);
 
 /*
-name: char* till variabelnamn. 
-length: längden på namnsträngen. 
-type: VAR_LIST om du indexerar en lista, annars 0. 
-index: indexeringen på listan, annars 0
+name: char* to variable name. 
+length: length of name string. 
+type: VAR_LIST if indexing list, otherwise 0. 
+index: index on list, otherwise 0
 */
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);
