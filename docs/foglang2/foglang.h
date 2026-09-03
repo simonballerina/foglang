@@ -63,10 +63,10 @@ typedef enum Err_Type {
     ERR_MALLOC = 1,         // 1 - Out of memory
     ERR_SYNTAX,             // 2 - Syntax error
     ERR_MATH,               // 3 - Ex division med noll
-    ERR_INDEX,              // 4 - Indexeringserror
-    ERR_NAME,               // 5 - Okänt värde hittas ej
-    ERR_TYPE,               // 6 - Felaktig användning av värde. Ex indexering av NUMBER
-    ERR_FILE,               // 7 - Läsning av fil misslyckades
+    ERR_INDEX,              // 4 - Indexerror
+    ERR_NAME,               // 5 - Unknown value not found
+    ERR_TYPE,               // 6 - Wrong use of value. Eg indexing of NUMBER
+    ERR_FILE,               // 7 - failed reading of file
 } Err_Type;
 
 typedef struct Variable Variable;
@@ -84,12 +84,12 @@ typedef struct Variable
     char *name;
     int name_len;
     double value;
-    int len;     // längden på listan / strängen
+    int len;     // length of list / str
     char *str_ptr;
     Dynamic_Var* list_ptr;
 } Variable;
 
-typedef struct // 12 bytes?
+typedef struct // 16 bytes
 {
     char *name;
     Var_Type type;
@@ -167,7 +167,7 @@ typedef struct {
     int max_size;        
 } Stack;
 
-// utils, ex hjälpfunktioner
+// utils, eg helper-functions
 double str_to_double(char *num);
 char *read_file(const char *filename);
 void print_tokens(Token **instructions, int instruction_amount);
@@ -194,10 +194,10 @@ void create_num_var(char *name, int name_len, double value, Scope *scope);
 void create_list_var(char *name, int name_len, Dynamic_Var value, Scope *scope);
 
 /*
-name: char* till variabelnamn. 
-length: längden på namnsträngen. 
-type: VAR_LIST om du indexerar en lista, annars 0. 
-index: indexeringen på listan, annars 0
+name: char* to variable name. 
+length: length of name string. 
+type: VAR_LIST if indexing list, otherwise 0. 
+index: index on list, otherwise 0
 */
 Dynamic_Var get_var_value(char *name, int length, int type, double index, Scope *scope);
 void change_list_item(char* name, int name_len, int* indices, Variable new_var, Scope *scope, int index_amount);

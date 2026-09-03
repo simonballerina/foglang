@@ -17,7 +17,7 @@
 
 Node* evaluate(Node* node, Scope* scope) {
     // debug print
-    // todo, skapa modiferabar kopia av node
+    // TODO, make modifyable version of node
     NodeType type = node->type;
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
@@ -111,14 +111,14 @@ void foug(Node* node, Scope* scope){
 void band(Node* node, Scope* scope){
     Node* value = evaluate(node->band.value, scope);
 
-    // ta reda på om en ny variabel ska skapas
+    // figure out if a new var is to be created
     NodeType t = get_var_value(scope, node->band.name).type;
     if (t == NODE_NULL) {
         create_variable(value, node->band.name, scope);
         return;
     }  
     change_var_value(scope, node->band.name, value);
-    // uppdatera istället
+    // uppdate instead
 
     
 

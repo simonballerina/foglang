@@ -51,7 +51,7 @@
     #endif
 #endif
 
-// konstanter och globala variabler
+// constants and global vars
 
 // program counter
 int program_counter = -1;
@@ -72,7 +72,7 @@ int last_givet_res = 0;
     char path_diff[PATH_MAX];
 #endif
 
-// håller värde för storlek på varje rad
+// Holds value for size of each row
 int* row_lengths;
 int *loop_links;
 
@@ -90,11 +90,11 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         const char slash = '/';
     #endif
 
-    // spara origin wd
+    // save origin wd
     char start_wd[PATH_MAX];
     getcwd(start_wd, PATH_MAX);
 
-    // här cddir:ar man till den nya filen
+    // cd to new file
 
     int file_name_len = strlen(file_name);
 
@@ -130,7 +130,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
 
     int text_len = strlen(text);
 
-    // räkna originfilrader
+    // count origin file rows
     if (is_origin) {
         for (int i = 0; i < text_len; i++) {
             if (text[i] == '\n') (*origin_rows)++;
@@ -144,7 +144,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
             
             i+=5;
-            // hitta om det är sax eller gung
+            // find if it's sax or gung
             int is_sax = 0, is_gung = 0;
 
             if (i+4 < text_len && !strncmp(text+i, "sax ", 4)) {
@@ -174,29 +174,29 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             }
 
 
-            // hitta importnamnet
+            // find importname
             int pack_len = 0;
             for (int j = i; j < text_len; j++) {
                 if (text[j] == ';') break;
                 pack_len++;
             }
 
-            // kopiera namn
-            char* pack_name = malloc(pack_len+1); // free:a senare!!
+            // copy name
+            char* pack_name = malloc(pack_len+1); // free later!!
             if (!pack_name) goto malloc_error;
             memcpy(pack_name, text+i, pack_len);
             pack_name[pack_len] = '\0';
 
             
             int cont = 0;
-            for (int j = 0; j < *top; j++) { // kolla om filen redan finns i importlistan
+            for (int j = 0; j < *top; j++) { // check if file already is in importlist
                 if (!strcmp(pack_name, (*v)[j])) {
                     cont = 1;
                 }
             }
             if (cont) continue;
 
-            // lägg till i listan
+            // add to list
             if (*top >= *cap) {
                 char** new = realloc(*v, ((*cap)*2)*sizeof(char*));
                 if (!new) goto malloc_error;
@@ -205,13 +205,13 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
                 *v = new;
             }
 
-            // givet sax, lägg till getcwd
+            // if sax, add to getcwd
 
             char wd[PATH_MAX];
             getcwd(wd, PATH_MAX);
 
-            if (is_sax && pack_name[0] != slash) { // absoluta sökvägar behöver inte få getcwd
-                // lägg på getcwd på namn
+            if (is_sax && pack_name[0] != slash) { // absolute paths dont need getcwd
+                // add getcwd to name
                 int wd_len = strlen(wd);
 
                 char* new_name = malloc(wd_len + pack_len + 2);
@@ -259,21 +259,21 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         
     }
 
-    // lägg till filinnehållet i buff
-    // hitta var programmet börjar utan import statements
+    // add file content to buff
+    // find program start excluding imports
     char* cleaned_text = text;
     int new_text_len = text_len;
 
     for (int i = 0; i < text_len; i++){
         if (i+5 < text_len && !strncmp(text+i, "bult ", 5)) {
             while (text[i] != ';') i++;
-            cleaned_text = text+i+1+(i+1 < text_len && text[i+1] == '\n'); // +1 tar bort ;     +2 tar bort ; och \n
+            cleaned_text = text+i+1+(i+1 < text_len && text[i+1] == '\n'); // +1 removes ;     +2 removes ; and \n
         }
     }
     new_text_len = text_len-(cleaned_text-text);
 
-    // allokera och kopiera
-    if (!(buff->string)) { // första gången
+    // allocate och copy
+    if (!(buff->string)) { // first time
         buff->string = malloc(new_text_len+1);
         if (!(buff->string)) goto malloc_error;
         buff->len = new_text_len;
@@ -318,7 +318,7 @@ Bult_Ret bult(char* file_name, int debug){
 
     Bult_File_Types visited_files = {
 
-        .sax.arr = malloc(visited_capacity*sizeof(char*)), // realloca vid behov
+        .sax.arr = malloc(visited_capacity*sizeof(char*)), // realloc if needed
         .gung.arr = malloc(visited_capacity*sizeof(char*)), 
         .lib.arr = malloc(visited_capacity*sizeof(char*)),
 
@@ -377,13 +377,13 @@ Program tokenize(String str, int debug)
     char* buff = str.string;
     if (debug) printf("BUFF: -----------------------------------------\n%s\n-----------------------------------------------\n", buff);
 
-    // räkna antal instr SKIPPA TECKEN I STRÄNGAR!!!!
+    // count instruction amount, not in strings
 
     int instruction_amount = 0;
     for (int p = 0; p < buff_len; p++) {
 
         if (buff[p] == '"') {
-            // hoppa över strängen
+            // skip string
             p++;
             while (p < buff_len) {
                 if (buff[p] == '"') {
@@ -399,14 +399,14 @@ Program tokenize(String str, int debug)
             continue;
         }
         if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] == '*') {
-            // block kommentar
+            // block comment
             p += 2;
             while (p + 1 < buff_len && !(buff[p] == '*' && buff[p+1] == '#')) p++;
             p++;
             continue;
         }
         if (buff[p] == '#' && p + 1 < buff_len && buff[p+1] != '*') {
-            // vanlig kommentar
+            // normal comment
             while (p < buff_len && buff[p] != '\n') p++;
             continue;
         }
@@ -414,12 +414,12 @@ Program tokenize(String str, int debug)
     }
     if (debug) printf("[DEBUG] instruction_amount: %d\n", instruction_amount);
 
-    // räkna ut storleken på pc_to_line
+    // calculate pc_to_line size
 
     pc_to_line = malloc(instruction_amount*sizeof(int));
     if (!pc_to_line) goto malloc_error;
 
-    // fyll pc_to_line 
+    // fill pc_to_line 
     int line = 1;
     int instruction_index = 0;
     for (int p = 0; p < buff_len; p++) {
@@ -456,11 +456,11 @@ Program tokenize(String str, int debug)
         }
     }
 
-    // skapa instruktionsarray
+    // create instruction array
     Token **instructions = malloc(instruction_amount * sizeof(Token *));
     if (instructions == NULL) goto malloc_error;
-    // grischallokera varje instruktions rad
-    for (int i = 0; i < instruction_amount; i++) { // i framtiden bör räkna ut storleken istället för hardcodade 128
+    // allocate every instruction row
+    for (int i = 0; i < instruction_amount; i++) { //  TODO in the future, change to dynamic instead of always 128
         instructions[i] = malloc(128 * sizeof(Token));
         if (instructions[i] == NULL) goto malloc_error;
     }
@@ -491,7 +491,7 @@ Program tokenize(String str, int debug)
         while (i < buff_len && (buff[i] == ' ' || buff[i] == '\n' || buff[i] == '\r' || buff[i] == '\t'))
             i++;
 
-        // kommentar (single-line)
+        // comment (single-line)
         if (buff[i] == '#' && i+1 < buff_len && buff[i+1] != '*'){
             while (i < buff_len && buff[i] != '\n') {
                 i++;
@@ -516,7 +516,7 @@ Program tokenize(String str, int debug)
         Token tok;
         tok.type = 0;
 
-        // ord-tokens
+        // word-tokens
         if (strncmp(&buff[i], "foug ", 5) == 0)
         {
             tok.type = FOUG;
@@ -621,7 +621,7 @@ Program tokenize(String str, int debug)
             int start = i;
             while (i < buff_len) {
                 if (buff[i] == '"') {
-                    int backslash = 0; // räkna backslash innan "
+                    int backslash = 0; // count backslash before "
                     int j = i - 1;
                     while (j >= start && buff[j] == '\\') { 
                         backslash++; 
@@ -818,7 +818,7 @@ Program tokenize(String str, int debug)
         }
     }
 
-    // sätt funktionerna till funktioner & hitta loop id skit
+    // add functions to the functions
     for (int i = 0; i < instruction_amount; i++)
     {
         if (instructions[i][0].type == FUNCTION)
@@ -826,8 +826,9 @@ Program tokenize(String str, int debug)
             instructions[i][1].var.type = VAR_FUNCTION;
             if (debug) printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
             // sätt funktionsflaggan på faktiska funktionsanrop (variabel följt av parantes)
+            // add func flagg on actual function calls (var then parenthesis)
             for (int j = i + 1; j < instruction_amount; j++)
-            { // rad-loop
+            { // row-loop
                 for (int k = 0; instructions[j][k].type != TERMINATOR; k++)
                 { // token-loop
                     if (instructions[j][k].type == VARIABLE)
@@ -1069,9 +1070,9 @@ void check_syntax(Program* program){
                     j++;
                 }
                 
-                // räkna antal argument för ALLA anrop av funktionen
+                // count agruments for all calls
                 for (int a = 0; a < instruction_amount; a++){
-                    if (instructions[a][0].type == FUNCTION) continue; // skippa funktionsdefinitioner
+                    if (instructions[a][0].type == FUNCTION) continue; // skip functiondefinitions
                     for (int b = 0; instructions[a][b].type != TERMINATOR; b++){
                         Token tok = instructions[a][b];
                         if (tok.type == VARIABLE){
@@ -1211,11 +1212,11 @@ String create_svets_string(char* str, int str_len, Scope* scope) {
     int call_len = str_len+1;
     char *call = malloc(call_len * sizeof(char));
 
-    call[0] = '\0'; // fogligt sätt att nullterminera sträng direkt
+    call[0] = '\0'; // foggy way to nullterminate string
     int writer = 0;
 
     for (int i = 0; i < str_len; i++){
-        if (str[i] == '\\' && str[i+1] == 'n') // printa \n
+        if (str[i] == '\\' && str[i+1] == 'n') // print \n
         {
             if (writer + 1 >= call_len) {
                 call_len += 16;
@@ -1230,7 +1231,7 @@ String create_svets_string(char* str, int str_len, Scope* scope) {
             call[writer] = '\0';
             i += 2;
         }
-        if (str[i] == '\\' && str[i + 1] == '%') // printa %
+        if (str[i] == '\\' && str[i + 1] == '%') // print %
         {
             if (writer + 2 >= call_len) {
                 call_len += 16;
@@ -1247,7 +1248,7 @@ String create_svets_string(char* str, int str_len, Scope* scope) {
             i += 2;
         }
         if (str[i] == '%'){
-            // kolla längden på den
+            // check its length
             int len = 0;
             for (int j = i+1; j < str_len; j++){
                 if (str[j] == '%') break;
@@ -1316,16 +1317,16 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
     }
 
     Token end_var = instruction[1+is_slip+is_grip+is_svets];
-    // ta reda på vilken typ av variabler som används
+    // figure out what var type is used
     
     int start_eval = 0;
     while (instruction[start_eval].type != EQUALS &&
         instruction[start_eval].type != TERMINATOR)
         start_eval++;
 
-    start_eval++; // hoppa över =
+    start_eval++; // skip =
 
-    // räkna korrekt antal tokens
+    // calculate token count
     int args_count = 0;
     while (instruction[start_eval + args_count].type != TERMINATOR)
         args_count++;
@@ -1336,11 +1337,11 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
 
 
 
-    // kolla om slutvariabeln finns sparad
+    // check if the last var is saved
     int create_new = 1;
     for (int i = 0; i < (*scope).index; i++)
     {
-        // skippa list elements som inte har namn
+        // skip list elements without names
         if ((*scope).variables[i].name == NULL)
             continue;
         if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len))
@@ -1368,7 +1369,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         }
         indicies = malloc(index_amount*sizeof(int));
         if (indicies == NULL) goto malloc_error;
-        // lägg till alla index (int) i indices, med eval expr
+        // add all index (int) in indicies, with eval expr
         int index_top = 0;
         depth = 0;
         for (int i = 2+is_grip+is_slip+1+is_svets; instruction[i].type != TERMINATOR; i++) {
@@ -1379,7 +1380,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             } else if (instruction[i].type == RIGHT_BRACKET) {
                 depth--;
             } else if (depth == 0) {
-                // räkna antal tokens i index uttrycket
+                // count number of tokens in index expression
                 int index_tokens = 0;
                 int depth2 = 0;
                 for (int j = i; instruction[j].type != RIGHT_BRACKET && depth2 == 0; j++) {
@@ -1390,7 +1391,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 Dynamic_Var index_eval = dynamic_eval(&instruction[i], index_tokens, instructions, instruction_amount, scope);
                 if (index_eval.type != VAR_NUMBER)
                     throw_error(ERR_TYPE, (String){.string = "List index must be a number", .len = strlen("List index must be a number")}, instruction);
-                i += index_tokens-1; // hoppa över index uttryckets tokens
+                i += index_tokens-1; // skip index expression token
                 indicies[index_top++] = index_eval.value;
             }
             
@@ -1421,7 +1422,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
         } 
         else if (is_slip) 
         {
-            // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
+            // copy eval_result.string to null-terminate it for read_file's sake
             char eval_c_str[eval_result.str_len+1];
             memcpy(eval_c_str, eval_result.string, eval_result.str_len);
             eval_c_str[eval_result.str_len] = '\0';
@@ -1454,10 +1455,10 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
             exit(-1);
         }
 
-    } else { // uppdatera istället
+    } else { // update instead
         if (type == VAR_NUMBER && !modify_list_item){
             for (int i = 0; i < (*scope).index; i++){
-                if ((*scope).variables[i].name == NULL) // hoppa över de som inte har namn!!!
+                if ((*scope).variables[i].name == NULL) // skip those without names
                     continue;
                 if ((*scope).variables[i].name_len == end_var.var.name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     (*scope).variables[i].value = eval_result.value;
@@ -1516,7 +1517,7 @@ void band(Token *instruction, Token **instructions, int instruction_amount, Scop
                 if (end_var.var.name_len == (*scope).variables[i].name_len && !strncmp(end_var.var.name, (*scope).variables[i].name, end_var.var.name_len)){
                     free((*scope).variables[i].str_ptr);
                     (*scope).variables[i].value = 0;
-                    // kopiera eval_result.string for att kunna null terminata den för read_file:s skull
+                    // copy eval_result.string to null-terminate it for read_file's sake
                     char eval_c_str[eval_result.str_len+1];
                     memcpy(eval_c_str, eval_result.string, eval_result.str_len);
                     eval_c_str[eval_result.str_len] = '\0';
@@ -1609,13 +1610,13 @@ void foug(Token *instruction, Scope *scope) {
     { // svets-string
         for (int i = 0; i < instruction[2+is_junk].var.name_len; i++)
         {
-            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == 'n') // printa \n
+            if (instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == 'n') // print \n
             {
                 if (is_junk) fprintf(stderr, "\n");
                 else printf("\n");
                 i += 2;
             }
-            if (i + 1 < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // printa %
+            if (i + 1 < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '\\' && instruction[2+is_junk].var.name[i + 1] == '%') // print %
             {
                 if (is_junk)
                     print_red("%", 1, 0);
@@ -1626,7 +1627,7 @@ void foug(Token *instruction, Scope *scope) {
 
             if (i < instruction[2+is_junk].var.name_len && instruction[2+is_junk].var.name[i] == '%')
             {
-                // kolla längden på den
+                // check its length
                 int len = 0;
                 for (int j = i + 1; j < instruction[2+is_junk].var.name_len; j++)
                 {
@@ -1672,8 +1673,8 @@ void loop(Token *instruction, Program program, Scope *scope, int keyword_count, 
 }
 
 void tpos_call(char* call, int is_dill, Token* instruction){
-    // skapa en sträng på execvp formen
-    // räkna antal argument
+    // create string in execvp form
+    // count arguments
     #ifndef _WIN32
 
     int len = strlen(call);
@@ -1790,7 +1791,7 @@ void tpos(Token *instruction, Scope *scope)
             Dynamic_Var value = get_var_value(instruction[1+is_dill].var.name, instruction[1+is_dill].var.name_len, 0, 0, scope);
                 if (value.type == VAR_NUMBER){
                     if ((int)(value.value) == (value.value)) {
-                        call_len += 32; // extra biffigt utrymme
+                        call_len += 32; // XXL size
                         char *tmp = realloc(call, call_len);
                         if (!tmp) { 
                             free(call); 
@@ -1834,7 +1835,7 @@ void tpos(Token *instruction, Scope *scope)
         }
     } else { // svets-string
 
-        String svets_string = create_svets_string(instruction[2+is_dill].var.name, instruction[2+is_dill].var.name_len, scope); // returnerar null-terminerad sträng
+        String svets_string = create_svets_string(instruction[2+is_dill].var.name, instruction[2+is_dill].var.name_len, scope); // returns null-terminated str
         free(call);
         call = svets_string.string;
     }
@@ -1849,8 +1850,8 @@ void tpos(Token *instruction, Scope *scope)
 
 Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, Token **instructions, int instruction_amount, Token* instruction, Scope* old_scope)
 {
-    // börja med att hitta argument
-    // städa upp instruction
+    // start by finding arguments
+    // clean up instruction
 
     Scope scope = {
         .index = 0,
@@ -1858,7 +1859,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         .variables = malloc(128 * sizeof(Variable)),
     };
     
-    // räkna antal formella argument
+    // count formal arguments
     int amount_of_args = 1;
     int paren_depth = 0;
     int bracket_depth = 0;
@@ -1880,7 +1881,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     int arg_count = 0;
     int paren_depth2 = 0;
     int bracket_depth2 = 0;
-    int start = 2; // första token efter (
+    int start = 2; // first token after (
 
     Arg arg_info[amount_of_args];
 
@@ -1889,7 +1890,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         if (instruction[i].type == LEFT_PAR) paren_depth2++;
         else if (instruction[i].type == RIGHT_PAR) {
             if (paren_depth2 == 0) {
-                // sista argumentet
+                // last argument
                 arg_info[arg_count].start_index = start;
                 arg_info[arg_count].len = i - start;
                 arg_count++;
@@ -1900,7 +1901,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         } else if (instruction[i].type == LEFT_BRACKET) bracket_depth2++;
         else if (instruction[i].type == RIGHT_BRACKET) bracket_depth2--;
 
-        // comma separerar argument om den inte är inuti parenteser eller brackets
+        // comma separates argument unless it's inside parenthesies or brackets
         if (instruction[i].type == COMMA && paren_depth2 == 0 && bracket_depth2 == 0) {
             arg_info[arg_count].start_index = start;
             arg_info[arg_count].len = i - start;
@@ -1913,7 +1914,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         throw_error(ERR_SYNTAX, (String){"Syntax error in function call: missing closing parenthesis", strlen("Syntax error in function call: missing closing parenthesis")}, instruction);
     }
     cleanup_args(instruction+2, arg_tokens_len, instructions, instruction_amount, old_scope);
-    // skapa Dynamic_Var för varje värde
+    // create Dynamic_Var for every value
     for (int i = 0; i < arg_count; i++){
         
         Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
@@ -1923,7 +1924,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         //printf("\n\n\n");
         arg_info[i].info = eval_ret;
     }
-    // hitta index dit den ska hoppa
+    // find index to jump to
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
     {
@@ -1942,7 +1943,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         throw_error(ERR_SYNTAX, (String){"Function not found", strlen("Function not found")}, instruction);
     }
 
-    // skapa variabler
+    // create vars
     int arg_number = 0;
     for (int i = 3; instructions[func_index][i].type != TERMINATOR; i++){
         Token current = instructions[func_index][i];
@@ -1984,9 +1985,9 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
     function_return_stack[function_stack_top] = zero_var;
     function_stack_top++;
 
-    program_counter = func_index + 1; // börja precis efter "boul"
+    program_counter = func_index + 1; // start after "boul"
 
-    // skapa argumenten/parametermaxxing
+    // create arguments/parenthesies
 
     while (function_stack_top > call_stack_level)
     {
@@ -2048,7 +2049,7 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
     {
         Dynamic_Var return_value = { 0 };
 
-        // räkna hur lång eval strängen blir
+        // calculate str len
         int len = 0;
         while(current[len].type != TERMINATOR) len++;
         len--;
@@ -2062,7 +2063,7 @@ void interpret_instruction(Token *current, Token **instructions, int instruction
         break;
     }
 
-    case VARIABLE: // anta att det är en funktion
+    case VARIABLE: // assume it is a function
         if (current[0].var.type == VAR_FUNCTION) {
             call_function(current[0].var.name, current[0].var.name_len, program_counter, instructions, instruction_amount, current, scope);
         }
@@ -2134,8 +2135,8 @@ int main(int argc, char **argv)
     }
     path_ptr[-1] = '\0';
 
-    // skapa konstantarrays
-    // variabler
+    // create constant arrays
+    // vars
     Scope scope = {
         .index = 0,
         .capacity = 128,
@@ -2148,7 +2149,7 @@ int main(int argc, char **argv)
 
     // row stack
     row_lengths = malloc(128 * sizeof(int));
-    // fyll row_lengths med 128 i varje position
+    // fill row_lengths with 128 in each position
     for (int i = 0; i < 128; i++) row_lengths[i] = 128;
 
 
@@ -2172,7 +2173,7 @@ int main(int argc, char **argv)
     if (!flag_unchecked) check_syntax(&program);
     if (flag_debug) print_tokens(instructions, instruction_amount);
 
-    // lägg på offset
+    // add offset
     for (int i = 0; i < instruction_amount; i++) {
         pc_to_line[i] -= line_offset;
     }
@@ -2186,7 +2187,7 @@ int main(int argc, char **argv)
         }
     }
 
-    // hitta entry point (main)
+    // find entry point (main)
     for (int i = 0; i < instruction_amount; i++)
     {
         if (instructions[i][0].type == MAIN)
