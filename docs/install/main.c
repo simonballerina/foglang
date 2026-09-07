@@ -27,7 +27,7 @@
 
     #define INSTALL_PATH "/usr/local/bin/foglang2"
 
-    #define PACK_PATH_SUFFIX "/.local/share/foglang2/packages/"
+    #define PACK_PATH_SUFFIX "/.local/share/foglang4/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
 
 #endif
@@ -45,6 +45,7 @@ int is_admin() {
 
 
 void mkdir_p_chown(char* path, int permission, char* new_owner){
+    printf("Creating directory: %s\n", path);
 
     #ifdef _WIN32
         #define SLASH '\\'
@@ -88,7 +89,9 @@ int create_dirs(){
         printf("SUDO_USER environment variable not set\n");
         return 1;
     }
-    char* home = getenv("HOME");
+    struct passwd *pw = getpwnam(sudo_user);
+
+    char* home = pw->pw_dir;
     if (home == NULL) {
         printf("HOME environment variable not set\n");
         return 1;
@@ -120,8 +123,54 @@ int create_dirs(){
         return 1;
 }
 
+char* get_json_item(char* json, char* key) {
 
-int download_github_folder(const char* link) {
+    int json_len = strlen(json);
+    int key_len = strlen(key);
+
+    for (int j = 0; j < json_len; j++) {
+        if (j + key_len <= json_len && !strncmp(key, json + j, key_len)) {
+            char* value = json + j + key_len;
+
+            while (*value == ' ' || *value == '\t' || *value == '\n' || *value == '\r' || *value == ':') {
+                value++;
+            }
+
+            if (*value != '\"') {
+                return NULL;
+            }
+
+            value++;
+            char* end = value;
+            while (*end != '\0') {
+                if (*end == '\\' && end[1] != '\0') {
+                    end += 2;
+                    continue;
+                }
+                if (*end == '\"') {
+                    break;
+                }
+                end++;
+            }
+
+            int item_len = (int)(end - value);
+            char* item = malloc(item_len + 1);
+            if (!item) {
+                printf("Memory allocation failed\n");
+                return NULL;
+            }
+
+            memcpy(item, value, item_len);
+            item[item_len] = '\0';
+            return item;
+        }
+    }
+
+    return NULL;
+
+}
+
+int download_github_folder(const char* link, const char* path) {
     
     char* list;
     
@@ -132,13 +181,92 @@ int download_github_folder(const char* link) {
     int len = strlen(list);
 
     for (int i = 0; i < len; i++){
-        if (i+7 < len && !strncmp("\"name\":", list+i, 7)) {
-            char* name;
+        if (i + 7 < len && !strncmp("\"name\":", list + i, 7)) {
+            char* name = get_json_item(list + i, "\"name\"");
+            char* type = get_json_item(list + i, "\"type\"");
+            char* download_link = get_json_item(list + i, "\"download_url\"");
+
+            if (name && type) {
+                printf("    Downloading file '%s' with type '%s'", name, type);
+            } 
+            if (download_link) printf(" from '%s'...\n", download_link);
+            else printf("...\n");
+
+
+
+
+
+
+
+            if (download_link && !strcmp(type, "file")) {
+                char* file_path;
+                if (path) {
+                    int path_len = strlen(path);
+                    int name_len = strlen(name);
+                    file_path = malloc(path_len + name_len + 2);
+                    if (!file_path) goto malloc_error;
+
+                    memcpy(file_path, path, path_len);
+                    file_path[path_len] = '/';
+                    memcpy(file_path + path_len + 1, name, name_len);
+                    file_path[path_len + name_len + 1] = '\0';
+                } else {
+                    file_path = strdup(name);
+                }
+
+                if (http_download(download_link, file_path) == 0) {
+                    printf("        Download successful! (%s)\n", file_path);
+                } else {
+                    printf("        Download unsuccessful. Exiting install...\n");
+                    free(file_path);
+                    return -1;
+                }
+                free(file_path);
+
+            } else if (!strcmp(type, "dir")) {
+                char* dir_path;
+                if (path) {
+                    int path_len = strlen(path);
+                    int name_len = strlen(name);
+                    dir_path = malloc(path_len + name_len + 2);
+                    if (!dir_path) goto malloc_error;
+
+                    memcpy(dir_path, path, path_len);
+                    dir_path[path_len] = '/';
+                    memcpy(dir_path + path_len + 1, name, name_len);
+                    dir_path[path_len + name_len + 1] = '\0';
+                } else {
+                    dir_path = strdup(name);
+                }
+
+                mkdir(dir_path, 0777);
+                struct passwd *pw = getpwnam(getenv("SUDO_USER"));
+                chown(dir_path, pw->pw_uid, (gid_t)-1);
+
+                char* new_link = get_json_item(list + i, "\"self\"");
+
+                download_github_folder(new_link, dir_path);
+
+                free(new_link);
+                free(dir_path);
+
+            }
+
+
+
+            free(name);
+            free(type);
+            free(download_link);
         }
     }
+    printf(list);
     free(list);
 
     return 0;
+
+    malloc_error:
+        printf("Memory allocation failed\n");
+        return 1;
 
 }
 
@@ -166,7 +294,7 @@ int main() {
     }
     
 
-    download_folder("https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2/lib?ref=main");
+    download_github_folder("https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2?ref=main", NULL);
     
 
 
