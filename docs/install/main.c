@@ -34,6 +34,7 @@
 
 #define BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
 
+#define PATH_MAX 4096
 
 int is_admin() {
     #ifdef _WIN32
@@ -57,6 +58,8 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
 
     struct passwd *pw = getpwnam(new_owner);
 
+    char origin_dir[PATH_MAX];
+    getcwd(origin_dir, sizeof(origin_dir));
 
     for (int i = 0; i < len; i++) {
         if (path[i] == SLASH) {
@@ -78,6 +81,7 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
 
         }
     }
+    chdir(origin_dir);
 
 }
 
@@ -259,7 +263,6 @@ int download_github_folder(const char* link, const char* path) {
             free(download_link);
         }
     }
-    printf(list);
     free(list);
 
     return 0;
@@ -293,10 +296,12 @@ int main() {
         printf("Could not create Library & Bandvagn package directory. Exiting install...\n");
     }
     
+    char a[1024];
+    getcwd(a, sizeof(a));
+    printf("Current working directory: %s\n", a);
 
     download_github_folder("https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2?ref=main", NULL);
     
-
 
     return 0;
 }

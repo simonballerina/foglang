@@ -58,6 +58,7 @@ int http_download(const char *url, const char *filename) {
         curl_easy_cleanup(curl);
         return -1;
     }
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file);
