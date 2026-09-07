@@ -43,6 +43,7 @@ int is_admin() {
     return !geteuid();
 }
 
+
 void mkdir_p_chown(char* path, int permission, char* new_owner){
 
     #ifdef _WIN32
@@ -78,6 +79,7 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
     }
 
 }
+
 
 int create_dirs(){
 
@@ -118,6 +120,29 @@ int create_dirs(){
         return 1;
 }
 
+
+int download_github_folder(const char* link) {
+    
+    char* list;
+    
+    if (http_get(link, &list) != 0){
+        printf("Could not resolve list of files. Aborting...\n");
+        return -1;
+    }
+    int len = strlen(list);
+
+    for (int i = 0; i < len; i++){
+        if (i+7 < len && !strncmp("\"name\":", list+i, 7)) {
+            char* name;
+        }
+    }
+    free(list);
+
+    return 0;
+
+}
+
+
 int main() {
     if (!is_admin()) {
         printf("You need to run the installation as root/administrator to install Foglang!\n");
@@ -141,6 +166,7 @@ int main() {
     }
     
 
+    download_folder("https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2/lib?ref=main");
     
 
 

@@ -29,7 +29,8 @@ int http_get(const char *url, char **out) {
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "foglang-downloader/1.0");
+    
     CURLcode res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
