@@ -1214,10 +1214,19 @@ void throw_error(Err_Type type, String err_str, Token *instruction){
     char tick = '\'';  
     char colon = ':';
 
-    print_red("Error in: ", strlen("Error in: "), 0);
+    print_red("Error in file '", strlen("Error in file '"), 0);
     char* file_name = get_file_name_from_pc();
-    print_red(file_name, strlen(file_name), 0);
-    print_red(&colon, 1, 0);
+    if (file_name == NULL) {
+        
+        print_red("main program", strlen("main program"), 0);
+        print_red(&tick, 1, 0);
+
+    } else {
+        print_red(file_name, strlen(file_name), 0);
+        print_red(&tick, 1, 0);
+    }
+    print_red(" at line ", strlen(" at line "), 0);
+
 
 
     if (pc_to_line && program_counter >= 0) {
