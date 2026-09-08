@@ -12,29 +12,39 @@
 
 #if defined(_WIN32)
     #include <hlobj_core.h>
-    #define INSTALL_PATH "C:\\Program Files\\foglang2\\build\\foglang2.exe"
+    #define FOGLANG_INSTALL_PATH "C:\\Program Files\\foglang2\\build\\foglang2.exe"
     #define PACK_PATH "C:\\Program Files\\foglang2\\packages\\"
 
     #define LIB_PATH ""
 
 #elif defined(__APPLE__)
-    #define BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
-    #define INSTALL_PATH "build/foglang2"
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-macos-arm64"
+
+    #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
+    #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
 
     #define PACK_PATH_SUFFIX "/Library/Application Support/foglang4/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
 #elif defined(__linux__)
 
-    #define INSTALL_PATH "/usr/local/bin/foglang2"
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-macos-arm64"
+
+    #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
+    #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
 
     #define PACK_PATH_SUFFIX "/.local/share/foglang4/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
 
 #endif
 
-#define BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
+#define LIB_LINK "https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2/lib?ref=main"
 
-#define PATH_MAX 4096
+#ifndef PATH_MAX
+    #define PATH_MAX 1024
+#endif
+
 
 int is_admin() {
     #ifdef _WIN32
@@ -67,7 +77,6 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
             for (int j = i+1; j < len; j++) {
                 if (path[j] == SLASH) {
                     path[j] = '\0';
-                    printf("%s\n", path);
                     chdir(path);
                     if (mkdir(path, permission) == 0) {
                         chown(path, pw->pw_uid, (gid_t)-1);
@@ -174,7 +183,7 @@ char* get_json_item(char* json, char* key) {
 
 }
 
-int download_github_folder(const char* link, const char* path) {
+int download_github_folder(const char* link, const char* path, const char* owner) {
     
     char* list;
     
@@ -190,19 +199,9 @@ int download_github_folder(const char* link, const char* path) {
             char* type = get_json_item(list + i, "\"type\"");
             char* download_link = get_json_item(list + i, "\"download_url\"");
 
-            if (name && type) {
-                printf("    Downloading file '%s' with type '%s'", name, type);
-            } 
-            if (download_link) printf(" from '%s'...\n", download_link);
-            else printf("...\n");
-
-
-
-
-
-
 
             if (download_link && !strcmp(type, "file")) {
+                printf("    Downloading file '%s'...", name);
                 char* file_path;
                 if (path) {
                     int path_len = strlen(path);
@@ -244,12 +243,12 @@ int download_github_folder(const char* link, const char* path) {
                 }
 
                 mkdir(dir_path, 0777);
-                struct passwd *pw = getpwnam(getenv("SUDO_USER"));
+                struct passwd *pw = getpwnam(owner);
                 chown(dir_path, pw->pw_uid, (gid_t)-1);
 
                 char* new_link = get_json_item(list + i, "\"self\"");
 
-                download_github_folder(new_link, dir_path);
+                download_github_folder(new_link, dir_path, owner);
 
                 free(new_link);
                 free(dir_path);
@@ -280,12 +279,20 @@ int main() {
         return -1;
     }
 
-    printf("Downloading Foglang2 from '%s' to '%s'...\n", BIN_LINK, INSTALL_PATH);
+    printf("Downloading Foglang2 from '%s' to '%s'...\n", FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH);
 
-    if (http_download(BIN_LINK, INSTALL_PATH) == 0) {
-        printf("Download successful!\n");
+    if (http_download(FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH) == 0) {
+        printf("    Download successful!\n");
     } else {
-        printf("Download unsuccessful. Exiting install...\n");
+        printf("    Download unsuccessful. Exiting install...\n");
+        return -1;
+    }
+    printf("Downloading Bandvagn from '%s' to '%s'...\n", BANDVAGN_BIN_LINK, BANDVAGN_INSTALL_PATH);
+
+    if (http_download(BANDVAGN_BIN_LINK, BANDVAGN_INSTALL_PATH) == 0) {
+        printf("    Download successful!\n");
+    } else {
+        printf("    Download unsuccessful. Exiting install...\n");
         return -1;
     }
 
@@ -296,12 +303,9 @@ int main() {
         printf("Could not create Library & Bandvagn package directory. Exiting install...\n");
     }
     
-    char a[1024];
-    getcwd(a, sizeof(a));
-    printf("Current working directory: %s\n", a);
-
-    download_github_folder("https://api.github.com/repos/simonballerina/foglang/contents/docs/foglang2?ref=main", NULL);
+    download_github_folder(LIB_LINK, LIB_PATH, "root");
     
+    printf("Successfully installed Foglang2!\n");
 
     return 0;
 }
