@@ -24,7 +24,7 @@
     #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
     #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
 
-    #define PACK_PATH_SUFFIX "/Library/Application Support/foglang4/packages/"
+    #define PACK_PATH_SUFFIX "/Library/Application Support/foglang2/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
 #elif defined(__linux__)
 
