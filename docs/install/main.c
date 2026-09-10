@@ -12,24 +12,32 @@
 
 #if defined(_WIN32)
     #include <hlobj_core.h>
-    #define FOGLANG_INSTALL_PATH "C:\\Program Files\\foglang2\\build\\foglang2.exe"
-    #define PACK_PATH "C:\\Program Files\\foglang2\\packages\\"
 
-    #define LIB_PATH ""
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/foglang2_windows_x86_64.exe"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/vagn_windows_x86_64.exe"
+
+    #define FOGLANG_INSTALL_PATH "C:\\Program Files\\foglang2\\build\\foglang2.exe"
+    #define BANDVAGN_INSTALL_PATH "C:\\Program Files\\bandvagn\\build\\vagn.exe"
+
+    #define PACK_PATH "C:\\Program Files\\foglang2\\packages\\"
+    #define LIBPATH "C:\\Program Files\\foglang2\\lib\\"
+
 
 #elif defined(__APPLE__)
-    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
-    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-macos-arm64"
+
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/foglang2_macos_arm64"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/vagn_macos_arm64"
 
     #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
     #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
 
     #define PACK_PATH_SUFFIX "/Library/Application Support/foglang2/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
+
 #elif defined(__linux__)
 
-    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-macos-arm64"
-    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-macos-arm64"
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-linux-x86_64"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-linux-x86_64"
 
     #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
     #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
@@ -44,6 +52,7 @@
 #ifndef PATH_MAX
     #define PATH_MAX 1024
 #endif
+
 
 
 int is_admin() {
@@ -69,7 +78,11 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
     struct passwd *pw = getpwnam(new_owner);
 
     char origin_dir[PATH_MAX];
-    getcwd(origin_dir, sizeof(origin_dir));
+    #if defined(__linux__) || defined(__APPLE__)
+        getcwd(origin_dir, sizeof(origin_dir));
+    #elif defined (_WIN32)
+        GetCurrentDirectoryW(PATH_MAX, origin_dir);
+    #endif
 
     for (int i = 0; i < len; i++) {
         if (path[i] == SLASH) {
@@ -77,10 +90,16 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
             for (int j = i+1; j < len; j++) {
                 if (path[j] == SLASH) {
                     path[j] = '\0';
-                    chdir(path);
-                    if (mkdir(path, permission) == 0) {
-                        chown(path, pw->pw_uid, (gid_t)-1);
-                    }
+                    #if defined(__linux__) || defined(__APPLE__)
+                        chdir(path);
+                        if (mkdir(path, permission) == 0) {
+                            chown(path, pw->pw_uid, (gid_t)-1);
+                        }
+                    #elif defined(_WIN32)
+                        SetCurrentDirectoryW(path);
+                        CreateDirectoryA(path, NULL);
+                        
+                    #endif
                     
 
                     path[j] = SLASH;
@@ -90,13 +109,23 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
 
         }
     }
-    chdir(origin_dir);
+    #if defined(__linux__) || defined(__APPLE__)
+        chdir(origin_dir);
+    #elif defined (_WIN32)
+        SetCurrentDirectory(origin_dir, NULL);
+    #endif
 
 }
 
 
 int create_dirs(){
+    #ifdef _WIN32
 
+    mkdir_p_chown(PACK_PATH);
+    mkdir_p_chown(LIB_PATH);
+
+    return 0;
+    #else
     char* sudo_user = getenv("SUDO_USER");
     if (sudo_user == NULL) {
         printf("SUDO_USER environment variable not set\n");
@@ -121,16 +150,16 @@ int create_dirs(){
     memcpy(pack_path+home_len, PACK_PATH_SUFFIX, suffix_len);
     pack_path[home_len+suffix_len] = '\0';
 
-    mkdir_p_chown(pack_path, 0777, sudo_user);
+    mkdir_p_chown(pack_path, 0770, sudo_user);
     free(pack_path);
 
     char* lib_path = strdup(LIB_PATH);
-    mkdir_p_chown(lib_path, 0777, "root");
+    mkdir_p_chown(lib_path, 0770, "root");
     free(lib_path);
 
 
     return 0;
-
+    #endif
     malloc_error:
         printf("Memory allocation failed\n");
         return 1;
@@ -242,7 +271,7 @@ int download_github_folder(const char* link, const char* path, const char* owner
                     dir_path = strdup(name);
                 }
 
-                mkdir(dir_path, 0777);
+                mkdir(dir_path, 0770);
                 struct passwd *pw = getpwnam(owner);
                 chown(dir_path, pw->pw_uid, (gid_t)-1);
 
@@ -279,10 +308,13 @@ int main() {
         return -1;
     }
 
+    struct passwd *pw = getpwnam(getenv("SUDO_USER"));
+
     printf("Downloading Foglang2 from '%s' to '%s'...\n", FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH);
 
     if (http_download(FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH) == 0) {
         printf("    Download successful!\n");
+        chmod(FOGLANG_INSTALL_PATH, 0777);
     } else {
         printf("    Download unsuccessful. Exiting install...\n");
         return -1;
@@ -291,6 +323,7 @@ int main() {
 
     if (http_download(BANDVAGN_BIN_LINK, BANDVAGN_INSTALL_PATH) == 0) {
         printf("    Download successful!\n");
+        chmod(BANDVAGN_INSTALL_PATH, 0777);
     } else {
         printf("    Download unsuccessful. Exiting install...\n");
         return -1;
