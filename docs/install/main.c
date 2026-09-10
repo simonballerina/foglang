@@ -36,13 +36,13 @@
 
 #elif defined(__linux__)
 
-    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/foglang2-linux-x86_64"
-    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang-test/raw/refs/heads/main/vagn-linux-x86_64"
+    #define FOGLANG_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/foglang2_linux_x86_64"
+    #define BANDVAGN_BIN_LINK "https://github.com/simonballerina/foglang/releases/latest/download/vagn_linux_x86_64"
 
     #define FOGLANG_INSTALL_PATH "/usr/local/bin/foglang2"
     #define BANDVAGN_INSTALL_PATH "/usr/local/bin/vagn"
 
-    #define PACK_PATH_SUFFIX "/.local/share/foglang4/packages/"
+    #define PACK_PATH_SUFFIX "/.local/share/foglang2/packages/"
     #define LIB_PATH "/usr/local/lib/foglang2/"
 
 #endif
@@ -150,11 +150,11 @@ int create_dirs(){
     memcpy(pack_path+home_len, PACK_PATH_SUFFIX, suffix_len);
     pack_path[home_len+suffix_len] = '\0';
 
-    mkdir_p_chown(pack_path, 0770, sudo_user);
+    mkdir_p_chown(pack_path, 0755, sudo_user);
     free(pack_path);
 
     char* lib_path = strdup(LIB_PATH);
-    mkdir_p_chown(lib_path, 0770, "root");
+    mkdir_p_chown(lib_path, 0755, "root");
     free(lib_path);
 
 
@@ -273,7 +273,7 @@ int download_github_folder(const char* link, const char* path, const char* owner
                     dir_path = strdup(name);
                 }
 
-                mkdir(dir_path, 0770);
+                mkdir(dir_path, 0755);
                 struct passwd *pw = getpwnam(owner);
                 chown(dir_path, pw->pw_uid, (gid_t)-1);
 
@@ -303,8 +303,8 @@ int download_github_folder(const char* link, const char* path, const char* owner
 
 }
 
-
-int main() {
+int main(int argc, char** argv) {
+    
     if (!is_admin()) {
         printf("You need to run the installation as root/administrator to install Foglang!\n");
         return -1;
@@ -314,7 +314,7 @@ int main() {
 
     if (http_download(FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH) == 0) {
         printf("    Download successful!\n");
-        chmod(FOGLANG_INSTALL_PATH, 0777);
+        chmod(FOGLANG_INSTALL_PATH, 0755);
     } else {
         printf("    Download unsuccessful. Exiting install...\n");
         return -1;
@@ -323,7 +323,7 @@ int main() {
 
     if (http_download(BANDVAGN_BIN_LINK, BANDVAGN_INSTALL_PATH) == 0) {
         printf("    Download successful!\n");
-        chmod(BANDVAGN_INSTALL_PATH, 0777);
+        chmod(BANDVAGN_INSTALL_PATH, 0755);
     } else {
         printf("    Download unsuccessful. Exiting install...\n");
         return -1;
