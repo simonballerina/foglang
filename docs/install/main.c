@@ -159,10 +159,12 @@ int create_dirs(){
 
 
     return 0;
-    #endif
     malloc_error:
         printf("Memory allocation failed\n");
         return 1;
+    
+    #endif
+
 }
 
 char* get_json_item(char* json, char* key) {
@@ -307,8 +309,6 @@ int main() {
         printf("You need to run the installation as root/administrator to install Foglang!\n");
         return -1;
     }
-
-    struct passwd *pw = getpwnam(getenv("SUDO_USER"));
 
     printf("Downloading Foglang2 from '%s' to '%s'...\n", FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH);
 
