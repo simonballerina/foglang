@@ -75,11 +75,11 @@ void mkdir_p_chown(char* path, int permission, char* new_owner){
 
     int len = strlen(path);
 
-    struct passwd *pw = getpwnam(new_owner);
 
     char origin_dir[PATH_MAX];
     #if defined(__linux__) || defined(__APPLE__)
         getcwd(origin_dir, sizeof(origin_dir));
+        struct passwd *pw = getpwnam(new_owner);
     #elif defined (_WIN32)
         GetCurrentDirectoryW(PATH_MAX, origin_dir);
     #endif
@@ -273,12 +273,19 @@ int download_github_folder(const char* link, const char* path, const char* owner
                     dir_path = strdup(name);
                 }
 
+                #if defined(__APPLE__) || defined(__linux__)
+
                 mkdir(dir_path, 0755);
                 struct passwd *pw = getpwnam(owner);
                 chown(dir_path, pw->pw_uid, (gid_t)-1);
 
-                char* new_link = get_json_item(list + i, "\"self\"");
+                #elif defined(_WIN32)
+                
+                CreateDirectoryA(dir_path, NULL);
+                
+                #endif
 
+                char* new_link = get_json_item(list + i, "\"self\"");
                 download_github_folder(new_link, dir_path, owner);
 
                 free(new_link);
