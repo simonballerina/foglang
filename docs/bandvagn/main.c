@@ -15,11 +15,14 @@ Bandvagn package manager for Foglang
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
+#include <pwd.h>
+#include <ftw.h>
 
 #include "bandvagn.h"
 
 #include "http.c"
+
+#include "bandvagn_utils.c"
 
 #define PACKAGES_LIST_PATH "https://raw.githubusercontent.com/simonballerina/foglang-packages/refs/heads/main/packages.fgpkg"
 #define HIGHLIGHT_PATH "https://github.com/handej08/foglanghighlight/releases/latest/download/foglanghighlight.vsix"
@@ -94,28 +97,11 @@ Token_List parse_packages(char* data) {
 
 char* get_lib_path_unix(char* base, char* name, int is_homeless) {
     // add .fg file extention to name if it doesnt have an extention
-    int has_ext = 0;
-    for (int i = strlen(name)-1; i >= 0 && name[i] != '/'; i--) {
-        if (name[i] == '.') {
-            has_ext = 1;
-            break;
-        }
-    }
+    
+    
 
     int name_len = strlen(name);
-    char* name_with_ext;
-    if (!has_ext) {
-        name_with_ext = malloc(name_len + 3 + 1);
-        if (!name_with_ext) {
-            fprintf(stderr, "Could not allocate memory for name_with_ext\n");
-            exit(1);
-        }
-        memcpy(name_with_ext, name, name_len);
-        memcpy(name_with_ext + name_len, ".fg", 3);
-        name_with_ext[name_len+3] = '\0';
-    } else {
-        name_with_ext = name;
-    }
+
     int base_len = strlen(base);
     const char *home = getenv("HOME");
     if (is_homeless) {
@@ -126,9 +112,7 @@ char* get_lib_path_unix(char* base, char* name, int is_homeless) {
         base_len += strlen(home);
     }
     
-    
-    name_len = strlen(name_with_ext);
-    char *lib_path = malloc(base_len + name_len + 1);
+        char *lib_path = malloc(base_len + name_len + 1);
     if (!lib_path) {
         fprintf(stderr, "Could not allocate memory for lib_path\n");
         exit(1);
@@ -141,7 +125,7 @@ char* get_lib_path_unix(char* base, char* name, int is_homeless) {
     }
     
     lib_path[base_len] = '\0';
-    strcat(lib_path, name_with_ext);
+    strcat(lib_path, name);
     lib_path[base_len+name_len] = '\0';
 
     return lib_path;
@@ -209,6 +193,7 @@ int install_package(char* package_name) {
             EXIT_CODE = 1;
             goto exit_program;
         }
+        mkdir(lib_path, 0755);
     #elif __linux__ || __unix__ || __posix__
         char* base = "/.local/share/foglang2/packages/";
         char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, found_packages.tokens[found_index].name, 0) : get_lib_path_unix(base, found_packages.tokens[found_index].name, 1);
@@ -217,16 +202,14 @@ int install_package(char* package_name) {
             EXIT_CODE = 1;
             goto exit_program;
         }
+        mkdir(lib_path, 0755);
 
     #endif
     
-    
-    if (http_download(found_packages.tokens[found_index].url, lib_path) == 0) {
+    if (download_github_folder(found_packages.tokens[found_index].url, lib_path, NULL) == 0) {
         printf("Package download successful!\n");
     } else {
         printf("Package download failed.\n");
-        // delete file if it exists
-        remove(lib_path);
         EXIT_CODE = 1;
         goto exit_program;
     }
@@ -243,6 +226,7 @@ int install_package(char* package_name) {
     return EXIT_CODE;
 }
 
+
 int remove_package(char* package_name) {
     printf("Removing package '%s'...\n", package_name);
     #ifdef _WIN32
@@ -254,7 +238,7 @@ int remove_package(char* package_name) {
         char* lib_path = strlen(PACKPATH) ? get_lib_path_unix(PACKPATH, package_name, 0) : get_lib_path_unix(base, package_name, 1);
     #endif
 
-    if (remove(lib_path) == 0) {
+    if (nftw(lib_path, ftw_rm, 64, FTW_DEPTH | FTW_PHYS) == 0) {
         printf("Package '%s' removed successfully!\n", package_name);
     } else {
         fprintf(stderr, "Failed to remove package '%s'. Is it installed?\n", package_name);
@@ -419,6 +403,7 @@ Links:\n\
 - Github: https://github.com/simonballerina/foglang\n");
     return EXIT_CODE;
 }
+
 
 int main(int argc, char *argv[]) {
     int EXIT_CODE = 0;
