@@ -5,9 +5,11 @@
 #include <curl/curl.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <ftw.h>
 
 #include "install.h"
 #include "../bandvagn/http.c"
+#include "../bandvagn/bandvagn_utils.c" // get_json_item(), download_github_folder()
 #include "install_utils.c"
 
 #if defined(_WIN32)
@@ -167,154 +169,87 @@ int create_dirs(){
 
 }
 
-char* get_json_item(char* json, char* key) {
+int remove_foglang(){
+    printf("Removing Foglang2 and Bandvagn package manager. Continue? (y/n) ");
+    char in;
+    scanf(" %c",&in);
 
-    int json_len = strlen(json);
-    int key_len = strlen(key);
-
-    for (int j = 0; j < json_len; j++) {
-        if (j + key_len <= json_len && !strncmp(key, json + j, key_len)) {
-            char* value = json + j + key_len;
-
-            while (*value == ' ' || *value == '\t' || *value == '\n' || *value == '\r' || *value == ':') {
-                value++;
-            }
-
-            if (*value != '\"') {
-                return NULL;
-            }
-
-            value++;
-            char* end = value;
-            while (*end != '\0') {
-                if (*end == '\\' && end[1] != '\0') {
-                    end += 2;
-                    continue;
-                }
-                if (*end == '\"') {
-                    break;
-                }
-                end++;
-            }
-
-            int item_len = (int)(end - value);
-            char* item = malloc(item_len + 1);
-            if (!item) {
-                printf("Memory allocation failed\n");
-                return NULL;
-            }
-
-            memcpy(item, value, item_len);
-            item[item_len] = '\0';
-            return item;
-        }
+    if (in != 'Y' && in != 'y') {
+        printf("Cancelling removal...\n");
+        return 0;
     }
 
-    return NULL;
-
-}
-
-int download_github_folder(const char* link, const char* path, const char* owner) {
-    
-    char* list;
-    
-    if (http_get(link, &list) != 0){
-        printf("Could not resolve list of files. Aborting...\n");
-        return -1;
+    printf("Removing binaries... ");
+    if (remove(FOGLANG_INSTALL_PATH) == 0 && remove(BANDVAGN_INSTALL_PATH) == 0) printf("Done\n");
+    else {
+        printf("Could not remove binaries '%s' and '%s'\n", FOGLANG_INSTALL_PATH, BANDVAGN_INSTALL_PATH);
     }
-    int len = strlen(list);
 
-    for (int i = 0; i < len; i++){
-        if (i + 7 < len && !strncmp("\"name\":", list + i, 7)) {
-            char* name = get_json_item(list + i, "\"name\"");
-            char* type = get_json_item(list + i, "\"type\"");
-            char* download_link = get_json_item(list + i, "\"download_url\"");
-
-
-            if (download_link && !strcmp(type, "file")) {
-                printf("    Downloading file '%s'...", name);
-                char* file_path;
-                if (path) {
-                    int path_len = strlen(path);
-                    int name_len = strlen(name);
-                    file_path = malloc(path_len + name_len + 2);
-                    if (!file_path) goto malloc_error;
-
-                    memcpy(file_path, path, path_len);
-                    file_path[path_len] = '/';
-                    memcpy(file_path + path_len + 1, name, name_len);
-                    file_path[path_len + name_len + 1] = '\0';
-                } else {
-                    file_path = strdup(name);
-                }
-
-                if (http_download(download_link, file_path) == 0) {
-                    printf("        Download successful! (%s)\n", file_path);
-                } else {
-                    printf("        Download unsuccessful. Exiting install...\n");
-                    free(file_path);
-                    return -1;
-                }
-                free(file_path);
-
-            } else if (!strcmp(type, "dir")) {
-                char* dir_path;
-                if (path) {
-                    int path_len = strlen(path);
-                    int name_len = strlen(name);
-                    dir_path = malloc(path_len + name_len + 2);
-                    if (!dir_path) goto malloc_error;
-
-                    memcpy(dir_path, path, path_len);
-                    dir_path[path_len] = '/';
-                    memcpy(dir_path + path_len + 1, name, name_len);
-                    dir_path[path_len + name_len + 1] = '\0';
-                } else {
-                    dir_path = strdup(name);
-                }
-
-                #if defined(__APPLE__) || defined(__linux__)
-
-                mkdir(dir_path, 0755);
-                struct passwd *pw = getpwnam(owner);
-                chown(dir_path, pw->pw_uid, (gid_t)-1);
-
-                #elif defined(_WIN32)
-                
-                CreateDirectoryA(dir_path, NULL);
-                
-                #endif
-
-                char* new_link = get_json_item(list + i, "\"self\"");
-                download_github_folder(new_link, dir_path, owner);
-
-                free(new_link);
-                free(dir_path);
-
-            }
-
-
-
-            free(name);
-            free(type);
-            free(download_link);
-        }
+    printf("Removing Library & Bandvagn package directory...\n");
+    if (nftw(LIB_PATH, ftw_rm, 64, FTW_DEPTH | FTW_PHYS) == 0) {
+        printf("    Successfully removed Library directory!\n");
+    } else {
+        printf("    Could not remove Library directory '%s'\n", LIB_PATH);
     }
-    free(list);
+
+
+    char* sudo_user = getenv("SUDO_USER");
+    if (sudo_user == NULL) {
+        printf("SUDO_USER environment variable not set\n");
+        return 1;
+    }
+    struct passwd *pw = getpwnam(sudo_user);
+
+    char* home = pw->pw_dir;
+    if (home == NULL) {
+        printf("HOME environment variable not set\n");
+        return 1;
+    }
+
+    int home_len = strlen(home);
+    int suffix_len = strlen(PACK_PATH_SUFFIX);
+
+    char* pack_path = malloc(home_len+suffix_len+1);
+
+    if (!pack_path) goto malloc_error;
+
+    memcpy(pack_path, home, home_len);
+    memcpy(pack_path+home_len, PACK_PATH_SUFFIX, suffix_len);
+    pack_path[home_len+suffix_len] = '\0';
+
+
+    if (nftw(pack_path, ftw_rm, 64, FTW_DEPTH | FTW_PHYS) == 0) {
+        printf("    Successfully removed Package directory!\n");
+    } else {
+        printf("    Could not remove Package directory '%s'\n", pack_path);
+    }
+    free(pack_path);
+
 
     return 0;
 
     malloc_error:
         printf("Memory allocation failed\n");
         return 1;
-
 }
 
 int main(int argc, char** argv) {
-    
+
     if (!is_admin()) {
         printf("You need to run the installation as root/administrator to install Foglang!\n");
         return -1;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "remove") == 0) {
+        return remove_foglang();
+    }
+
+    printf("Installing Foglang2 and Bandvagn package manager. Continue? (y/n) ");
+    char in;
+    scanf(" %c",&in);
+    if (in != 'Y' && in != 'y') {
+        printf("Cancelling installation...\n");
+        return 0;
     }
 
     printf("Downloading Foglang2 from '%s' to '%s'...\n", FOGLANG_BIN_LINK, FOGLANG_INSTALL_PATH);
