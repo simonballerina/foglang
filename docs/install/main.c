@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700           // for nftw() on Linux
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
