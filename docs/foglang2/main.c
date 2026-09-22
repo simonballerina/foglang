@@ -94,8 +94,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
     char start_wd[PATH_MAX];
     getcwd(start_wd, PATH_MAX);
 
-    // cd to new file
-
     int file_name_len = strlen(file_name);
 
     char* text = read_file(file_name); 
@@ -113,6 +111,8 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
         throw_error(ERR_FILE, (String){.len = prefix_len+file_name_len+1, .string = err_msg}, NULL);
     }
 
+
+    // cd to the directory of the file
     for (int i = file_name_len-1; i >= 0; i--) {
 
         if (file_name[i] == slash) {
@@ -127,6 +127,7 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             break;
         }
     }
+
 
     int text_len = strlen(text);
 
@@ -228,26 +229,30 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
                 char* prefix = LIBPATH;
                 if (is_gung) prefix = PACKPATH;
 
+                // getenv("HOME") + prefix + pack_name + /main.fg
+                char* home = getenv("HOME");
+                if (!home) {
+                    throw_error(ERR_FILE, (String){"Could not get HOME environment variable", strlen("Could not get HOME environment variable")}, NULL);
+                }
+
+                int home_len = strlen(home);
                 int prefix_len = strlen(prefix);
-                // prefixlen + packlen + / + strlen(main.fg)
-                int new_name_len = prefix_len+pack_len+1+7;
-                char* new_name = malloc(new_name_len+1);
+                int pack_len = strlen(pack_name);
+                int new_name_len = home_len + prefix_len-1 + pack_len + 8; // 8 for "/main.fg"
+                char* new_name = malloc(new_name_len + 1);
                 if (!new_name) goto malloc_error;
+                
+                memcpy(new_name, home, home_len);
+                memcpy(new_name+home_len, prefix+1, prefix_len-1); // +1 and -1 to remove the ~ from prefix
+                memcpy(new_name+home_len+prefix_len-1, pack_name, pack_len);
+                memcpy(new_name+home_len+prefix_len-1+pack_len, "/main.fg", 8);
 
-                memcpy(new_name, prefix, prefix_len);
-
-                memcpy(new_name+prefix_len, pack_name, pack_len);
-
-                new_name[prefix_len+pack_len] = slash;
-
-                memcpy(new_name+prefix_len+1+pack_len, "main.fg", 7);
                 new_name[new_name_len] = '\0';
 
                 free(pack_name);
                 pack_name = new_name;
-
+                
             }
-
 
             (*v)[*top] = pack_name;
             (*top)++;
@@ -256,7 +261,6 @@ void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int
             bult_rec(pack_name, visited_files, buff, origin_rows, 0);
 
         }
-        
     }
 
     // add file content to buff

@@ -26,3 +26,7 @@ void fg_getline(char **line){
         printf("Memory allocation failed\n");
         exit(1);
 }
+
+
+
+

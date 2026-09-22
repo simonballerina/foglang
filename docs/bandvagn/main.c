@@ -36,7 +36,6 @@ Bandvagn package manager for Foglang
     #define PACK_PATH "C:\\Program Files\\foglang2\\packages\\"
 #elif defined(__APPLE__)
     #define PACK_PATH_SUFFIX "/Library/Application Support/foglang2/packages/"
-     #define PACK_PATH "C:\\Program Files\\foglang2\\packages\\"
 #elif defined(__linux__)
     #define PACK_PATH_SUFFIX "/.local/share/foglang2/packages/"
 
@@ -392,6 +391,7 @@ usage: vagn [--help] \n\
             remove <package_name>\n\
             update <package_name>\n\
             highlight\n\
+            list\n\
 \n\
 Install primtalsletaren: vagn install primtalsletaren\n\
 \n\
