@@ -26,3 +26,6 @@ int check_and_create_dir(char* path);
 
 int install_package(char* package_name);
 int remove_package(char* package_name);
+
+char* get_json_item(char* json, char* key);
+int download_github_folder(const char* link, const char* path, const char* owner);
