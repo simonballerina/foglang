@@ -3,7 +3,7 @@
 double str_to_double(char *num)
 {
     int len = strlen(num);
-    // kolla om '-' eller '.' finns
+    // check if '-' or '.' exists
     int negative = 0;
     int j;
     int power = len - 1;
@@ -369,7 +369,7 @@ void print_variables(Scope *scope)
     for (int i = 0; i < (*scope).index; i++)
     {
         printf("%i: Type: %d    Name: ", i, (*scope).variables[i].type);
-        // printa namn
+        // print name
         if ((*scope).variables[i].name != NULL)
         {
             for (int j = 0; j < (*scope).variables[i].name_len; j++)

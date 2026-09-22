@@ -44,7 +44,7 @@ void change_var_value(Scope* scope, char* name, Node* new_value){
         if (!strcmp(scope->variables[i].name, name)) {
 
             NodeType old_type = scope->variables[i].type;
-            if (old_type == NODE_STRING){ // när listor implementeras: free:a dem!
+            if (old_type == NODE_STRING){ // free when lists are implemented
                 free(scope->variables[i].string);
             }
 

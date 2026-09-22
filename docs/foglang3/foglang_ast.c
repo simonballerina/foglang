@@ -189,13 +189,13 @@ Node* parse_expression(Token* tokens, int tok_count){
 }
 
 Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
-    current++; // Hoppa över GIVET/NAER
+    current++; // skip GIVET/NAER
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
     
     Node* condition = parse_cmp(tokens, tok_count);
 
-    current++; // Hoppa över {
+    current++; // skip {
 
     // Count statement/block size
     int len = 0;
@@ -220,7 +220,7 @@ Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
     while (tokens[current].type != CLOSE_BLOCK && tokens[current].type != FILE_END) {
         block[statement_count++] = parse_statement(tokens, tok_count);
     }
-    current++; // Hoppa över }
+    current++; // skip }
 
     NodeType ret_type;
     if (type == NAER) ret_type = NODE_NAER;
@@ -263,7 +263,7 @@ Node* parse_band(Token* tokens, int tok_count) {
 }
 
 Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
-    current++; // Hoppa över 'foug'/'tpos'
+    current++; // skip 'foug'/'tpos'
 
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
