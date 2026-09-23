@@ -17,7 +17,7 @@
 
 Node* evaluate(Node* node, Scope* scope) {
     // debug print
-    // TODO, make modifyable version of node
+    // TODO, make modifiable copy of node
     NodeType type = node->type;
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
@@ -118,11 +118,10 @@ void band(Node* node, Scope* scope){
         return;
     }  
     change_var_value(scope, node->band.name, value);
-    // uppdate instead
-
-    
+    // update instead
 
 }
+
 
 void interpret_block(Node* block, Scope* scope) {
     switch (block->type) {
@@ -142,6 +141,9 @@ void interpret_block(Node* block, Scope* scope) {
 
             break;
     }
+
+    // Debug print active scope
+    print_scope(scope);
 
 }
 
@@ -229,7 +231,6 @@ int main(int argc, char **argv){
     stack_init(&scopes, sizeof(Scope), 8);
     // create main scope
     create_scope();
-
     Scope main_scope;
     stack_pop(&scopes, &main_scope);
 

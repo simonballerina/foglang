@@ -12,6 +12,7 @@ typedef enum {
     NODE_FOUG,
     NODE_TPOS,
     NODE_LIST,
+    NODE_BOUL,
 } NodeType;
 
 
@@ -35,16 +36,16 @@ typedef enum {
 
     IDENTIFIER, // 14
 
-    TERMINATOR, // 14
-    BAND,       // 15
-    GIVET,      // 16
-    FOUG,       // 17
-    NAER,       // 18
-    SVETS,      // 19
-    JUNK,       // 20
-    TPOS,       // 21
-    BOUL,       // 22
-    COMMA,      // 23
+    TERMINATOR, // 15
+    BAND,       // 16
+    GIVET,      // 17
+    FOUG,       // 18
+    NAER,       // 19
+    SVETS,      // 20
+    JUNK,       // 21
+    TPOS,       // 22
+    BOUL,       // 23
+    COMMA,      // 24
 
     OPEN_BLOCK,
     CLOSE_BLOCK,
@@ -98,7 +99,12 @@ struct Node {
         } band;
 
         struct {
-            Node* condition;
+            union {
+                Node* condition;
+                char** parameters;
+            };
+            char* function_name;
+            
             Node** block;
             int statement_count;
         } block;
@@ -169,6 +175,7 @@ char* op_to_str(TokType op);
 void print_ast_statement(Node* node, const char* prefix, int is_left);
 void print_ast(Node** ast, const char* prefix, int is_left, int ast_size);
 void print_tokens(Token* instructions, int instruction_amount);
+void print_scope(Scope* scope);
 
 Node* make_num(double number);
 Node* make_identifier(char* name);
@@ -183,6 +190,7 @@ Node* parse_cond_block(Token* tokens, int tok_count, TokType type);
 Node* parse_band(Token* tokens, int tok_count);
 Node* parse_output_statement(Token* tokens, int tok_count, TokType type);
 Node* parse_statement(Token* tokens, int tok_count);
+Node* parse_boul(Token* tokens, int tok_count);
 Node** build_ast(Token* tokens, int tok_count, int* ast_size);
 Token* tokenize(char* buff, int* tok_amount);
 

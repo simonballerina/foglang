@@ -250,6 +250,55 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
             break;
         }  
+        case NODE_BOUL: {
+
+            printf("BOUL (%s)\n", node->block.function_name);
+
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            /*
+                CONDITION
+            */
+
+            printf("%s├── PARAMETERS\n", new_prefix);
+
+            char cond_prefix[256];
+
+            snprintf(cond_prefix, sizeof(cond_prefix), "%s│   ", new_prefix);
+
+            for (int i = 0; i < node->block.parameters[i] != 0; i++) {
+                printf("%s%s%s\n", cond_prefix, node->block.parameters[i+1] != 0 ? "├── " : "└── ", node->block.parameters[i]); 
+                if (node->block.parameters[i+1] == 0) break;
+            }
+
+            /*
+                BLOCK
+            */
+
+            printf("%s└── BLOCK\n", new_prefix);
+
+            char block_prefix[256];
+
+            snprintf(block_prefix, sizeof(block_prefix), "%s    ", new_prefix);
+
+            for(int i = 0;
+                i < node->block.statement_count;
+                i++)
+            {
+                print_ast_statement(node->block.block[i], block_prefix, i != node->block.statement_count - 1);
+            }
+
+            break;
+        }  
+
 
     }
 }
@@ -260,7 +309,17 @@ void print_ast(Node** ast, const char* prefix, int is_left, int ast_size) {
     }
 }
 
-
+void print_scope(Scope* scope) {
+    printf("--------\nScope: \n");
+    for (int i = 0; i < scope->top; i++) {
+        Variable v = scope->variables[i];
+        printf("  %s: ", v.name);
+        if (v.type == NODE_NUMBER) printf("%lf\n", v.number);
+        else if (v.type == NODE_STRING) printf("s'%s'\n", v.string);
+        else if (v.type == NODE_LIST) printf("List\n");
+    }
+    printf("--------\n");
+}
 
 
 void print_tokens(Token* instructions, int instruction_amount)
@@ -281,11 +340,27 @@ void print_tokens(Token* instructions, int instruction_amount)
         case GIVET:
             printf("'GIVET ATT'    ");
             break;
+        case SVETS:
+            printf("'SVETS'    ");
+            break;
+        case JUNK:
+            printf("'JUNK'    ");
+            break;
+        case TPOS:
+            printf("'TPOS'    ");
+            break;
+        case COMMA:
+            printf("','    ");
+            break;
+        case BOUL:
+            printf("'BOUL'    ");
+            break;
         case RIGHT_PAR:
             printf("')'    ");
             break;
         case LEFT_PAR:
             printf("'('    ");
+            break;
         case OPEN_BLOCK:
             printf("'{'    \n");
             break;
