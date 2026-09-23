@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700           // for nftw() on Linux
+
 /*
 Bandvagn package manager for Foglang
 
