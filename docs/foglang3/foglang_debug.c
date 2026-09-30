@@ -1,5 +1,36 @@
 #pragma once
 
+char* node_type_to_str(NodeType type){
+    switch(type) {
+        case NODE_NULL:
+            return "NODE_NULL";
+        case NODE_NUMBER:
+            return "NODE_NUMBER";
+        case NODE_STRING:
+            return "NODE_STRING";
+        case NODE_BINARY:
+            return "NODE_BINARY";
+        case NODE_BAND:
+            return "NODE_BAND";
+        case NODE_GIVET:        
+            return "NODE_GIVET";
+        case NODE_IDENTIFIER:
+            return "NODE_IDENTIFIER";
+        case NODE_NAER:
+            return "NODE_NAER";
+        case NODE_FOUG:
+            return "NODE_FOUG";
+        case NODE_TPOS:
+            return "NODE_TPOS";
+        case NODE_LIST:
+            return "NODE_LIST";
+        case NODE_BOUL: 
+            return "NODE_BOUL";
+        default:
+            return "[?]";
+    }
+}
+
 void print_indent(int indent){
 
     for(int i = 0; i < indent; i++)
@@ -17,6 +48,9 @@ char* op_to_str(TokType op){
         case OP_MOD: return "%";
         case OP_EXP: return "^";
         case CMP_EQUALS: return "=";
+        case CMP_NOT_EQUALS: return "!=";
+        case CMP_GREATER_THAN: return ">";
+        case CMP_LESS_THAN: return "<";
 
         default: return "?";
     }

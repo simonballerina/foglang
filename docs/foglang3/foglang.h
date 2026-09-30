@@ -170,6 +170,7 @@ Stack scopes;
 char *read_file(const char *filename);
 void help(int argc, char **argv);
 
+char* node_type_to_str(NodeType type);
 void print_indent(int indent);
 char* op_to_str(TokType op);
 void print_ast_statement(Node* node, const char* prefix, int is_left);

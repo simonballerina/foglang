@@ -15,28 +15,33 @@
 #include "foglang_var.c"
 
 
-Node* evaluate(Node* node, Scope* scope) {
-    // debug print
-    // TODO, make modifiable copy of node
+Node* evaluate(Node* node, Scope* scope) { // returns node on the heap, free after use!
+    // copy node type to avoid changing the original node
+    Node* eval_node = malloc(sizeof(Node));
+    if (!eval_node) goto malloc_error;
+    memcpy(eval_node, node, sizeof(Node));
+
     NodeType type = node->type;
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
-        node->type = v.type;
+        eval_node->type = v.type;
         type = v.type;
-        if (v.type == NODE_NUMBER) node->number.value = v.number;
-        else if (v.type == NODE_STRING) node->string.string = v.string;
-        else if (v.type == NODE_LIST) node->list = v.list;
+        if (v.type == NODE_NUMBER) eval_node->number.value = v.number;
+        else if (v.type == NODE_STRING) eval_node->string.string = v.string;
+        else if (v.type == NODE_LIST) eval_node->list = v.list;
 
     }
     if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_NULL) {
-        return node;
+        return eval_node;
     }
     // bin expr
-    Node* left = evaluate(node->binary.left, scope);
-    Node* right = evaluate(node->binary.right, scope);
+    Node* left = evaluate(eval_node->binary.left, scope);
+    Node* right = evaluate(eval_node->binary.right, scope);
     NodeType eval_type = left->type;
 
     Node* ret;
+
+    Node* num;
 
     switch (node->binary.op) {
 
@@ -57,33 +62,81 @@ Node* evaluate(Node* node, Scope* scope) {
 
                 ret = make_str(summed_str);
             }
+            free(left);
+            free(right);
 
             return ret;
             break;
+        
+        
         case OP_DIV:
-            return make_num(left->number.value/right->number.value);
+            num = make_num(left->number.value/right->number.value);
+            free(left);
+            free(right);
+            return num;
             break;
         case OP_MOD:
-            return make_num((int)(left->number.value)%(int)(right->number.value));
+            num = make_num((int)(left->number.value)%(int)(right->number.value));
+            free(left);
+            free(right);
+            return num;            
             break;
         case OP_MUL:
-            return make_num(left->number.value*right->number.value);
+            num = make_num(left->number.value*right->number.value);
+            free(left);
+            free(right);
+            return num;
             break;
         case OP_SUB:
-            return make_num(left->number.value-right->number.value);
+            num = make_num(left->number.value-right->number.value);
+            free(left);
+            free(right);
+            return num;
             break;
         case OP_EXP:
-            return make_num(pow(left->number.value, right->number.value));
+            num = make_num(pow(left->number.value, right->number.value));
+            free(left);
+            free(right);
+            return num;
             break;
         case CMP_EQUALS:
             if (eval_type == NODE_NUMBER) {
-                return make_num(left->number.value == right->number.value);
+                num = make_num(left->number.value == right->number.value);
+                free(left);
+                free(right);
+                return num;
             }
-            return make_num(!strcmp(left->string.string, right->string.string));
+            num = make_num(!strcmp(left->string.string, right->string.string));
+            free(left);
+            free(right);
+            return num;
             break;
         case CMP_NOT_EQUALS:
             if (eval_type == NODE_NUMBER) {
-                return make_num(left->number.value != right->number.value);
+                num = make_num(left->number.value != right->number.value);
+                free(left);
+                free(right);
+                return num;
+            }
+            num = make_num(strcmp(left->string.string, right->string.string));
+            free(left);
+            free(right);
+            return num;
+            break;
+        case CMP_GREATER_THAN:
+            if (eval_type == NODE_NUMBER) {
+                num = make_num(left->number.value > right->number.value);
+                free(left);
+                free(right);
+                return num;
+            }
+            break;
+        case CMP_LESS_THAN:
+            if (eval_type == NODE_NUMBER) {
+                num = make_num(left->number.value < right->number.value);
+                free(left);
+                free(right);
+                return num;
             }
             break;
     }
@@ -123,6 +176,8 @@ void band(Node* node, Scope* scope){
 }
 
 
+
+
 void interpret_block(Node* block, Scope* scope) {
     switch (block->type) {
         case NODE_FOUG:
@@ -135,15 +190,22 @@ void interpret_block(Node* block, Scope* scope) {
             band(block, scope);
             break;
         case NODE_GIVET:
-
+            Node* condition = evaluate(block->block.condition, scope);
+            if (condition->type == NODE_NUMBER && condition->number.value) {
+                for (int i = 0; i < block->block.statement_count; i++)
+                    interpret_block(block->block.block[i], scope);
+            }
             break;
         case NODE_NAER:
-
+            while (evaluate(block->block.condition, scope)->number.value) {
+                for (int i = 0; i < block->block.statement_count; i++)
+                    interpret_block(block->block.block[i], scope);
+            }
             break;
     }
 
     // Debug print active scope
-    print_scope(scope);
+    //print_scope(scope);
 
 }
 

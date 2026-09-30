@@ -156,7 +156,6 @@ Node* parse_cmp(Token* tokens, int tok_count) {
         Node* right = parse_expression(tokens, tok_count);
 
         left = make_binary(left, op, right);
-
     }
 
     return left;
@@ -169,11 +168,7 @@ Node* parse_expression(Token* tokens, int tok_count){
 
     while (current < tok_count && 
         (tokens[current].type == OP_ADD || 
-            tokens[current].type == OP_SUB || 
-            tokens[current].type == CMP_EQUALS || 
-            tokens[current].type == CMP_NOT_EQUALS || 
-            tokens[current].type == CMP_GREATER_THAN || 
-            tokens[current].type == CMP_LESS_THAN)) 
+            tokens[current].type == OP_SUB)) 
     {
         TokType op = tokens[current].type;
         current++;
