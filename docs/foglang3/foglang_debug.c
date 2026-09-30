@@ -1,5 +1,43 @@
 #pragma once
 
+char* tok_type_to_string(TokType type){
+    
+    switch(type){
+        case LEFT_PAR: return "LEFT_PAR";
+        case RIGHT_PAR: return "RIGHT_PAR";
+        case OP_ADD: return "OP_ADD";
+        case OP_SUB: return "OP_SUB";
+        case OP_MUL: return "OP_MUL";
+        case OP_DIV: return "OP_DIV";
+        case OP_MOD: return "OP_MOD";
+        case OP_EXP: return "OP_EXP";
+        case NUMBER: return "NUMBER";
+        case STRING: return "STRING";
+        case COMMA: return "COMMA";
+
+        case CMP_EQUALS: return "CMP_EQUALS";
+        case CMP_NOT_EQUALS: return "CMP_NOT_EQUALS";
+        case CMP_GREATER_THAN: return "CMP_GREATER_THAN";
+        case CMP_LESS_THAN: return "CMP_LESS_THAN";
+
+        case IDENTIFIER: return "IDENTIFIER";
+
+        case TERMINATOR: return "TERMINATOR";
+        case BAND: return "BAND";
+        case GIVET: return "GIVET ATT";
+        case FOUG: return "FOUG";
+        case NAER: return "NAER";
+        case SVETS: return "SVETS";
+        case JUNK: return "JUNK";
+        case TPOS: return "TPOS";
+        case BOUL: return "BOUL";
+
+        default:
+            printf("Unknown token type '%d'\n", type);
+            exit(1);
+    }
+}
+
 char* node_type_to_str(NodeType type){
     switch(type) {
         case NODE_NULL:
@@ -26,6 +64,8 @@ char* node_type_to_str(NodeType type){
             return "NODE_LIST";
         case NODE_BOUL: 
             return "NODE_BOUL";
+        case NODE_FUNCTION_CALL:
+            return "NODE_FUNCTION_CALL";
         default:
             return "[?]";
     }
@@ -283,7 +323,33 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             }
 
             break;
-        }  
+        } 
+
+        case NODE_FUNCTION_CALL: {
+
+            printf("CALL %s\n", node->function.name);
+
+            char new_prefix[256];
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            if (node->function.arguments == NULL) {
+                break;
+            }
+
+            for (int i = 0; node->function.arguments[i] != NULL; i++) {
+                int is_last = node->function.arguments[i + 1] == NULL;
+                print_ast_statement(node->function.arguments[i], new_prefix, !is_last);
+            }
+
+            break;
+        }
+
         case NODE_BOUL: {
 
             printf("BOUL (%s)\n", node->block.function_name);
@@ -358,6 +424,7 @@ void print_scope(Scope* scope) {
 
 void print_tokens(Token* instructions, int instruction_amount)
 {
+    int indent = 0;
     for (int i = 0; i < instruction_amount; i++)
     {
         switch (instructions[i].type)
@@ -384,58 +451,68 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'TPOS'    ");
             break;
         case COMMA:
-            printf("','    ");
+            printf("',' ");
             break;
         case BOUL:
             printf("'BOUL'    ");
             break;
         case RIGHT_PAR:
-            printf("')'    ");
+            printf("')' ");
             break;
         case LEFT_PAR:
-            printf("'('    ");
+            printf("'(' ");
             break;
         case OPEN_BLOCK:
-            printf("'{'    \n");
+            printf("'{' \n");
+            indent++;
+            for (int j = 0; j < indent; j++)
+                printf("    ");
             break;
         case CLOSE_BLOCK:
-            printf("'}'    ");
+            printf("'}' \n");
+            indent--;
+            int j = 0;
+            if (i+1 < instruction_amount && instructions[i+1].type == CLOSE_BLOCK) {
+                j++;
+            }
+            for (j; j < indent; j++)
+                printf("    ");
             break;
         case OP_ADD:
-            printf("'+'    ");
+            printf("'+' ");
             break;
         case OP_SUB:
-            printf("'-'    ");
+            printf("'-' ");
             break;
         case OP_MUL:
-            printf("'*'    ");
+            printf("'*' ");
             break;
         case OP_DIV:
-            printf("'/'    ");
+            printf("'/' ");
             break;
         case OP_EXP:
-            printf("'^'    ");
+            printf("'^' ");
             break;
         case OP_MOD:
-            printf("'%%'    ");
+            printf("'%%' ");
             break;
         case IDENTIFIER:
-            printf("'%.*s'    ", (int)strlen(instructions[i].string), instructions[i].string);
+            printf("'%.*s' ", (int)strlen(instructions[i].string), instructions[i].string);
             break;
         case CMP_EQUALS:
-            printf("'='    ");
+            printf("'=' ");
             break;
         case CMP_NOT_EQUALS:
-            printf("'!='    ");
+            printf("'!=' ");
             break;
         case CMP_GREATER_THAN:
-            printf("'>'    ");
+            printf("'>' ");
             break;
         case CMP_LESS_THAN:
-            printf("'<'    ");
+            printf("'<' ");
             break;
         case NUMBER:
-            printf("'%lf'    ", instructions[i].value);
+            printf("'%lf' ", instructions[i].value);
             break;
         case STRING:
             printf("s'");
@@ -444,14 +521,20 @@ void print_tokens(Token* instructions, int instruction_amount)
                 if (c == '\n') printf("\\n");
                 else printf("%c", c);
             }
-            printf("'    ");
+            printf("' ");
 
             break;
         case TERMINATOR:
             printf(";\n");
+            int k = 0;
+            if (i+1 < instruction_amount && instructions[i+1].type == CLOSE_BLOCK) {
+                k++;
+            }
+            for (k; k < indent; k++)
+                printf("    ");
             break;
         default:
-            printf("'TKN'    ");
+            printf("'TKN(%d)' ", instructions[i].type);
         }
     }
     printf("\n");

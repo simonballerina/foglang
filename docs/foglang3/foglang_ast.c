@@ -59,6 +59,98 @@ Node* make_binary(Node* left, TokType op, Node* right){
     return ret;
 }
 
+Node* make_function(Token* tokens, int tok_count) {
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) goto malloc_error;
+    ret->type = NODE_FUNCTION_CALL;
+    ret->function.name = tokens[current].string;
+    current+=2; // skip function name and left parenthesis
+
+    // count amount of arguments
+    int arg_count = 0;
+    int depth = 0;
+    int found_one_arg = 0;
+
+
+    for (int i = current; i < tok_count; i++) {
+        
+        if (i == current && tokens[i].type != RIGHT_PAR) found_one_arg = 1;
+
+        if (tokens[i].type == LEFT_PAR) {
+            depth++;
+        }
+        if (tokens[i].type == RIGHT_PAR) {
+            if (depth == 0) break;
+            depth--;
+        }
+        if (depth == 0 && tokens[i].type == COMMA) {
+            arg_count++;
+        }
+    }
+    arg_count += found_one_arg;
+
+    Node** args = malloc(sizeof(Node*)*(arg_count+1)); // +1 to null terminate
+    if (!args) goto malloc_error;
+
+    // parse arguments
+    depth = 0;
+    int w = 0;
+    for (int i = current; i < tok_count; i++) {
+        if (tokens[i].type == LEFT_PAR) {
+            depth++;
+        }
+        if (tokens[i].type == RIGHT_PAR) {
+            if (depth == 0) break;
+            depth--;
+        }
+        if (depth == 0 && tokens[i].type == COMMA || depth == 0 && i == current) {
+            // find length of argument
+            int arg_len = 0;
+            int arg_depth = 0;
+
+            int start = i+(tokens[i].type == COMMA ? 1 : 0);
+
+            for (int j = start; j < tok_count; j++) {
+                if (tokens[j].type == LEFT_PAR) arg_depth++;
+                if (tokens[j].type == RIGHT_PAR) {
+                    if (arg_depth == 0) break;
+                    arg_depth--;
+                }
+                if (arg_depth == 0 && tokens[j].type == COMMA) break;
+                arg_len++;
+            }
+
+            int saved = current;
+            current = 0;
+            args[w++] = parse_expression(tokens+start, arg_len);
+            current = saved;
+
+            i = start+arg_len-1; // -1 because the for loop will increment i
+        }
+    }
+    args[w] = 0;
+
+    int call_depth = 0;
+    while (current < tok_count) {
+        if (tokens[current].type == LEFT_PAR) {
+            call_depth++;
+        }
+        else if (tokens[current].type == RIGHT_PAR) {
+            if (call_depth == 0) break;
+            call_depth--;
+        }
+        current++;
+    }
+
+    ret->function.arguments = args;
+
+    return ret;
+
+    malloc_error:
+        printf("Memory allocation failed for function\n");
+        exit(1);
+}
+
 Node* parse_exp(Token* tokens, int tok_count) {
     if (tokens[current].type == NUMBER) {
         Node* ret = make_num(tokens[current].value);
@@ -66,8 +158,14 @@ Node* parse_exp(Token* tokens, int tok_count) {
 
         return ret;
     }
-    if (tokens[current].type == IDENTIFIER){
+    if (tokens[current].type == IDENTIFIER && tokens[current+1].type != LEFT_PAR) {
         Node* ret = make_identifier(tokens[current].string);
+        current++;
+
+        return ret;
+    }
+    if (tokens[current].type == IDENTIFIER && tokens[current+1].type == LEFT_PAR) {
+        Node* ret = make_function(tokens, tok_count);
         current++;
 
         return ret;
@@ -371,7 +469,7 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
 
 Node* parse_statement(Token* tokens, int tok_count) {
 
-    printf("Parsing token '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
+    printf("Parsing token '%s', type: '%s'\n", tokens[current].string, tok_type_to_string(tokens[current].type));
 
     if (tokens[current].type == BAND)
         return parse_band(tokens, tok_count);
@@ -390,6 +488,14 @@ Node* parse_statement(Token* tokens, int tok_count) {
 
     if (tokens[current].type == BOUL)
         return parse_boul(tokens, tok_count);
+
+    if (tokens[current].type == IDENTIFIER || tokens[current].type == NUMBER || tokens[current].type == STRING || tokens[current].type == LEFT_PAR) {
+        Node* ret = parse_expression(tokens, tok_count);
+
+        current++;
+
+        return ret;
+    }
     
     printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
 

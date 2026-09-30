@@ -13,6 +13,7 @@ typedef enum {
     NODE_TPOS,
     NODE_LIST,
     NODE_BOUL,
+    NODE_FUNCTION_CALL,
 } NodeType;
 
 
@@ -126,6 +127,11 @@ struct Node {
             int is_junk;
         } foug;
 
+        struct {
+            char* name;
+            Node** arguments;
+        } function;
+
     };
 };
 
@@ -170,6 +176,7 @@ Stack scopes;
 char *read_file(const char *filename);
 void help(int argc, char **argv);
 
+char* tok_type_to_string(TokType type);
 char* node_type_to_str(NodeType type);
 void print_indent(int indent);
 char* op_to_str(TokType op);
@@ -178,6 +185,7 @@ void print_ast(Node** ast, const char* prefix, int is_left, int ast_size);
 void print_tokens(Token* instructions, int instruction_amount);
 void print_scope(Scope* scope);
 
+Node* make_function(Token* tokens, int tok_count);
 Node* make_num(double number);
 Node* make_identifier(char* name);
 Node* make_str(char* str);
