@@ -167,6 +167,7 @@ typedef struct {
     int max_size;        
 } Stack;
 
+
 // utils, eg helper-functions
 double str_to_double(char *num);
 char *read_file(const char *filename);
@@ -226,3 +227,13 @@ Bult_Ret bult(char* file_name, int debug);
 void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin);
 void loop(Token *instruction, Program program, Scope *scope, int keyword_count, int require_last, int has_eval);
 void tpos(Token *instruction, Scope *scope);
+
+typedef struct {
+    int start_index;
+    int len;
+    Dynamic_Var info;
+} Arg;
+
+// built-in functions
+Dynamic_Var foglang_exit(Arg *args, int arg_count, Token *instruction);
+Dynamic_Var foglang_len(Arg *args, int arg_count, Token *instruction);

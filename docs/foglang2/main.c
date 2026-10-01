@@ -79,7 +79,7 @@ int *loop_links;
 #include "foglang_utils.c"
 #include "foglang_eval.c" 
 #include "foglang_var.c"
-
+#include "foglang_builtins.c"
 
 
 void bult_rec(char* file_name, Bult_File_Types* visited_files, String* buff, int* origin_rows, int is_origin) {
@@ -822,32 +822,24 @@ Program tokenize(String str, int debug)
         }
     }
 
-    // add functions to the functions
+    // add func flagg on actual function calls (var then parenthesis) and to function definitions (function then var)
+
     for (int i = 0; i < instruction_amount; i++)
     {
         if (instructions[i][0].type == FUNCTION)
         {
             instructions[i][1].var.type = VAR_FUNCTION;
-            if (debug) printf("[DEBUG] Found token FUNCTION at instructions[%d][0]\n", i);
-            // sätt funktionsflaggan på faktiska funktionsanrop (variabel följt av parantes)
-            // add func flagg on actual function calls (var then parenthesis)
-            for (int j = i + 1; j < instruction_amount; j++)
-            { // row-loop
-                for (int k = 0; instructions[j][k].type != TERMINATOR; k++)
-                { // token-loop
-                    if (instructions[j][k].type == VARIABLE)
-                    {
-                        if (instructions[j][k].var.name_len == instructions[i][1].var.name_len
-                            && !strncmp(instructions[j][k].var.name, instructions[i][1].var.name, instructions[j][k].var.name_len)
-                            && instructions[j][k+1].type == LEFT_PAR)
-                        {
-                            instructions[j][k].var.type = VAR_FUNCTION;
-                        }
-                    }
-                }
+        }
+
+        for (int j = 0; instructions[i][j].type != TERMINATOR; j++)
+        {
+            if (instructions[i][j].type == VARIABLE && instructions[i][j+1].type == LEFT_PAR)
+            {
+                instructions[i][j].var.type = VAR_FUNCTION;
             }
         }
     }
+
 
     Program program = {instructions, instruction_amount};
     
@@ -1876,11 +1868,6 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         if (instruction[i].type == COMMA && paren_depth == 0 && bracket_depth == 0) amount_of_args++;
     }
 
-    typedef struct {
-        int start_index;
-        int len;
-        Dynamic_Var info;
-    } Arg;
 
     int arg_count = 0;
     int paren_depth2 = 0;
@@ -1914,20 +1901,27 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
         }
     }
 
+    if (instruction[1].type == LEFT_PAR && instruction[2].type == RIGHT_PAR) arg_count = 0;
+
+
     if (arg_tokens_len == 0) {
         throw_error(ERR_SYNTAX, (String){"Syntax error in function call: missing closing parenthesis", strlen("Syntax error in function call: missing closing parenthesis")}, instruction);
     }
     cleanup_args(instruction+2, arg_tokens_len, instructions, instruction_amount, old_scope);
     // create Dynamic_Var for every value
     for (int i = 0; i < arg_count; i++){
-        
         Dynamic_Var eval_ret = dynamic_eval(instruction+arg_info[i].start_index, arg_info[i].len, instructions, instruction_amount, old_scope);
-        
-        //printf("==================================\n");
-        //print_token_row(instruction);
-        //printf("\n\n\n");
         arg_info[i].info = eval_ret;
     }
+
+    // check if it's a built-in function
+    for (int i = 0; i < builtin_amount; i++){
+        if (strlen(builtin_names[i]) == name_len && !strncmp(builtin_names[i], name, name_len)){
+            Dynamic_Var ret = builtins[i](arg_info, arg_count, instruction);
+            return ret;
+        }
+    }
+
     // find index to jump to
     int func_index = -1;
     for (int i = 0; i < instruction_amount; i++)
@@ -2020,6 +2014,7 @@ Dynamic_Var call_function(char *name, int name_len, int origin_program_counter, 
 
 void interpret_instruction(Token *current, Token **instructions, int instruction_amount, Scope *scope)
 {
+
     switch (current[0].type)
     {
     case FOUG:
