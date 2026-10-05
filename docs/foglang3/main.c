@@ -153,7 +153,7 @@ void foug(Node* node, Scope* scope){
     }
     else if (type == NODE_NUMBER) {
         if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
-        else printf("%lf", str->number.value);
+        else printf("%lf\n", str->number.value);
     }
     free(str);
 }

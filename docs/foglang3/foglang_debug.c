@@ -31,6 +31,7 @@ char* tok_type_to_string(TokType type){
         case JUNK: return "JUNK";
         case TPOS: return "TPOS";
         case BOUL: return "BOUL";
+        case RETURN: return "RETURN";
 
         default:
             printf("Unknown token type '%d'\n", type);
@@ -66,6 +67,8 @@ char* node_type_to_str(NodeType type){
             return "NODE_BOUL";
         case NODE_FUNCTION_CALL:
             return "NODE_FUNCTION_CALL";
+        case NODE_RETURN:
+            return "NODE_RETURN";
         default:
             return "[?]";
     }
@@ -349,7 +352,28 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
             break;
         }
+        case NODE_RETURN: {
 
+            printf("RETURN\n");
+
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            print_ast_statement(
+                node->ret.value,
+                new_prefix,
+                0
+            );
+
+            break;
+        }
         case NODE_BOUL: {
 
             printf("BOUL (%s)\n", node->block.function_name);
@@ -449,6 +473,9 @@ void print_tokens(Token* instructions, int instruction_amount)
             break;
         case TPOS:
             printf("'TPOS'    ");
+            break;
+        case RETURN:
+            printf("'RETURN'    ");
             break;
         case COMMA:
             printf("',' ");

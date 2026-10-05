@@ -469,7 +469,7 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
 
 Node* parse_statement(Token* tokens, int tok_count) {
 
-    printf("Parsing token '%s', type: '%s'\n", tokens[current].string, tok_type_to_string(tokens[current].type));
+    printf("Parsing token with type: '%s'\n", tok_type_to_string(tokens[current].type));
 
     if (tokens[current].type == BAND)
         return parse_band(tokens, tok_count);
@@ -489,8 +489,30 @@ Node* parse_statement(Token* tokens, int tok_count) {
     if (tokens[current].type == BOUL)
         return parse_boul(tokens, tok_count);
 
+    if (tokens[current].type == RETURN) {
+
+        current++; // skip RETURN
+
+        Node* ret = malloc(sizeof(Node));
+        if (!ret) goto malloc_error;
+
+        ret->type = NODE_RETURN;
+        ret->ret.value = parse_cmp(tokens, tok_count);
+
+        if (tokens[current].type != TERMINATOR) {
+            printf("Expected ; after return, got ");
+            print_tokens(tokens + current, 1);
+            exit(1);
+        }
+
+        current++; // skip ;
+
+        return ret;
+    }
+
+
     if (tokens[current].type == IDENTIFIER || tokens[current].type == NUMBER || tokens[current].type == STRING || tokens[current].type == LEFT_PAR) {
-        Node* ret = parse_expression(tokens, tok_count);
+        Node* ret = parse_cmp(tokens, tok_count);
 
         current++;
 
@@ -500,6 +522,10 @@ Node* parse_statement(Token* tokens, int tok_count) {
     printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
 
     return NULL;
+
+    malloc_error:
+        printf("Memory allocation failed\n");
+        exit(1);
 }
 
 
@@ -672,6 +698,10 @@ Token* tokenize(char* buff, int* tok_amount){
         } else if (strncmp(buff+i, "givet att ", 10) == 0) {
             tokens[tok_top++].type = GIVET;
             i += 9;
+            continue;
+        } else if (strncmp(buff+i, "return", 6) == 0) {
+            tokens[tok_top++].type = RETURN;
+            i += 5;
             continue;
         } else if (strncmp(buff+i, "!=", 2) == 0) {
             tokens[tok_top++].type = CMP_NOT_EQUALS;

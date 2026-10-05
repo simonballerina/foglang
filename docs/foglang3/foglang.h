@@ -14,6 +14,7 @@ typedef enum {
     NODE_LIST,
     NODE_BOUL,
     NODE_FUNCTION_CALL,
+    NODE_RETURN,
 } NodeType;
 
 
@@ -47,6 +48,7 @@ typedef enum {
     TPOS,       // 22
     BOUL,       // 23
     COMMA,      // 24
+    RETURN,     // 25
 
     OPEN_BLOCK,
     CLOSE_BLOCK,
@@ -131,6 +133,10 @@ struct Node {
             char* name;
             Node** arguments;
         } function;
+
+        struct {
+            Node* value;
+        } ret;
 
     };
 };
