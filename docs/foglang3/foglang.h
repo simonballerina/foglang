@@ -178,6 +178,9 @@ typedef struct {
 } Scope;
 
 Stack scopes;
+Stack return_values;
+Stack return_pc;
+
 
 char *read_file(const char *filename);
 void help(int argc, char **argv);
@@ -209,15 +212,16 @@ Node* parse_boul(Token* tokens, int tok_count);
 Node** build_ast(Token* tokens, int tok_count, int* ast_size);
 Token* tokenize(char* buff, int* tok_amount);
 
-Node* evaluate(Node* node, Scope* scope);
-void foug(Node* node, Scope* scope);
+Node* evaluate(Node** ast, Node* node, Scope* scope);
+void foug(Node** ast, Node* node, Scope* scope);
 void create_variable(Node* value, char* name, Scope* scope);
 void change_var_value(Scope* scope, char* name, Node* new_value);
 UnnamedVariable get_var_value(Scope* scope, char* name);
-void band(Node* node, Scope* scope);
-void interpret_block(Node* block, Scope* scope);
+void band(Node** ast, Node* node, Scope* scope);
+void interpret_block(Node** ast, Node* block, Scope* scope);
 void interpret_ast(Node** ast, int ast_size, Scope* main_scope);
 void create_scope(void);
+void call_function(Node** ast, Node* node, Scope* scope);
 
 void stack_init(Stack* stack, int element_size, int capacity);
 void stack_push(Stack* stack, void* value);

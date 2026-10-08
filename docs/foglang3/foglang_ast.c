@@ -298,7 +298,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
         if (tokens[i].type == IDENTIFIER) parameter_count++;
     }
 
-    char** parameters = malloc(sizeof(char*)*(parameter_count)+1); // +1 to null terminate
+    char** parameters = malloc(sizeof(char*)*(parameter_count+1)); // +1 to null terminate
     if (!parameters) goto malloc_error;
 
     int w = 0;
@@ -497,6 +497,13 @@ Node* parse_statement(Token* tokens, int tok_count) {
         if (!ret) goto malloc_error;
 
         ret->type = NODE_RETURN;
+        if (tokens[current].type == TERMINATOR) {
+            ret->ret.value = malloc(sizeof(Node));
+            if (!ret->ret.value) goto malloc_error;
+            ret->ret.value->type = NODE_NULL;
+            current++; // skip ;
+            return ret;
+        }
         ret->ret.value = parse_cmp(tokens, tok_count);
 
         if (tokens[current].type != TERMINATOR) {
@@ -537,8 +544,8 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
     for (int i = 0; i < tok_count; i++) {
         if (tokens[i].type == TERMINATOR || tokens[i].type == OPEN_BLOCK) len++;
     }
-    
-    Node** ast = malloc(sizeof(Node*)*len);
+
+    Node** ast = malloc(sizeof(Node*)*(len+1));
     if (!ast) goto malloc_error;
 
     int ast_top = 0;
@@ -548,6 +555,7 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
         ast[ast_top++] = statement;
     }
     *ast_size = ast_top;
+    ast[ast_top-1]->type = FILE_END;
 
     printf("AST generation complete\n\n");
 

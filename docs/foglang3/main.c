@@ -14,9 +14,43 @@
 
 #include "foglang_var.c"
 
+void call_function(Node** ast, Node* node, Scope* scope) {
+    // push return program counter
+    int ret_pc = current;
+    stack_push(&return_pc, &ret_pc);
 
-Node* evaluate(Node* node, Scope* scope) { // returns node on the heap, free after use!
+    // find function to call by searching program for function definition
+
+
+    for (int i = 0; ast[i]->type != FILE_END; i++) {
+        if (ast[i]->type == NODE_BOUL && !strcmp(ast[i]->block.function_name, node->function.name)) {
+
+            /*
+            // create new scope for function call
+            create_scope();
+            Scope* func_scope;
+            stack_pop(&scopes, &func_scope);
+
+            // assign arguments to parameters
+            for (int j = 0; node->function.arguments[j] != 0; j++) {
+                Node* arg = evaluate(ast, node->function.arguments[j], scope);
+                create_variable(arg, ast[i]->block.parameters[j], func_scope);
+                free(arg);
+            }
+            */
+
+            interpret_block(ast, ast[i]->block.block[0], scope);
+
+            return;
+
+        }
+    }
+
+}
+
+Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the heap, free after use!
     // copy node type to avoid changing the original node
+
     Node* eval_node = malloc(sizeof(Node));
     if (!eval_node) goto malloc_error;
     memcpy(eval_node, node, sizeof(Node));
@@ -31,12 +65,23 @@ Node* evaluate(Node* node, Scope* scope) { // returns node on the heap, free aft
         else if (v.type == NODE_LIST) eval_node->list = v.list;
 
     }
+
+    if (type == NODE_FUNCTION_CALL) {
+        call_function(ast, node, scope);
+
+        // pop return value from stack
+        Node* ret_val;
+        stack_pop(&return_values, &ret_val);
+        free(eval_node);
+        return ret_val;
+    }
+
     if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_NULL) {
         return eval_node;
     }
     // bin expr
-    Node* left = evaluate(eval_node->binary.left, scope);
-    Node* right = evaluate(eval_node->binary.right, scope);
+    Node* left = evaluate(ast, eval_node->binary.left, scope);
+    Node* right = evaluate(ast, eval_node->binary.right, scope);
     NodeType eval_type = left->type;
 
     Node* ret;
@@ -145,8 +190,8 @@ Node* evaluate(Node* node, Scope* scope) { // returns node on the heap, free aft
 
 }
 
-void foug(Node* node, Scope* scope){
-    Node* str = evaluate(node->foug.string, scope);
+void foug(Node** ast, Node* node, Scope* scope){
+    Node* str = evaluate(ast, node->foug.string, scope);
     NodeType type = str->type;
     if (type == NODE_STRING) {
         printf("%s\n", str->string.string);
@@ -159,8 +204,8 @@ void foug(Node* node, Scope* scope){
 }
 
 
-void band(Node* node, Scope* scope){
-    Node* value = evaluate(node->band.value, scope);
+void band(Node** ast, Node* node, Scope* scope){
+    Node* value = evaluate(ast, node->band.value, scope);
 
     // figure out if a new var is to be created
     NodeType t = get_var_value(scope, node->band.name).type;
@@ -176,29 +221,40 @@ void band(Node* node, Scope* scope){
 
 
 
-void interpret_block(Node* block, Scope* scope) {
+void interpret_block(Node** ast, Node* block, Scope* scope) {
     switch (block->type) {
         case NODE_FOUG:
-            foug(block, scope);
+            foug(ast, block, scope);
             break;
         case NODE_TPOS:
                 
             break;
         case NODE_BAND:
-            band(block, scope);
+            band(ast, block, scope);
             break;
         case NODE_GIVET:
-            Node* condition = evaluate(block->block.condition, scope);
+            Node* condition = evaluate(ast, block->block.condition, scope);
             if (condition->type == NODE_NUMBER && condition->number.value) {
                 for (int i = 0; i < block->block.statement_count; i++)
-                    interpret_block(block->block.block[i], scope);
+                    interpret_block(ast, block->block.block[i], scope);
             }
             break;
         case NODE_NAER:
-            while (evaluate(block->block.condition, scope)->number.value) {
+            while (evaluate(ast, block->block.condition, scope)->number.value) {
                 for (int i = 0; i < block->block.statement_count; i++)
-                    interpret_block(block->block.block[i], scope);
+                    interpret_block(ast, block->block.block[i], scope);
             }
+            break;
+        case NODE_RETURN:
+            // get return value
+            Node* ret = evaluate(ast, block->ret.value, scope);
+            stack_push(&return_values, &ret);
+            free(ret);
+
+            // set program counter to return pc
+            int ret_pc;
+            stack_pop(&return_pc, &ret_pc);
+            current = ret_pc;
             break;
     }
 
@@ -210,7 +266,7 @@ void interpret_block(Node* block, Scope* scope) {
 void interpret_ast(Node** ast, int ast_size, Scope* main_scope){
     for (int i = 0; i < ast_size; i++) {
         Node* block = ast[i];
-        interpret_block(block, main_scope);
+        interpret_block(ast, block, main_scope);
     }
 }
 
@@ -286,13 +342,19 @@ int main(int argc, char **argv){
     Node** ast = build_ast(tokens, tok_count, &ast_size);
     print_ast(ast, "", 0, ast_size);
 
-    // setup variable stack
-    
+    // init variable stack
     stack_init(&scopes, sizeof(Scope), 8);
     // create main scope
     create_scope();
     Scope main_scope;
     stack_pop(&scopes, &main_scope);
+
+    // init return value stack
+    stack_init(&return_values, sizeof(Node*), 8);
+
+    // init return pc stack
+    stack_init(&return_pc, sizeof(int), 8);
+
 
     interpret_ast(ast, ast_size, &main_scope);
 
