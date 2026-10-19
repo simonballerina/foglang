@@ -555,7 +555,9 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
         ast[ast_top++] = statement;
     }
     *ast_size = ast_top;
-    ast[ast_top-1]->type = FILE_END;
+    ast[ast_top] = malloc(sizeof(Node));
+    if (!ast[ast_top]) goto malloc_error;
+    ast[ast_top]->type = FILE_END;
 
     printf("AST generation complete\n\n");
 

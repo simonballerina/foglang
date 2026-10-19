@@ -38,7 +38,7 @@ void call_function(Node** ast, Node* node, Scope* scope) {
                 free(arg);
             }
             */
-
+            printf("Calling function '%s' at AST index %d\n", node->function.name, i);
             interpret_block(ast, ast[i]->block.block[0], scope);
 
             return;
@@ -50,12 +50,12 @@ void call_function(Node** ast, Node* node, Scope* scope) {
 
 Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the heap, free after use!
     // copy node type to avoid changing the original node
-
     Node* eval_node = malloc(sizeof(Node));
     if (!eval_node) goto malloc_error;
     memcpy(eval_node, node, sizeof(Node));
 
     NodeType type = node->type;
+
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
         eval_node->type = v.type;
@@ -67,12 +67,18 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
     }
 
     if (type == NODE_FUNCTION_CALL) {
+        printf("Calling function '%s'\n", node->function.name);
         call_function(ast, node, scope);
+        printf("Function '%s' returned\n", node->function.name);
 
         // pop return value from stack
-        Node* ret_val;
+        Node* ret_val = NULL;
         stack_pop(&return_values, &ret_val);
         free(eval_node);
+        if (!ret_val) {
+            printf("Function '%s' did not return a value\n", node->function.name);
+            exit(1);
+        }
         return ret_val;
     }
 
@@ -107,39 +113,45 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             free(left);
             free(right);
+            free(eval_node);
 
             return ret;
             break;
         
-        
+
         case OP_DIV:
             ret = make_num(left->number.value/right->number.value);
             free(left);
             free(right);
+            free(eval_node);
             return ret;
             break;
         case OP_MOD:
             ret = make_num((int)(left->number.value)%(int)(right->number.value));
             free(left);
             free(right);
+            free(eval_node);
             return ret;            
             break;
         case OP_MUL:
             ret = make_num(left->number.value*right->number.value);
             free(left);
             free(right);
+            free(eval_node);
             return ret;
             break;
         case OP_SUB:
             ret = make_num(left->number.value-right->number.value);
             free(left);
             free(right);
+            free(eval_node);
             return ret;
             break;
         case OP_EXP:
             ret = make_num(pow(left->number.value, right->number.value));
             free(left);
             free(right);
+            free(eval_node);
             return ret;
             break;
         case CMP_EQUALS:
@@ -147,11 +159,13 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret = make_num(left->number.value == right->number.value);
                 free(left);
                 free(right);
+                free(eval_node);
                 return ret;
             }
             ret = make_num(!strcmp(left->string.string, right->string.string));
             free(left);
             free(right);
+            free(eval_node);
             return ret;
             break;
         case CMP_NOT_EQUALS:
@@ -159,11 +173,14 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret = make_num(left->number.value != right->number.value);
                 free(left);
                 free(right);
+                free(eval_node);
                 return ret;
             }
             ret = make_num(strcmp(left->string.string, right->string.string));
             free(left);
             free(right);
+            free(eval_node);
+
             return ret;
             break;
         case CMP_GREATER_THAN:
@@ -171,6 +188,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret = make_num(left->number.value > right->number.value);
                 free(left);
                 free(right);
+                free(eval_node);
                 return ret;
             }
             break;
@@ -179,6 +197,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret = make_num(left->number.value < right->number.value);
                 free(left);
                 free(right);
+                free(eval_node);
                 return ret;
             }
             break;
@@ -192,6 +211,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
 void foug(Node** ast, Node* node, Scope* scope){
     Node* str = evaluate(ast, node->foug.string, scope);
+
     NodeType type = str->type;
     if (type == NODE_STRING) {
         printf("%s\n", str->string.string);
@@ -222,6 +242,7 @@ void band(Node** ast, Node* node, Scope* scope){
 
 
 void interpret_block(Node** ast, Node* block, Scope* scope) {
+    printf("Interpreting block of type %s\n", node_type_to_str(block->type));
     switch (block->type) {
         case NODE_FOUG:
             foug(ast, block, scope);
@@ -249,7 +270,6 @@ void interpret_block(Node** ast, Node* block, Scope* scope) {
             // get return value
             Node* ret = evaluate(ast, block->ret.value, scope);
             stack_push(&return_values, &ret);
-            free(ret);
 
             // set program counter to return pc
             int ret_pc;
