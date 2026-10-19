@@ -50,3 +50,7 @@ Dynamic_Var foglang_exit(Arg* args, int arg_count, Token* instruction) {
 
     return (Dynamic_Var){};
 }
+
+
+
+
