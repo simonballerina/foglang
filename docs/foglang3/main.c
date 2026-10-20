@@ -14,6 +14,16 @@
 
 #include "foglang_var.c"
 
+void free_scope(Scope* scope) {
+    for (int i = 0; i < scope->top; i++) {
+        free(scope->variables[i].name);
+        if (scope->variables[i].type == NODE_STRING) {
+            free(scope->variables[i].string);
+        }
+    }
+    free(scope->variables);
+}
+
 void call_function(Node** ast, Node* node, Scope* scope) {
     // push return program counter
     int ret_pc = current;
@@ -24,23 +34,50 @@ void call_function(Node** ast, Node* node, Scope* scope) {
 
     for (int i = 0; ast[i]->type != FILE_END; i++) {
         if (ast[i]->type == NODE_BOUL && !strcmp(ast[i]->block.function_name, node->function.name)) {
+            Scope function_scope = {
+                .capacity = 8,
+                .top = 0,
+                .variables = malloc(8 * sizeof(Variable))
+            };
+            if (!function_scope.variables) {
+                printf("Memory allocation failed\n");
+                exit(1);
+            }
+            Scope* func_scope = &function_scope;
 
-            /*
-            // create new scope for function call
-            create_scope();
-            Scope* func_scope;
-            stack_pop(&scopes, &func_scope);
+            int parameter_count = 0;
+            while (ast[i]->block.parameters[parameter_count] != NULL) {
+                parameter_count++;
+            }
+
+            int argument_count = 0;
+            while (node->function.arguments[argument_count] != NULL) {
+                argument_count++;
+            }
+
+            if (argument_count != parameter_count) {
+                printf("Function '%s' expects %d arguments, got %d\n",
+                    node->function.name, parameter_count, argument_count);
+                free_scope(func_scope);
+                exit(1);
+            }
 
             // assign arguments to parameters
-            for (int j = 0; node->function.arguments[j] != 0; j++) {
+            for (int j = 0; j < argument_count; j++) {
                 Node* arg = evaluate(ast, node->function.arguments[j], scope);
                 create_variable(arg, ast[i]->block.parameters[j], func_scope);
                 free(arg);
             }
-            */
-            printf("Calling function '%s' at AST index %d\n", node->function.name, i);
-            interpret_block(ast, ast[i]->block.block[0], scope);
 
+            int return_value_depth = return_values.top;
+            for (int j = 0; j < ast[i]->block.statement_count; j++) {
+                interpret_block(ast, ast[i]->block.block[j], func_scope);
+                if (return_values.top > return_value_depth) {
+                    break;
+                }
+            }
+
+            free_scope(func_scope);
             return;
 
         }
@@ -58,6 +95,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
     if (type == NODE_IDENTIFIER) {
         UnnamedVariable v = get_var_value(scope, node->string.string);
+        if (v.type == TERMINATOR) {
+            printf("Variable '%s' not found\n", node->string.string);
+            exit(1);
+        }
         eval_node->type = v.type;
         type = v.type;
         if (v.type == NODE_NUMBER) eval_node->number.value = v.number;
@@ -67,16 +108,13 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
     }
 
     if (type == NODE_FUNCTION_CALL) {
-        printf("Calling function '%s'\n", node->function.name);
         call_function(ast, node, scope);
-        printf("Function '%s' returned\n", node->function.name);
 
         // pop return value from stack
         Node* ret_val = NULL;
         stack_pop(&return_values, &ret_val);
         free(eval_node);
         if (!ret_val) {
-            printf("Function '%s' did not return a value\n", node->function.name);
             exit(1);
         }
         return ret_val;
@@ -210,6 +248,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 }
 
 void foug(Node** ast, Node* node, Scope* scope){
+    printf("FOUG: \n");
     Node* str = evaluate(ast, node->foug.string, scope);
 
     NodeType type = str->type;
@@ -229,7 +268,7 @@ void band(Node** ast, Node* node, Scope* scope){
 
     // figure out if a new var is to be created
     NodeType t = get_var_value(scope, node->band.name).type;
-    if (t == NODE_NULL) {
+    if (t == TERMINATOR) {
         create_variable(value, node->band.name, scope);
         return;
     }  
@@ -242,7 +281,6 @@ void band(Node** ast, Node* node, Scope* scope){
 
 
 void interpret_block(Node** ast, Node* block, Scope* scope) {
-    printf("Interpreting block of type %s\n", node_type_to_str(block->type));
     switch (block->type) {
         case NODE_FOUG:
             foug(ast, block, scope);

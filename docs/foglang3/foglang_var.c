@@ -71,7 +71,7 @@ void change_var_value(Scope* scope, char* name, Node* new_value){
         exit(1);
 }
 
-UnnamedVariable get_var_value(Scope* scope, char* name){
+UnnamedVariable get_var_value(Scope* scope, char* name){ // Returns variable with type TERMINATOR if not found
     for (int i = 0; i < scope->top; i++){
         if (!strcmp(scope->variables[i].name, name)) {
             UnnamedVariable v = {
@@ -86,6 +86,6 @@ UnnamedVariable get_var_value(Scope* scope, char* name){
         }
         
     }
-    return (UnnamedVariable){.type = NODE_NULL};
+    return (UnnamedVariable){.type = TERMINATOR};
 
 }
