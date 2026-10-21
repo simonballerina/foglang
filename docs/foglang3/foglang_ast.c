@@ -316,7 +316,10 @@ Node* parse_boul(Token* tokens, int tok_count) {
     int len = 0;
     int depth = 0;
     for (int i = current; i < tok_count; i++) {
-        if (tokens[i].type == OPEN_BLOCK) depth++;
+        if (tokens[i].type == OPEN_BLOCK) {
+            depth++;
+            len++;
+        }
         if (tokens[i].type == CLOSE_BLOCK) {
             if (depth == 0) break; 
             depth--;

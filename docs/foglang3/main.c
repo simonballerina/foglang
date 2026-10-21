@@ -24,6 +24,96 @@ void free_scope(Scope* scope) {
     free(scope->variables);
 }
 
+void free_node(Node* node) {
+    if (!node) return;
+    if (node->type == NODE_STRING) {
+        free(node->string.string);
+    }
+    else if (node->type == NODE_BINARY) {
+        free_node(node->binary.left);
+        free_node(node->binary.right);
+    }
+    else if (node->type == NODE_BAND) {
+        free_node(node->band.value);
+    }
+    else if (node->type == NODE_GIVET || node->type == NODE_NAER) {
+        free_node(node->block.condition);
+        for (int i = 0; i < node->block.statement_count; i++) {
+            free_node(node->block.block[i]);
+        }
+        free(node->block.block);
+        if (node->block.parameters) {
+            for (int i = 0; node->block.parameters[i] != NULL; i++) {
+                free(node->block.parameters[i]);
+            }
+            free(node->block.parameters);
+        }
+    }
+    else if (node->type == NODE_FUNCTION_CALL) {
+        for (int i = 0; node->function.arguments[i] != NULL; i++) {
+            free_node(node->function.arguments[i]);
+        }
+        free(node->function.arguments);
+    }
+    else if (node->type == NODE_RETURN) {
+        free_node(node->ret.value);
+    }
+    free(node);
+}
+
+Node* clone_node(const Node* src) {
+    Node* dst = calloc(1, sizeof(Node));
+    if (!dst) {
+        printf("Memory allocation failed for node clone\n");
+        exit(1);
+    }
+
+    dst->type = src->type;
+
+    switch (src->type) {
+        case NODE_NUMBER:
+            dst->number.value = src->number.value;
+            break;
+
+        case NODE_STRING:
+            dst->string.string = strdup(src->string.string);
+            break;
+
+        case NODE_BINARY:
+            dst->binary.left = clone_node(src->binary.left);
+            dst->binary.right = clone_node(src->binary.right);
+            dst->binary.op = src->binary.op;
+            break;
+
+        case NODE_FUNCTION_CALL:
+            dst->function.name = strdup(src->function.name);
+            // clone arguments array and each arg
+            int arg_count = 0;
+            while (src->function.arguments[arg_count] != NULL) {
+                arg_count++;
+            }
+            dst->function.arguments = malloc((arg_count + 1) * sizeof(Node*));
+            if (!dst->function.arguments) {
+                printf("Memory allocation failed for function arguments clone\n");
+                exit(1);
+            }
+            for (int i = 0; i < arg_count; i++) {
+                dst->function.arguments[i] = clone_node(src->function.arguments[i]);
+            }
+            dst->function.arguments[arg_count] = NULL;
+
+            break;
+        case NODE_IDENTIFIER:
+            dst->string.string = strdup(src->string.string);
+            break;
+        default:
+            printf("Unhandled node type in clone_node, type: %d (%s)\n", src->type, node_type_to_str(src->type));
+            exit(1);
+    }
+
+    return dst;
+}
+
 void call_function(Node** ast, Node* node, Scope* scope) {
     // push return program counter
     int ret_pc = current;
@@ -87,9 +177,7 @@ void call_function(Node** ast, Node* node, Scope* scope) {
 
 Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the heap, free after use!
     // copy node type to avoid changing the original node
-    Node* eval_node = malloc(sizeof(Node));
-    if (!eval_node) goto malloc_error;
-    memcpy(eval_node, node, sizeof(Node));
+    Node* eval_node = clone_node(node);
 
     NodeType type = node->type;
 
@@ -149,9 +237,9 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
                 ret = make_str(summed_str);
             }
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
 
             return ret;
             break;
@@ -159,83 +247,83 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
         case OP_DIV:
             ret = make_num(left->number.value/right->number.value);
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;
             break;
         case OP_MOD:
             ret = make_num((int)(left->number.value)%(int)(right->number.value));
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;            
             break;
         case OP_MUL:
             ret = make_num(left->number.value*right->number.value);
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;
             break;
         case OP_SUB:
             ret = make_num(left->number.value-right->number.value);
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;
             break;
         case OP_EXP:
             ret = make_num(pow(left->number.value, right->number.value));
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;
             break;
         case CMP_EQUALS:
             if (eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value == right->number.value);
-                free(left);
-                free(right);
-                free(eval_node);
+                free_node(left);
+                free_node(right);
+                free_node(eval_node);
                 return ret;
             }
             ret = make_num(!strcmp(left->string.string, right->string.string));
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
             return ret;
             break;
         case CMP_NOT_EQUALS:
             if (eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value != right->number.value);
-                free(left);
-                free(right);
-                free(eval_node);
+                free_node(left);
+                free_node(right);
+                free_node(eval_node);
                 return ret;
             }
             ret = make_num(strcmp(left->string.string, right->string.string));
-            free(left);
-            free(right);
-            free(eval_node);
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
 
             return ret;
             break;
         case CMP_GREATER_THAN:
             if (eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value > right->number.value);
-                free(left);
-                free(right);
-                free(eval_node);
+                free_node(left);
+                free_node(right);
+                free_node(eval_node);
                 return ret;
             }
             break;
         case CMP_LESS_THAN:
             if (eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value < right->number.value);
-                free(left);
-                free(right);
-                free(eval_node);
+                free_node(left);
+                free_node(right);
+                free_node(eval_node);
                 return ret;
             }
             break;
@@ -248,7 +336,6 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 }
 
 void foug(Node** ast, Node* node, Scope* scope){
-    printf("FOUG: \n");
     Node* str = evaluate(ast, node->foug.string, scope);
 
     NodeType type = str->type;
@@ -259,7 +346,7 @@ void foug(Node** ast, Node* node, Scope* scope){
         if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
         else printf("%lf\n", str->number.value);
     }
-    free(str);
+    free_node(str);
 }
 
 
@@ -270,9 +357,11 @@ void band(Node** ast, Node* node, Scope* scope){
     NodeType t = get_var_value(scope, node->band.name).type;
     if (t == TERMINATOR) {
         create_variable(value, node->band.name, scope);
+        free_node(value);
         return;
     }  
     change_var_value(scope, node->band.name, value);
+    free_node(value);
     // update instead
 
 }
@@ -297,17 +386,24 @@ void interpret_block(Node** ast, Node* block, Scope* scope) {
                 for (int i = 0; i < block->block.statement_count; i++)
                     interpret_block(ast, block->block.block[i], scope);
             }
+            free_node(condition);
             break;
         case NODE_NAER:
-            while (evaluate(ast, block->block.condition, scope)->number.value) {
+            condition = evaluate(ast, block->block.condition, scope);
+            while (condition->number.value) {
                 for (int i = 0; i < block->block.statement_count; i++)
                     interpret_block(ast, block->block.block[i], scope);
+
+                free_node(condition);
+                condition = evaluate(ast, block->block.condition, scope);
             }
+            free_node(condition);
             break;
         case NODE_RETURN:
             // get return value
             Node* ret = evaluate(ast, block->ret.value, scope);
             stack_push(&return_values, &ret);
+            //free_node(ret);
 
             // set program counter to return pc
             int ret_pc;
