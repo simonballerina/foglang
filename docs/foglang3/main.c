@@ -185,6 +185,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
         UnnamedVariable v = get_var_value(scope, node->string.string);
         if (v.type == TERMINATOR) {
             printf("Variable '%s' not found\n", node->string.string);
+            print_scope(scope);
             exit(1);
         }
         eval_node->type = v.type;
@@ -409,6 +410,9 @@ void interpret_block(Node** ast, Node* block, Scope* scope) {
             int ret_pc;
             stack_pop(&return_pc, &ret_pc);
             current = ret_pc;
+            break;
+        case NODE_FUNCTION_CALL:
+            call_function(ast, block, scope);
             break;
     }
 

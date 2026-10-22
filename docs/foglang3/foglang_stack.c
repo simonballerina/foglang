@@ -21,9 +21,11 @@ void stack_init(Stack* stack, int element_size, int capacity){
 
 void stack_push(Stack* stack, void* value){
     if (stack->top >= stack->capacity) {
-
-        stack->data = realloc(stack->data, stack->capacity*2*stack->element_size);
-        if (!stack->data) goto malloc_error;
+        int new_capacity = stack->capacity * 2;
+        void* new_data = realloc(stack->data, new_capacity * stack->element_size);
+        if (!new_data) goto malloc_error;
+        stack->data = new_data;
+        stack->capacity = new_capacity;
     }
     
     memcpy((char*)stack->data + stack->top*stack->element_size, value, stack->element_size);
