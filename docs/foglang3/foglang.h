@@ -92,6 +92,7 @@ struct Node {
 
         struct {
             char* string;
+            int is_svets;
         } string;
 
         List list;
@@ -145,7 +146,10 @@ typedef struct {
     TokType type;
     union {
         double value;
-        char* string;
+        union{
+            char* string;
+            int is_svets;
+        } string;
     };
 
 } Token;
@@ -197,7 +201,7 @@ void print_scope(Scope* scope);
 Node* make_function(Token* tokens, int tok_count);
 Node* make_num(double number);
 Node* make_identifier(char* name);
-Node* make_str(char* str);
+Node* make_str(char* str, int is_svets);
 Node* make_binary(Node* left, TokType op, Node* right);
 Node* parse_exp(Token* tokens, int tok_count);
 Node* parse_factor(Token* tokens, int tok_count);
@@ -213,6 +217,7 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size);
 Token* tokenize(char* buff, int* tok_amount);
 
 Node* evaluate(Node** ast, Node* node, Scope* scope);
+char* create_svets_string(char* str, Scope* scope);
 void foug(Node** ast, Node* node, Scope* scope);
 void create_variable(Node* value, char* name, Scope* scope);
 void change_var_value(Scope* scope, char* name, Node* new_value);

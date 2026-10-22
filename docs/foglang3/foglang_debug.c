@@ -123,7 +123,7 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             break;
 
         case NODE_STRING:
-
+            if (node->string.is_svets) printf("SVETS ");
             printf("s'");
             for (int i = 0; i < strlen(node->string.string); i++) {
                 if (node->string.string[i] == '\n') printf("\\n");
@@ -524,7 +524,7 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'%%' ");
             break;
         case IDENTIFIER:
-            printf("'%.*s' ", (int)strlen(instructions[i].string), instructions[i].string);
+            printf("'%.*s' ", (int)strlen(instructions[i].string.string), instructions[i].string.string);
             break;
         case CMP_EQUALS:
             printf("'=' ");
@@ -542,9 +542,10 @@ void print_tokens(Token* instructions, int instruction_amount)
             printf("'%lf' ", instructions[i].value);
             break;
         case STRING:
+            if (instructions[i].string.is_svets) printf("SVETS ");
             printf("s'");
-            for (int j = 0; j < strlen(instructions[i].string); j++){
-                char c = instructions[i].string[j];
+            for (int j = 0; j < strlen(instructions[i].string.string); j++){
+                char c = instructions[i].string.string[j];
                 if (c == '\n') printf("\\n");
                 else printf("%c", c);
             }

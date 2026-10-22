@@ -31,7 +31,7 @@ Node* make_identifier(char* name) {
     return ret;
 }
 
-Node* make_str(char* str) {
+Node* make_str(char* str, int is_svets) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) {
         printf("Memory allocation failed for string\n");
@@ -39,6 +39,7 @@ Node* make_str(char* str) {
     }
     // tokenized strings are on the heap
     ret->string.string = str;
+    ret->string.is_svets = is_svets;
     ret->type = NODE_STRING;
 
     return ret;
@@ -63,7 +64,7 @@ Node* make_function(Token* tokens, int tok_count) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
     ret->type = NODE_FUNCTION_CALL;
-    ret->function.name = tokens[current].string;
+    ret->function.name = tokens[current].string.string;
     current+=2; // skip function name and left parenthesis
 
     // count amount of arguments
@@ -159,7 +160,7 @@ Node* parse_exp(Token* tokens, int tok_count) {
         return ret;
     }
     if (tokens[current].type == IDENTIFIER && tokens[current+1].type != LEFT_PAR) {
-        Node* ret = make_identifier(tokens[current].string);
+        Node* ret = make_identifier(tokens[current].string.string);
         current++;
 
         return ret;
@@ -171,7 +172,7 @@ Node* parse_exp(Token* tokens, int tok_count) {
         return ret;
     }
     if (tokens[current].type == STRING) {
-        Node* ret = make_str(tokens[current].string);
+        Node* ret = make_str(tokens[current].string.string, tokens[current].string.is_svets);
         current++;
 
         return ret;
@@ -288,7 +289,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
     if (!ret) goto malloc_error;
 
     // save function name
-    ret->block.function_name = tokens[current].string;
+    ret->block.function_name = tokens[current].string.string;
     current++;
 
     // count amount of parameters
@@ -306,7 +307,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
         current++;
         if (tokens[i].type == OPEN_BLOCK) break;
         if (tokens[i].type == IDENTIFIER) {
-            parameters[w++] = tokens[i].string;
+            parameters[w++] = tokens[i].string.string;
         }
     }
     parameters[w] = 0; // null terminate
@@ -316,10 +317,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
     int len = 0;
     int depth = 0;
     for (int i = current; i < tok_count; i++) {
-        if (tokens[i].type == OPEN_BLOCK) {
-            depth++;
-            len++;
-        }
+        if (tokens[i].type == OPEN_BLOCK) depth++;
         if (tokens[i].type == CLOSE_BLOCK) {
             if (depth == 0) break; 
             depth--;
@@ -406,7 +404,7 @@ Node* parse_band(Token* tokens, int tok_count) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
 
-    ret->band.name = tokens[current].string;
+    ret->band.name = tokens[current].string.string;
     current+=2;
     Node* value = parse_cmp(tokens, tok_count);
     ret->band.value = value;
@@ -577,6 +575,8 @@ Token* tokenize(char* buff, int* tok_amount){
     Token* tokens = malloc(4096*sizeof(Token));
     if (!tokens) goto malloc_error;
 
+    int is_svets = 0;
+
     int buff_len = strlen(buff);
     for (int i = 0; i < buff_len; i++){
 
@@ -654,11 +654,23 @@ Token* tokenize(char* buff, int* tok_amount){
                 continue;
             case '"': { // Create string
                 tokens[tok_top].type = STRING;
+                if (is_svets) {
+                    tokens[tok_top].string.is_svets = is_svets;
+                    is_svets = 0;
+                }
                 // Get str len
                 int len = 0;
-                while (buff[1+i+len++] != '"'){}
+                int depth = 0;
+
+                for (int j = 1+i; j < buff_len; j++){
+                    if (buff[j] == '%' && !depth) {depth = 1;}
+                    else if (buff[j] == '%' && depth) {depth = 0;}
+                    
+                    if (depth == 0 && buff[j] == '"') {break;}
+
+                    len++;
+                }
                 
-                len--;
                 char* string = malloc(len+1);
 
                 if (!string) goto malloc_error;
@@ -675,7 +687,7 @@ Token* tokenize(char* buff, int* tok_amount){
                 }
                 string[w] = '\0';
 
-                tokens[tok_top++].string = string;
+                tokens[tok_top++].string.string = string;
                 i+=len+1;
                 continue;
             }
@@ -696,9 +708,10 @@ Token* tokenize(char* buff, int* tok_amount){
             tokens[tok_top++].type = NAER;
             i += 4;
             continue;
-        } else if (strncmp(buff+i, "svets ", 6) == 0){
-            tokens[tok_top++].type = SVETS;
-            i += 5;
+        } else if (strncmp(buff+i, "svets", 5) == 0){
+            //tokens[tok_top++].type = SVETS;
+            is_svets = 1;
+            i += 4;
             continue;
         } else if (strncmp(buff+i, "junk ", 5) == 0){
             tokens[tok_top++].type = JUNK;
@@ -727,10 +740,10 @@ Token* tokenize(char* buff, int* tok_amount){
             j -= i;
             
             tokens[tok_top].type = IDENTIFIER;
-            tokens[tok_top].string = malloc(j+1);
-            if (!tokens[tok_top].string) goto malloc_error;
-            strncpy(tokens[tok_top].string, buff+i, j);
-            tokens[tok_top].string[j] = '\0';
+            tokens[tok_top].string.string = malloc(j+1);
+            if (!tokens[tok_top].string.string) goto malloc_error;
+            strncpy(tokens[tok_top].string.string, buff+i, j);
+            tokens[tok_top].string.string[j] = '\0';
 
             tok_top++;
             i+=j-1;

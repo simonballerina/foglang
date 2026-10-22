@@ -77,6 +77,7 @@ Node* clone_node(const Node* src) {
 
         case NODE_STRING:
             dst->string.string = strdup(src->string.string);
+            dst->string.is_svets = src->string.is_svets;
             break;
 
         case NODE_BINARY:
@@ -191,7 +192,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
         eval_node->type = v.type;
         type = v.type;
         if (v.type == NODE_NUMBER) eval_node->number.value = v.number;
-        else if (v.type == NODE_STRING) eval_node->string.string = v.string;
+        else if (v.type == NODE_STRING) eval_node->string.string = strdup(v.string);
         else if (v.type == NODE_LIST) eval_node->list = v.list;
 
     }
@@ -210,6 +211,12 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
     }
 
     if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_NULL) {
+        if (type == NODE_STRING && eval_node->string.is_svets) {
+            char* s_s = create_svets_string(eval_node->string.string, scope);
+            free(eval_node->string.string);
+            eval_node->string.string = s_s;
+            eval_node->string.is_svets = 0;
+        }
         return eval_node;
     }
     // bin expr
@@ -236,7 +243,14 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 memcpy(summed_str+l_len, right->string.string, r_len);
                 summed_str[l_len+r_len] = '\0';
 
-                ret = make_str(summed_str);
+                ret = make_str(summed_str, left->string.is_svets || right->string.is_svets);
+
+                if (ret->string.is_svets) {
+                    char* s_s = create_svets_string(ret->string.string, scope);
+                    free(ret->string.string);
+                    ret->string.string = s_s;
+                    ret->string.is_svets = 0;
+                }
             }
             free_node(left);
             free_node(right);
@@ -290,6 +304,12 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 return ret;
             }
             ret = make_num(!strcmp(left->string.string, right->string.string));
+            if (ret->string.is_svets) {
+                char* s_s = create_svets_string(ret->string.string, scope);
+                free(ret->string.string);
+                ret->string.string = s_s;
+                ret->string.is_svets = 0;
+            }
             free_node(left);
             free_node(right);
             free_node(eval_node);
@@ -303,11 +323,18 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 free_node(eval_node);
                 return ret;
             }
+
             ret = make_num(strcmp(left->string.string, right->string.string));
             free_node(left);
             free_node(right);
             free_node(eval_node);
 
+            if (ret->string.is_svets) {
+                char* s_s = create_svets_string(ret->string.string, scope);
+                free(ret->string.string);
+                ret->string.string = s_s;
+                ret->string.is_svets = 0;
+            }
             return ret;
             break;
         case CMP_GREATER_THAN:
@@ -336,14 +363,110 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
 }
 
+char* create_svets_string(char* str, Scope* scope) {
+
+    printf("creating svets string\n");
+    int base_len = strlen(str);
+    char* new_str = malloc(base_len + 1);
+    if (!new_str) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
+    int w = 0;
+    for (int i = 0; i < base_len; i++){
+        if (str[i] == '\\') {
+            i++;
+            continue;
+        }
+        if (str[i] == '%') {
+            // find len of expression
+            int svets_len = 0;
+            int depth = 0;
+            for (int j = i+1; j < base_len; j++){
+                if (str[j] == '\\') {
+                    j++; 
+                    continue;
+                }
+                if (str[j] == '"' && !depth) depth = 1;
+                else if (str[j] == '"' && depth) depth = 0;
+                if (!depth && str[j] == '%') {
+                    i++; 
+                    break;
+                }
+                svets_len++;
+
+
+            }
+            printf("svets_len: %d\n", svets_len);
+
+            // copy svets string and tokenize + build ast
+            char* svets_part = malloc(svets_len+1);
+            if (!svets_part) {
+                printf("Memory allocation failed\n");
+                exit(1);
+            }
+            memcpy(svets_part, str+i, svets_len);
+            svets_part[svets_len] = '\0';
+
+            int tok_amount = 0;
+            Token* svets_tokens = tokenize(svets_part, &tok_amount);
+            print_tokens(svets_tokens, tok_amount);
+            int saved = current;
+            current = 0;
+            Node* svets_ast = parse_statement(svets_tokens, tok_amount);
+            current = saved;
+            print_ast_statement(svets_ast, "", 0);
+
+            Node* complete_svets_string = evaluate(0, svets_ast, scope);
+
+            // append complete_svets_string to new_str
+            if (complete_svets_string->type == NODE_STRING) {
+                int complete_svets_string_len = strlen(complete_svets_string->string.string);
+                new_str = realloc(new_str, w + complete_svets_string_len + 1);
+                if (!new_str) {
+                    printf("Memory allocation failed\n");
+                    exit(1);
+                }
+                memcpy(new_str + w, complete_svets_string->string.string, complete_svets_string_len);
+                w += complete_svets_string_len;
+            } else if (complete_svets_string->type == NODE_NUMBER) {
+                char num_str[32];
+                snprintf(num_str, sizeof(num_str), "%g", complete_svets_string->number.value);
+                int num_str_len = strlen(num_str);
+                new_str = realloc(new_str, w + num_str_len + 1);
+                if (!new_str) {
+                    printf("Memory allocation failed\n");
+                    exit(1);
+                }
+                memcpy(new_str + w, num_str, num_str_len);
+                w += num_str_len;
+            }
+
+            /*free_node(svets_ast);
+            for (int k = 0; k < tok_amount; k++){
+                if (svets_tokens[k].type == STRING) free(svets_tokens[k].string.string);
+            }
+            free(svets_tokens);*/
+
+
+            i+=svets_len+1;
+        }
+        new_str[w++] = str[i];
+    }
+
+    new_str[w] = '\0';
+    
+    return new_str;
+}
+
 void foug(Node** ast, Node* node, Scope* scope){
     Node* str = evaluate(ast, node->foug.string, scope);
 
     NodeType type = str->type;
     if (type == NODE_STRING) {
         printf("%s\n", str->string.string);
-    }
-    else if (type == NODE_NUMBER) {
+    } else if (type == NODE_NUMBER) {
         if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
         else printf("%lf\n", str->number.value);
     }
