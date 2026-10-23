@@ -658,7 +658,7 @@ Token* tokenize(char* buff, int* tok_amount, int debug_level) {
             case '"': { // Create string
                 tokens[tok_top].type = STRING;
                 if (is_svets) {
-                    tokens[tok_top].string.is_svets = is_svets;
+                    tokens[tok_top].string.is_svets = 1;
                     is_svets = 0;
                 }
                 // Get str len
@@ -712,7 +712,6 @@ Token* tokenize(char* buff, int* tok_amount, int debug_level) {
             i += 4;
             continue;
         } else if (strncmp(buff+i, "svets", 5) == 0){
-            //tokens[tok_top++].type = SVETS;
             is_svets = 1;
             i += 4;
             continue;

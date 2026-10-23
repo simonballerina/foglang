@@ -222,7 +222,8 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
     // bin expr
     Node* left = evaluate(ast, eval_node->binary.left, scope);
     Node* right = evaluate(ast, eval_node->binary.right, scope);
-    NodeType eval_type = left->type;
+    NodeType l_eval_type = left->type;
+    NodeType r_eval_type = right->type;
 
     Node* ret;
 
@@ -230,9 +231,9 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
         case OP_ADD:
             
-            if (eval_type == NODE_NUMBER) {
+            if (l_eval_type == NODE_NUMBER && r_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value+right->number.value);
-            } else if (eval_type == NODE_STRING) {
+            } else if (l_eval_type == NODE_STRING && r_eval_type == NODE_STRING) {
                 int l_len = strlen(left->string.string);
                 int r_len = strlen(right->string.string);
 
@@ -251,6 +252,8 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                     ret->string.string = s_s;
                     ret->string.is_svets = 0;
                 }
+            } else {
+                // ERROR: cannot add number and string
             }
             free_node(left);
             free_node(right);
@@ -261,6 +264,12 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
         
 
         case OP_DIV:
+            if (right->number.value == 0) {
+                // ERROR: division by zero
+            }
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot divide non-numbers
+            }
             ret = make_num(left->number.value/right->number.value);
             free_node(left);
             free_node(right);
@@ -268,6 +277,12 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;
             break;
         case OP_MOD:
+            if (right->number.value == 0) {
+                // ERROR: division by zero
+            }
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot divide non-numbers
+            }
             ret = make_num((int)(left->number.value)%(int)(right->number.value));
             free_node(left);
             free_node(right);
@@ -275,13 +290,24 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;            
             break;
         case OP_MUL:
-            ret = make_num(left->number.value*right->number.value);
+            if (l_eval_type == NODE_STRING && r_eval_type == NODE_STRING) {
+                // ERROR: cannot multiply strings
+            } else if (l_eval_type == NODE_NUMBER && r_eval_type == NODE_NUMBER) {
+                ret = make_num(left->number.value*right->number.value);
+            } else if 
+                ((l_eval_type == NODE_NUMBER && r_eval_type == NODE_STRING) || 
+                (r_eval_type == NODE_NUMBER && l_eval_type == NODE_STRING)) {
+                // multiply str with number
+            }
             free_node(left);
             free_node(right);
             free_node(eval_node);
             return ret;
             break;
         case OP_SUB:
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot subtract non-numbers
+            }
             ret = make_num(left->number.value-right->number.value);
             free_node(left);
             free_node(right);
@@ -289,6 +315,9 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;
             break;
         case OP_EXP:
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot exponentiate non-numbers
+            }
             ret = make_num(pow(left->number.value, right->number.value));
             free_node(left);
             free_node(right);
@@ -296,7 +325,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;
             break;
         case CMP_EQUALS:
-            if (eval_type == NODE_NUMBER) {
+            if (!(l_eval_type == r_eval_type)){
+                // ERROR: cannot compare different data types
+            }
+            if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value == right->number.value);
                 free_node(left);
                 free_node(right);
@@ -316,7 +348,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;
             break;
         case CMP_NOT_EQUALS:
-            if (eval_type == NODE_NUMBER) {
+            if (!(l_eval_type == r_eval_type)){
+                // ERROR: cannot compare different data types
+            }
+            if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value != right->number.value);
                 free_node(left);
                 free_node(right);
@@ -338,7 +373,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             return ret;
             break;
         case CMP_GREATER_THAN:
-            if (eval_type == NODE_NUMBER) {
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot compare value of non-numbers
+            }
+            if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value > right->number.value);
                 free_node(left);
                 free_node(right);
@@ -347,7 +385,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             break;
         case CMP_LESS_THAN:
-            if (eval_type == NODE_NUMBER) {
+            if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
+                // ERROR: cannot compare value of non-numbers
+            }
+            if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value < right->number.value);
                 free_node(left);
                 free_node(right);
@@ -397,6 +438,7 @@ char* create_svets_string(char* str, Scope* scope) {
 
 
             }
+            if (svets_len <= 0) continue;
 
             // copy svets string and tokenize + build ast
             char* svets_part = malloc(svets_len+1);
@@ -438,6 +480,7 @@ char* create_svets_string(char* str, Scope* scope) {
                 memcpy(new_str + w, num_str, num_str_len);
                 w += num_str_len;
             }
+
 
             free_node(svets_ast);
             // free tokenized strings

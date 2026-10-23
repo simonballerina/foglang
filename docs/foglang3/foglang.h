@@ -146,7 +146,7 @@ typedef struct {
     TokType type;
     union {
         double value;
-        union{
+        struct {
             char* string;
             int is_svets;
         } string;
