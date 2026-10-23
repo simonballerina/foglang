@@ -208,13 +208,13 @@ Node* parse_factor(Token* tokens, int tok_count);
 Node* parse_term(Token* tokens, int tok_count);
 Node* parse_cmp(Token* tokens, int tok_count);
 Node* parse_expression(Token* tokens, int tok_count);
-Node* parse_cond_block(Token* tokens, int tok_count, TokType type);
+Node* parse_cond_block(Token* tokens, int tok_count, TokType type, int debug_level);
 Node* parse_band(Token* tokens, int tok_count);
 Node* parse_output_statement(Token* tokens, int tok_count, TokType type);
-Node* parse_statement(Token* tokens, int tok_count);
-Node* parse_boul(Token* tokens, int tok_count);
-Node** build_ast(Token* tokens, int tok_count, int* ast_size);
-Token* tokenize(char* buff, int* tok_amount);
+Node* parse_statement(Token* tokens, int tok_count, int debug_level);
+Node* parse_boul(Token* tokens, int tok_count, int debug_level);
+Node** build_ast(Token* tokens, int tok_count, int* ast_size, int debug_level);
+Token* tokenize(char* buff, int* tok_amount, int debug_level);
 
 Node* evaluate(Node** ast, Node* node, Scope* scope);
 char* create_svets_string(char* str, Scope* scope);

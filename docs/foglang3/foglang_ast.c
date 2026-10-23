@@ -37,8 +37,8 @@ Node* make_str(char* str, int is_svets) {
         printf("Memory allocation failed for string\n");
         exit(1);
     }
-    // tokenized strings are on the heap
-    ret->string.string = str;
+
+    ret->string.string = strdup(str);
     ret->string.is_svets = is_svets;
     ret->type = NODE_STRING;
 
@@ -282,7 +282,7 @@ Node* parse_expression(Token* tokens, int tok_count){
 
 }
 
-Node* parse_boul(Token* tokens, int tok_count) {
+Node* parse_boul(Token* tokens, int tok_count, int debug_level) {
     current++; // skip BOUL
 
     Node* ret = malloc(sizeof(Node));
@@ -335,7 +335,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
     int statement_count = 0;
 
     while (tokens[current].type != CLOSE_BLOCK && tokens[current].type != FILE_END) {
-        block[statement_count++] = parse_statement(tokens, tok_count);
+        block[statement_count++] = parse_statement(tokens, tok_count, debug_level);
     }
     current++; // skip }
 
@@ -351,7 +351,7 @@ Node* parse_boul(Token* tokens, int tok_count) {
         exit(1);
 }
 
-Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
+Node* parse_cond_block(Token* tokens, int tok_count, TokType type, int debug_level) {
     current++; // skip GIVET/NAER
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
@@ -381,7 +381,7 @@ Node* parse_cond_block(Token* tokens, int tok_count, TokType type) {
     int statement_count = 0;
 
     while (tokens[current].type != CLOSE_BLOCK && tokens[current].type != FILE_END) {
-        block[statement_count++] = parse_statement(tokens, tok_count);
+        block[statement_count++] = parse_statement(tokens, tok_count, debug_level);
     }
     current++; // skip }
 
@@ -468,18 +468,18 @@ Node* parse_output_statement(Token* tokens, int tok_count, TokType type) {
         exit(1);
 }
 
-Node* parse_statement(Token* tokens, int tok_count) {
+Node* parse_statement(Token* tokens, int tok_count, int debug_level) {
 
-    printf("Parsing token with type: '%s'\n", tok_type_to_string(tokens[current].type));
+    if (debug_level > 2) printf("Parsing token with type: '%s'\n", tok_type_to_string(tokens[current].type));
 
     if (tokens[current].type == BAND)
         return parse_band(tokens, tok_count);
 
     if (tokens[current].type == GIVET)
-        return parse_cond_block(tokens, tok_count, GIVET);
+        return parse_cond_block(tokens, tok_count, GIVET, debug_level);
 
     if (tokens[current].type == NAER)
-        return parse_cond_block(tokens, tok_count, NAER);
+        return parse_cond_block(tokens, tok_count, NAER, debug_level);
 
     if (tokens[current].type == FOUG)
         return parse_output_statement(tokens, tok_count, FOUG);
@@ -488,7 +488,7 @@ Node* parse_statement(Token* tokens, int tok_count) {
         return parse_output_statement(tokens, tok_count, TPOS);
 
     if (tokens[current].type == BOUL)
-        return parse_boul(tokens, tok_count);
+        return parse_boul(tokens, tok_count, debug_level);
 
     if (tokens[current].type == RETURN) {
 
@@ -527,7 +527,7 @@ Node* parse_statement(Token* tokens, int tok_count) {
         return ret;
     }
     
-    printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
+    if (debug_level > 0) printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
 
     return NULL;
 
@@ -538,8 +538,8 @@ Node* parse_statement(Token* tokens, int tok_count) {
 
 
 
-Node** build_ast(Token* tokens, int tok_count, int* ast_size){
-    printf("Building AST...\n");
+Node** build_ast(Token* tokens, int tok_count, int* ast_size, int debug_level){
+    if (debug_level > 0) printf("Building AST...\n");
     // Count semicolons and blocks
     int len = 0;
     for (int i = 0; i < tok_count; i++) {
@@ -552,7 +552,7 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
     int ast_top = 0;
 
     while (tokens[current].type != FILE_END) {
-        Node* statement = parse_statement(tokens, tok_count);
+        Node* statement = parse_statement(tokens, tok_count, debug_level);
         ast[ast_top++] = statement;
     }
     *ast_size = ast_top;
@@ -560,7 +560,7 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
     if (!ast[ast_top]) goto malloc_error;
     ast[ast_top]->type = FILE_END;
 
-    printf("AST generation complete\n\n");
+    if (debug_level > 0) printf("AST generation complete, %d nodes generated\n\n", ast_top);
 
     return ast;
     malloc_error:
@@ -570,7 +570,10 @@ Node** build_ast(Token* tokens, int tok_count, int* ast_size){
 }
 
 
-Token* tokenize(char* buff, int* tok_amount){
+Token* tokenize(char* buff, int* tok_amount, int debug_level) {
+
+    if (debug_level > 0) printf("Tokenizing...\n");
+
     int tok_top = 0;
     Token* tokens = malloc(4096*sizeof(Token));
     if (!tokens) goto malloc_error;
@@ -749,7 +752,7 @@ Token* tokenize(char* buff, int* tok_amount){
             i+=j-1;
         }
 
-        printf("added token: '%.*s', type: '%d'\n", (int)3, buff+i, tokens[tok_top-1].type);
+        if (debug_level > 2) printf("added token: '%.*s', type: '%d'\n", (int)3, buff+i, tokens[tok_top-1].type);
         
         
     }
@@ -757,7 +760,7 @@ Token* tokenize(char* buff, int* tok_amount){
     tokens[tok_top].type = FILE_END;
 
     *tok_amount = tok_top;
-
+    if (debug_level > 0) printf("Tokenization complete, %d tokens generated\n", tok_top);
     return tokens;
 
     malloc_error:

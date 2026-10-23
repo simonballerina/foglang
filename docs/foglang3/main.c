@@ -365,7 +365,6 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
 
 char* create_svets_string(char* str, Scope* scope) {
 
-    printf("creating svets string\n");
     int base_len = strlen(str);
     char* new_str = malloc(base_len + 1);
     if (!new_str) {
@@ -398,7 +397,6 @@ char* create_svets_string(char* str, Scope* scope) {
 
 
             }
-            printf("svets_len: %d\n", svets_len);
 
             // copy svets string and tokenize + build ast
             char* svets_part = malloc(svets_len+1);
@@ -410,13 +408,11 @@ char* create_svets_string(char* str, Scope* scope) {
             svets_part[svets_len] = '\0';
 
             int tok_amount = 0;
-            Token* svets_tokens = tokenize(svets_part, &tok_amount);
-            print_tokens(svets_tokens, tok_amount);
+            Token* svets_tokens = tokenize(svets_part, &tok_amount, 0);
             int saved = current;
             current = 0;
-            Node* svets_ast = parse_statement(svets_tokens, tok_amount);
+            Node* svets_ast = parse_statement(svets_tokens, tok_amount, 0);
             current = saved;
-            print_ast_statement(svets_ast, "", 0);
 
             Node* complete_svets_string = evaluate(0, svets_ast, scope);
 
@@ -443,11 +439,14 @@ char* create_svets_string(char* str, Scope* scope) {
                 w += num_str_len;
             }
 
-            /*free_node(svets_ast);
+            free_node(svets_ast);
+            // free tokenized strings
             for (int k = 0; k < tok_amount; k++){
-                if (svets_tokens[k].type == STRING) free(svets_tokens[k].string.string);
+                if (svets_tokens[k].type == STRING) {
+                    free(svets_tokens[k].string.string);
+                }
             }
-            free(svets_tokens);*/
+            free(svets_tokens);
 
 
             i+=svets_len+1;
@@ -575,7 +574,7 @@ int main(int argc, char **argv){
     //check for flags
     int flag_help = 0;      // -h --help
     int flag_version = 0;   // -v --version --ver
-    int flag_debug = 0;     // -d --debug
+    int debug_level = 0;     // -d --debug
     int flag_unchecked = 0; // -u --unchecked
 
     for (int i = 0; i < argc; i++)
@@ -588,9 +587,16 @@ int main(int argc, char **argv){
         {
             flag_version = 1;
         }
-        else if ((strcmp(argv[i], "-d") == 0 )|| (strcmp(argv[i], "-D") == 0) || (strcmp(argv[i], "--debug") == 0))
+        else if ((strncmp(argv[i], "-d", 2) == 0 )|| (strncmp(argv[i], "-D", 2) == 0) || (strncmp(argv[i], "--debug", 7) == 0))
         {
-            flag_debug = 1;
+            debug_level = 9;
+            int argv_len = strlen(argv[i]);
+
+            if (argv_len > 2 && strncmp(argv[i], "--", 2) != 0) {
+                debug_level = atoi(argv[i]+2);
+            } else if (argv_len > 7 && !strncmp(argv[i], "--debug", 7)){
+                debug_level = atoi(argv[i]+7);
+            }
         }
         else if ((strcmp(argv[i], "-u") == 0) || (strcmp(argv[i], "-U") == 0) || (strcmp(argv[i], "--unchecked") == 0))
         {
@@ -616,12 +622,12 @@ int main(int argc, char **argv){
 
 
     int tok_count;
-    Token* tokens = tokenize(buff, &tok_count);
-    print_tokens(tokens, tok_count);
+    Token* tokens = tokenize(buff, &tok_count, debug_level);
+    if (debug_level > 1) print_tokens(tokens, tok_count);
     
     int ast_size;
-    Node** ast = build_ast(tokens, tok_count, &ast_size);
-    print_ast(ast, "", 0, ast_size);
+    Node** ast = build_ast(tokens, tok_count, &ast_size, debug_level);
+    if (debug_level > 1) print_ast(ast, "", 0, ast_size);
 
     // init variable stack
     stack_init(&scopes, sizeof(Scope), 8);
