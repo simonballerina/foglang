@@ -20,9 +20,13 @@ void create_variable(Node* value, char* name, Scope* scope){
         if (!new_str) goto malloc_error;
         memcpy(new_str, value->string.string, len+1);
         
-        v.string = new_str;
+        v.string.string = new_str;
+        v.string.is_svets = value->string.is_svets;
     }
-    else if (value->type == NODE_LIST) v.list = value->list;
+    else if (value->type == NODE_LIST) {
+        v.list.len = value->list.len;
+        v.list.list = value->list.list;
+    }
 
     if (scope->top >= scope->capacity) {
         Variable* tmp = realloc(scope->variables, (scope->capacity*2)*sizeof(Variable));
@@ -45,7 +49,7 @@ void change_var_value(Scope* scope, char* name, Node* new_value){
 
             NodeType old_type = scope->variables[i].type;
             if (old_type == NODE_STRING){ // free when lists are implemented
-                free(scope->variables[i].string);
+                free(scope->variables[i].string.string);
             }
 
             NodeType type = new_value->type;
@@ -55,11 +59,15 @@ void change_var_value(Scope* scope, char* name, Node* new_value){
                 if (!new_str) goto malloc_error;
                 memcpy(new_str, new_value->string.string, len+1);
                 
-                scope->variables[i].string = new_str;
+                scope->variables[i].string.string = new_str;
+                scope->variables[i].string.is_svets = new_value->string.is_svets;
             }
 
             else if (type == NODE_NUMBER) scope->variables[i].number = new_value->number.value;
-            else if (type == NODE_LIST) scope->variables[i].list = new_value->list;
+            else if (type == NODE_LIST) {
+                scope->variables[i].list.len = new_value->list.len;
+                scope->variables[i].list.list = new_value->list.list;
+            }
 
             scope->variables[i].type = type;
         }
@@ -79,8 +87,14 @@ UnnamedVariable get_var_value(Scope* scope, char* name){ // Returns variable wit
             };
 
             if (scope->variables[i].type == NODE_NUMBER) v.number = scope->variables[i].number;
-            else if (scope->variables[i].type == NODE_STRING) v.string = scope->variables[i].string;
-            else if (scope->variables[i].type == NODE_LIST) v.list = scope->variables[i].list;
+            else if (scope->variables[i].type == NODE_STRING) {
+                v.string.string = scope->variables[i].string.string;
+                v.string.is_svets = scope->variables[i].string.is_svets;
+            }
+            else if (scope->variables[i].type == NODE_LIST) {
+                v.list.len = scope->variables[i].list.len;
+                v.list.list = scope->variables[i].list.list;
+            }
 
             return v;
         }

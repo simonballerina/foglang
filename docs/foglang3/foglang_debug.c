@@ -132,7 +132,24 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
             printf("'\n");
 
             break;
+        case NODE_LIST:
+            printf("LIST\n");
 
+            char new_prefix[256];
+
+            snprintf(
+                new_prefix,
+                sizeof(new_prefix),
+                "%s%s",
+                prefix,
+                is_left ? "│   " : "    "
+            );
+
+            for (int i = 0; i < node->list.len; i++) {
+                print_ast_statement(node->list.list[i], new_prefix, i != node->list.len - 1);
+            }
+
+            break;
 
         case NODE_BINARY: {
 
@@ -398,7 +415,7 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
 
             snprintf(cond_prefix, sizeof(cond_prefix), "%s│   ", new_prefix);
 
-            for (int i = 0; i < node->block.parameters[i] != 0; i++) {
+            for (int i = 0; node->block.parameters[i] != NULL; i++) {
                 printf("%s%s%s\n", cond_prefix, node->block.parameters[i+1] != 0 ? "├── " : "└── ", node->block.parameters[i]); 
                 if (node->block.parameters[i+1] == 0) break;
             }
@@ -439,7 +456,7 @@ void print_scope(Scope* scope) {
         Variable v = scope->variables[i];
         printf("  %s: ", v.name);
         if (v.type == NODE_NUMBER) printf("%lf\n", v.number);
-        else if (v.type == NODE_STRING) printf("s'%s'\n", v.string);
+        else if (v.type == NODE_STRING) printf("s'%s'\n", v.string.string);
         else if (v.type == NODE_LIST) printf("List\n");
     }
     printf("--------\n");
@@ -489,6 +506,12 @@ void print_tokens(Token* instructions, int instruction_amount)
         case LEFT_PAR:
             printf("'(' ");
             break;
+        case LEFT_BRACKET:
+            printf("'[' ");
+            break;
+        case RIGHT_BRACKET:
+            printf("']' ");
+            break;
         case OPEN_BLOCK:
             printf("'{' \n");
             indent++;
@@ -502,7 +525,7 @@ void print_tokens(Token* instructions, int instruction_amount)
             if (i+1 < instruction_amount && instructions[i+1].type == CLOSE_BLOCK) {
                 j++;
             }
-            for (j; j < indent; j++)
+            for (int a = j; a < indent; a++)
                 printf("    ");
             break;
         case OP_ADD:
@@ -558,7 +581,7 @@ void print_tokens(Token* instructions, int instruction_amount)
             if (i+1 < instruction_amount && instructions[i+1].type == CLOSE_BLOCK) {
                 k++;
             }
-            for (k; k < indent; k++)
+            for (int a = k; a < indent; a++)
                 printf("    ");
             break;
         default:

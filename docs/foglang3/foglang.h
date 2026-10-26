@@ -50,14 +50,17 @@ typedef enum {
     COMMA,      // 24
     RETURN,     // 25
 
-    OPEN_BLOCK,
-    CLOSE_BLOCK,
+    OPEN_BLOCK, // 26
+    CLOSE_BLOCK,// 27
 
-    FILE_END,
+    LEFT_BRACKET,// 28
+    RIGHT_BRACKET,//29
+
+    FILE_END,   // 30
 
 
 } TokType;
-
+typedef struct Node Node;
 typedef struct UnnamedVariable UnnamedVariable;
 
 typedef struct {
@@ -70,16 +73,21 @@ struct UnnamedVariable {
     NodeType type;
 
     union {
-        List list;
+        struct {
+            Node** list;
+            int len;
+        } list;
         double number;
-        char* string;
+        struct {
+            char* string;
+            int is_svets;
+        } string;
     };
 };
 
 
 
 
-typedef struct Node Node;
 
 struct Node {
 
@@ -95,7 +103,10 @@ struct Node {
             int is_svets;
         } string;
 
-        List list;
+        struct {
+            int len;
+            Node** list;
+        } list;
 
         struct {
             char* name;
@@ -162,9 +173,15 @@ typedef struct {
     NodeType type;
     
     union {
-        List list;
+        struct{
+            Node** list;
+            int len;
+        } list;
         double number;
-        char* string;
+        struct {
+            char* string;
+            int is_svets;
+        } string;
     };
 } Variable;
 
@@ -199,6 +216,7 @@ void print_tokens(Token* instructions, int instruction_amount);
 void print_scope(Scope* scope);
 
 Node* make_function(Token* tokens, int tok_count);
+Node* make_list(Token* tokens, int tok_count);
 Node* make_num(double number);
 Node* make_identifier(char* name);
 Node* make_str(char* str, int is_svets);

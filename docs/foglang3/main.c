@@ -18,7 +18,7 @@ void free_scope(Scope* scope) {
     for (int i = 0; i < scope->top; i++) {
         free(scope->variables[i].name);
         if (scope->variables[i].type == NODE_STRING) {
-            free(scope->variables[i].string);
+            free(scope->variables[i].string.string);
         }
     }
     free(scope->variables);
@@ -192,8 +192,14 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
         eval_node->type = v.type;
         type = v.type;
         if (v.type == NODE_NUMBER) eval_node->number.value = v.number;
-        else if (v.type == NODE_STRING) eval_node->string.string = strdup(v.string);
-        else if (v.type == NODE_LIST) eval_node->list = v.list;
+        else if (v.type == NODE_STRING) {
+            eval_node->string.string = strdup(v.string.string);
+            eval_node->string.is_svets = v.string.is_svets;
+        }
+        else if (v.type == NODE_LIST) {
+            eval_node->list.len = v.list.len;
+            eval_node->list.list = v.list.list;
+        }
 
     }
 

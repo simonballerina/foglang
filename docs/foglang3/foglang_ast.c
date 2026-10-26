@@ -123,13 +123,13 @@ Node* make_function(Token* tokens, int tok_count) {
 
             int saved = current;
             current = 0;
-            args[w++] = parse_expression(tokens+start, arg_len);
+            args[w++] = parse_cmp(tokens+start, arg_len);
             current = saved;
 
             i = start+arg_len-1; // -1 because the for loop will increment i
         }
     }
-    args[w] = 0;
+    args[w] = NULL;
 
     int call_depth = 0;
     while (current < tok_count) {
@@ -149,6 +149,66 @@ Node* make_function(Token* tokens, int tok_count) {
 
     malloc_error:
         printf("Memory allocation failed for function\n");
+        exit(1);
+}
+
+Node* make_list(Token* tokens, int tok_count){
+    int list_tok_len = 1; // first bracket doesn't count: +1
+
+    // count amount if items in list
+    int list_len = 1; // one more item than amount of commas
+    int depth = 0;
+    for (int i = current+1; i < tok_count; i++){ // begin inside list
+        list_tok_len++;
+        if (tokens[i].type == LEFT_BRACKET) depth++;
+        else if (tokens[i].type == RIGHT_BRACKET) {
+            if (depth == 0) break;
+            depth--;
+        }
+        if (tokens[i].type == COMMA && depth == 0) list_len++;
+    }
+    if (list_tok_len == 2){ // empty list
+        list_len--;
+    }
+    printf("len: %d\n", list_len);
+    printf("tok_len: %d\n", list_tok_len);
+
+    Node** list = malloc(sizeof(Node*)*(list_len)); 
+    if (!list) goto malloc_error;
+    
+    int w = 0;
+    // write list item to list
+    for (int i = current+1; i < tok_count && w < list_len; i++){
+        int item_len = 0;
+        int depth = 0;
+        for (int j = i; j < tok_count; j++) {
+            if (tokens[j].type == LEFT_BRACKET) depth++;
+            else if (tokens[j].type == RIGHT_BRACKET) depth--;
+            if ((depth == 0 && tokens[j].type == COMMA) || (depth == -1 && tokens[j].type == RIGHT_BRACKET)) break;
+            item_len++;
+        }
+        print_tokens(tokens+i, item_len);
+        int saved = current;
+        current = 0;
+        Node* item = parse_cmp(tokens+i, item_len);
+        print_ast_statement(item, "", 0);
+        current = saved;
+        list[w++] = item;
+
+        i += item_len; 
+    }
+
+    Node* ret = malloc(sizeof(Node));
+    if (!ret) goto malloc_error;
+    ret->type = NODE_LIST;
+    ret->list.list = list;
+    ret->list.len = list_len;
+
+    current += list_tok_len-1; // skip list tokens
+    return ret;
+
+    malloc_error:
+        printf("Memory allocation failed\n");
         exit(1);
 }
 
@@ -176,6 +236,14 @@ Node* parse_exp(Token* tokens, int tok_count) {
         current++;
 
         return ret;
+    }
+    if (tokens[current].type == LEFT_BRACKET) {
+
+        Node* ret = make_list(tokens, tok_count);
+        current++;
+        
+        return ret;
+
     }
     if (tokens[current].type == LEFT_PAR) {
 
@@ -527,7 +595,7 @@ Node* parse_statement(Token* tokens, int tok_count, int debug_level) {
         return ret;
     }
     
-    if (debug_level > 0) printf("Unknown token: '%s', type: '%d'\n", tokens[current].string, tokens[current].type);
+    if (debug_level > 0) printf("Unknown token: '%s', type: '%d'\n", tokens[current].string.string, tokens[current].type);
 
     return NULL;
 
@@ -655,6 +723,14 @@ Token* tokenize(char* buff, int* tok_amount, int debug_level) {
             case '}':
                 tokens[tok_top++].type = CLOSE_BLOCK;
                 continue;
+
+            case '[':
+                tokens[tok_top++].type = LEFT_BRACKET;
+                continue;
+            case ']':
+                tokens[tok_top++].type = RIGHT_BRACKET;
+                continue;
+
             case '"': { // Create string
                 tokens[tok_top].type = STRING;
                 if (is_svets) {
