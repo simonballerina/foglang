@@ -205,6 +205,10 @@ Stack return_pc;
 
 char *read_file(const char *filename);
 void help(int argc, char **argv);
+/*
+    Compares two input lists list_1 and list_2. Returns 1 if their values are equal, and 0 if they aren't.
+*/
+int compare_lists(Node* list_1, Node* list_2);
 
 char* tok_type_to_string(TokType type);
 char* node_type_to_str(NodeType type);
@@ -236,6 +240,7 @@ Token* tokenize(char* buff, int* tok_amount, int debug_level);
 
 Node* evaluate(Node** ast, Node* node, Scope* scope);
 char* create_svets_string(char* str, Scope* scope);
+void print_item(Node* item);
 void foug(Node** ast, Node* node, Scope* scope);
 void create_variable(Node* value, char* name, Scope* scope);
 void change_var_value(Scope* scope, char* name, Node* new_value);

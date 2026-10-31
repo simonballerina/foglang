@@ -79,6 +79,17 @@ Node* clone_node(const Node* src) {
             dst->string.string = strdup(src->string.string);
             dst->string.is_svets = src->string.is_svets;
             break;
+        case NODE_LIST:
+            dst->list.len = src->list.len;
+            dst->list.list = malloc(src->list.len * sizeof(Node*));
+            if (!dst->list.list) {
+                printf("Memory allocation failed for list clone\n");
+                exit(1);
+            }
+            for (int i = 0; i < src->list.len; i++) {
+                dst->list.list[i] = clone_node(src->list.list[i]);
+            }
+            break;
 
         case NODE_BINARY:
             dst->binary.left = clone_node(src->binary.left);
@@ -176,6 +187,7 @@ void call_function(Node** ast, Node* node, Scope* scope) {
 
 }
 
+
 Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the heap, free after use!
     // copy node type to avoid changing the original node
     Node* eval_node = clone_node(node);
@@ -216,12 +228,19 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
         return ret_val;
     }
 
-    if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_NULL) {
+    if (type == NODE_NUMBER || type == NODE_STRING || type == NODE_LIST || type == NODE_NULL) {
         if (type == NODE_STRING && eval_node->string.is_svets) {
             char* s_s = create_svets_string(eval_node->string.string, scope);
             free(eval_node->string.string);
             eval_node->string.string = s_s;
             eval_node->string.is_svets = 0;
+        } else if (type == NODE_LIST) {
+            for (int i = 0; i < eval_node->list.len; i++) {
+                Node* item = eval_node->list.list[i];
+                Node* evaluated_item = evaluate(ast, item, scope);
+                free_node(item);
+                eval_node->list.list[i] = evaluated_item;
+            }
         }
         return eval_node;
     }
@@ -258,14 +277,24 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                     ret->string.string = s_s;
                     ret->string.is_svets = 0;
                 }
+            } else if (l_eval_type == NODE_LIST && r_eval_type == NODE_LIST) {
+                Node** new_list = malloc((left->list.len + right->list.len) * sizeof(Node*));
+                if (!new_list) goto malloc_error;
+                for (int i = 0; i < left->list.len; i++) {
+                    new_list[i] = clone_node(left->list.list[i]);
+                }
+                for (int i = 0; i < right->list.len; i++) {
+                    new_list[left->list.len + i] = clone_node(right->list.list[i]);
+                }
+                ret = malloc(sizeof(Node));
+                if (!ret) goto malloc_error;
+                ret->type = NODE_LIST;
+                ret->list.list = new_list;
+                ret->list.len = left->list.len + right->list.len;
             } else {
-                // ERROR: cannot add number and string
+                // ERROR: cannot add different data types
             }
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-
-            return ret;
+            goto free_and_return;
             break;
         
 
@@ -277,10 +306,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 // ERROR: cannot divide non-numbers
             }
             ret = make_num(left->number.value/right->number.value);
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;
+            goto free_and_return;
             break;
         case OP_MOD:
             if (right->number.value == 0) {
@@ -290,45 +316,36 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 // ERROR: cannot divide non-numbers
             }
             ret = make_num((int)(left->number.value)%(int)(right->number.value));
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;            
+            goto free_and_return;
             break;
         case OP_MUL:
             if (l_eval_type == NODE_STRING && r_eval_type == NODE_STRING) {
                 // ERROR: cannot multiply strings
-            } else if (l_eval_type == NODE_NUMBER && r_eval_type == NODE_NUMBER) {
+            } else if (l_eval_type == NODE_LIST || r_eval_type == NODE_LIST){
+                // ERROR: cannot multiply lists
+            }
+            else if (l_eval_type == NODE_NUMBER && r_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value*right->number.value);
             } else if 
                 ((l_eval_type == NODE_NUMBER && r_eval_type == NODE_STRING) || 
                 (r_eval_type == NODE_NUMBER && l_eval_type == NODE_STRING)) {
                 // multiply str with number
             }
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;
+            goto free_and_return;
             break;
         case OP_SUB:
             if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
                 // ERROR: cannot subtract non-numbers
             }
             ret = make_num(left->number.value-right->number.value);
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;
+            goto free_and_return;
             break;
         case OP_EXP:
             if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
                 // ERROR: cannot exponentiate non-numbers
             }
             ret = make_num(pow(left->number.value, right->number.value));
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;
+            goto free_and_return;
             break;
         case CMP_EQUALS:
             if (!(l_eval_type == r_eval_type)){
@@ -336,10 +353,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value == right->number.value);
-                free_node(left);
-                free_node(right);
-                free_node(eval_node);
-                return ret;
+                goto free_and_return;
+            } else if (l_eval_type == NODE_LIST) {
+                ret = make_num(compare_lists(left, right));
+                goto free_and_return;
             }
             ret = make_num(!strcmp(left->string.string, right->string.string));
             if (ret->string.is_svets) {
@@ -348,10 +365,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret->string.string = s_s;
                 ret->string.is_svets = 0;
             }
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
-            return ret;
+            goto free_and_return;   
             break;
         case CMP_NOT_EQUALS:
             if (!(l_eval_type == r_eval_type)){
@@ -359,16 +373,10 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value != right->number.value);
-                free_node(left);
-                free_node(right);
-                free_node(eval_node);
-                return ret;
+                goto free_and_return;   
             }
 
             ret = make_num(strcmp(left->string.string, right->string.string));
-            free_node(left);
-            free_node(right);
-            free_node(eval_node);
 
             if (ret->string.is_svets) {
                 char* s_s = create_svets_string(ret->string.string, scope);
@@ -376,7 +384,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
                 ret->string.string = s_s;
                 ret->string.is_svets = 0;
             }
-            return ret;
+            goto free_and_return;
             break;
         case CMP_GREATER_THAN:
             if (l_eval_type != NODE_NUMBER || r_eval_type != NODE_NUMBER) {
@@ -384,10 +392,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value > right->number.value);
-                free_node(left);
-                free_node(right);
-                free_node(eval_node);
-                return ret;
+                goto free_and_return;
             }
             break;
         case CMP_LESS_THAN:
@@ -396,12 +401,15 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             if (l_eval_type == NODE_NUMBER) {
                 ret = make_num(left->number.value < right->number.value);
-                free_node(left);
-                free_node(right);
-                free_node(eval_node);
-                return ret;
+                goto free_and_return;
             }
             break;
+
+        free_and_return:
+            free_node(left);
+            free_node(right);
+            free_node(eval_node);
+            return ret;
     }
     return NULL;
     malloc_error:
@@ -508,16 +516,37 @@ char* create_svets_string(char* str, Scope* scope) {
     return new_str;
 }
 
+void print_item(Node* item){
+    switch (item->type) {
+        case NODE_NUMBER:
+            if (item->number.value == (int)item->number.value) {
+                printf("%d", (int)item->number.value);
+            } else {
+                printf("%lf", item->number.value);
+            }
+            break;
+        case NODE_STRING:
+            printf("%s", item->string.string);
+            break;
+        case NODE_LIST:
+            printf("[");
+            for (int i = 0; i < item->list.len; i++) {
+                print_item(item->list.list[i]);
+                if (i < item->list.len - 1) printf(", ");
+            }
+            printf("]");
+            break;
+        default:
+            printf("(item at %p)", (void*)item);
+    }
+}
+
 void foug(Node** ast, Node* node, Scope* scope){
     Node* str = evaluate(ast, node->foug.string, scope);
 
     NodeType type = str->type;
-    if (type == NODE_STRING) {
-        printf("%s\n", str->string.string);
-    } else if (type == NODE_NUMBER) {
-        if (str->number.value == (int)str->number.value) printf("%d\n", (int)str->number.value);
-        else printf("%lf\n", str->number.value);
-    }
+    print_item(str);
+    printf("\n");
     free_node(str);
 }
 
@@ -528,6 +557,7 @@ void band(Node** ast, Node* node, Scope* scope){
     // figure out if a new var is to be created
     NodeType t = get_var_value(scope, node->band.name).type;
     if (t == TERMINATOR) {
+
         create_variable(value, node->band.name, scope);
         free_node(value);
         return;
