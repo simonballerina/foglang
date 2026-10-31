@@ -111,6 +111,7 @@ struct Node {
         struct {
             char* name;
             Node* value;
+            Node* index;
         } band;
 
         struct {
@@ -209,6 +210,9 @@ void help(int argc, char **argv);
     Compares two input lists list_1 and list_2. Returns 1 if their values are equal, and 0 if they aren't.
 */
 int compare_lists(Node* list_1, Node* list_2);
+void free_scope(Scope* scope);
+void free_node(Node* node);
+Node* clone_node(const Node* src);
 
 char* tok_type_to_string(TokType type);
 char* node_type_to_str(NodeType type);

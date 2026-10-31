@@ -170,8 +170,6 @@ Node* make_list(Token* tokens, int tok_count){
     if (list_tok_len == 2){ // empty list
         list_len--;
     }
-    printf("len: %d\n", list_len);
-    printf("tok_len: %d\n", list_tok_len);
 
     Node** list = malloc(sizeof(Node*)*(list_len)); 
     if (!list) goto malloc_error;
@@ -187,11 +185,9 @@ Node* make_list(Token* tokens, int tok_count){
             if ((depth == 0 && tokens[j].type == COMMA) || (depth == -1 && tokens[j].type == RIGHT_BRACKET)) break;
             item_len++;
         }
-        print_tokens(tokens+i, item_len);
         int saved = current;
         current = 0;
         Node* item = parse_cmp(tokens+i, item_len);
-        print_ast_statement(item, "", 0);
         current = saved;
         list[w++] = item;
 
@@ -472,8 +468,19 @@ Node* parse_band(Token* tokens, int tok_count) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
 
-    ret->band.name = tokens[current].string.string;
-    current+=2;
+    ret->band.index = NULL;
+    ret->band.name = tokens[current++].string.string;
+    if (tokens[current].type == LEFT_BRACKET){
+        // treat like a list with one item
+        Node* index_list = make_list(tokens, tok_count);
+        Node* index = clone_node(index_list->list.list[0]);
+        free_node(index_list);
+        current+=2;
+        ret->band.index = index;
+    } else if (tokens[current].type == CMP_EQUALS) current++;
+    else {
+        // ERROR: syntax error
+    }
     Node* value = parse_cmp(tokens, tok_count);
     ret->band.value = value;
     ret->type = NODE_BAND;

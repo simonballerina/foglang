@@ -196,6 +196,13 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
                 is_left ? "│   " : "    "
             );
 
+            if (node->band.index != NULL) {
+                printf("%s├── INDEX\n", new_prefix);
+                char index_prefix[256];
+                snprintf(index_prefix, sizeof(index_prefix), "%s│   ", new_prefix);
+                print_ast_statement(node->band.index, index_prefix, 0);
+            }
+
             print_ast_statement(
                 node->band.value,
                 new_prefix,
