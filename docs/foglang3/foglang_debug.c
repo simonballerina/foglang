@@ -196,11 +196,13 @@ void print_ast_statement(Node* node, const char* prefix, int is_left){
                 is_left ? "│   " : "    "
             );
 
-            if (node->band.index != NULL) {
-                printf("%s├── INDEX\n", new_prefix);
+            if (node->band.indicies != NULL) {
+                printf("%s├── INDEX (%d)\n", new_prefix, node->band.index_count);
                 char index_prefix[256];
                 snprintf(index_prefix, sizeof(index_prefix), "%s│   ", new_prefix);
-                print_ast_statement(node->band.index, index_prefix, 0);
+                for (int i = 0; i < node->band.index_count; i++) {
+                    print_ast_statement(node->band.indicies[i], index_prefix, i != node->band.index_count - 1);
+                }
             }
 
             print_ast_statement(
@@ -462,13 +464,12 @@ void print_scope(Scope* scope) {
     for (int i = 0; i < scope->top; i++) {
         Variable v = scope->variables[i];
         printf("  %s: ", v.name);
-        if (v.type == NODE_NUMBER) printf("%lf\n", v.number);
-        else if (v.type == NODE_STRING) printf("s'%s'\n", v.string.string);
-        else if (v.type == NODE_LIST) printf("List\n");
+        if (v.value->type == NODE_NUMBER) printf("%lf\n", v.value->number.value);
+        else if (v.value->type == NODE_STRING) printf("s'%s'\n", v.value->string.string);
+        else if (v.value->type == NODE_LIST) printf("List\n");
     }
     printf("--------\n");
 }
-
 
 void print_tokens(Token* instructions, int instruction_amount)
 {

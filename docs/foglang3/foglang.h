@@ -111,7 +111,8 @@ struct Node {
         struct {
             char* name;
             Node* value;
-            Node* index;
+            Node** indicies;
+            int index_count;
         } band;
 
         struct {
@@ -169,21 +170,8 @@ typedef struct {
 
 
 typedef struct {
-    
     char* name;
-    NodeType type;
-    
-    union {
-        struct{
-            Node** list;
-            int len;
-        } list;
-        double number;
-        struct {
-            char* string;
-            int is_svets;
-        } string;
-    };
+    Node* value;
 } Variable;
 
 typedef struct {
@@ -247,7 +235,7 @@ char* create_svets_string(char* str, Scope* scope);
 void print_item(Node* item);
 void foug(Node** ast, Node* node, Scope* scope);
 void create_variable(Node* value, char* name, Scope* scope);
-void change_var_value(Scope* scope, char* name, Node* new_value);
+void change_var_value(Scope* scope, char* name, Node* new_value, Node** indicies, int index_count);
 UnnamedVariable get_var_value(Scope* scope, char* name);
 void band(Node** ast, Node* node, Scope* scope);
 void interpret_block(Node** ast, Node* block, Scope* scope);

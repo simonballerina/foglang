@@ -6,7 +6,7 @@ WFLAGS = -Wno-c23-extensions -Wno-enum-compare -Wno-implicit-enum-enum-cast
 TARGET = build/foglang3
 INSTALL_TARGET = /usr/local/bin/foglang3
 
-$(TARGET): main.c foglang_ast.c foglang_debug.c foglang_utils.c foglang.h
+$(TARGET): main.c foglang_ast.c foglang_var.c foglang_debug.c foglang_utils.c foglang.h
 	mkdir -p build
 	$(CC) -o $(TARGET) main.c $(CFLAGS) $(WFLAGS)
 

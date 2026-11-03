@@ -3,8 +3,8 @@
 void free_scope(Scope* scope) {
     for (int i = 0; i < scope->top; i++) {
         free(scope->variables[i].name);
-        if (scope->variables[i].type == NODE_STRING) {
-            free(scope->variables[i].string.string);
+        if (scope->variables[i].value->type == NODE_STRING) {
+            free(scope->variables[i].value->string.string);
         }
     }
     free(scope->variables);

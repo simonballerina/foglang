@@ -468,9 +468,30 @@ Node* parse_band(Token* tokens, int tok_count) {
     Node* ret = malloc(sizeof(Node));
     if (!ret) goto malloc_error;
 
-    ret->band.index = NULL;
+    ret->band.indicies = NULL;
     ret->band.name = tokens[current++].string.string;
-    if (tokens[current].type == LEFT_BRACKET){
+    ret->band.index_count = 0;
+
+    Node* index_list = NULL;
+    for(;;) {
+        if (tokens[current].type == LEFT_BRACKET) {
+            // treat like a list with one item
+            index_list = make_list(tokens, tok_count);
+            Node* index = clone_node(index_list->list.list[0]);
+            free_node(index_list);
+            current++; // skip ]
+            ret->band.indicies = realloc(ret->band.indicies, sizeof(Node*) * (ret->band.index_count + 1));
+            ret->band.indicies[ret->band.index_count++] = index;
+        } else if (tokens[current].type == CMP_EQUALS) {
+            current++;
+            break;
+        }
+        else {
+            // ERROR: syntax error, expected = or [ for band statement
+        }
+    }
+
+   /* if (tokens[current].type == LEFT_BRACKET){
         // treat like a list with one item
         Node* index_list = make_list(tokens, tok_count);
         Node* index = clone_node(index_list->list.list[0]);
@@ -480,7 +501,7 @@ Node* parse_band(Token* tokens, int tok_count) {
     } else if (tokens[current].type == CMP_EQUALS) current++;
     else {
         // ERROR: syntax error
-    }
+    }*/
     Node* value = parse_cmp(tokens, tok_count);
     ret->band.value = value;
     ret->type = NODE_BAND;

@@ -257,6 +257,7 @@ Node* evaluate(Node** ast, Node* node, Scope* scope) { // returns node on the he
             }
             goto free_and_return;   
             break;
+            
         case CMP_NOT_EQUALS:
             if (!(l_eval_type == r_eval_type)){
                 // ERROR: cannot compare different data types
@@ -447,12 +448,11 @@ void band(Node** ast, Node* node, Scope* scope){
     // figure out if a new var is to be created
     NodeType t = get_var_value(scope, node->band.name).type;
     if (t == TERMINATOR) {
-
         create_variable(value, node->band.name, scope);
         free_node(value);
         return;
     }  
-    change_var_value(scope, node->band.name, value);
+    change_var_value(scope, node->band.name, value, node->band.indicies, node->band.index_count);
     free_node(value);
     // update instead
 
